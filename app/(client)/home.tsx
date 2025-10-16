@@ -23,7 +23,8 @@ export default function ClientHomeScreen() {
   
   useScreenTracking('client_home');
 
-  const priorityCategories = categories.filter(c => c.isPriority);
+  const priorityCategories = categories.filter(c => c.isPriority).slice(0, 10);
+  const otherCategories = categories.filter(c => !c.isPriority);
   const normalizedQuery = query.trim().toLowerCase();
   const filteredCategories = normalizedQuery.length > 0
     ? categories.filter(c => c.label.toLowerCase().includes(normalizedQuery) || c.id.toLowerCase().includes(normalizedQuery))
@@ -191,7 +192,7 @@ export default function ClientHomeScreen() {
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.modalGrid}>
-                {categories.map((category) => (
+                {otherCategories.map((category) => (
                   <TouchableOpacity
                     key={category.id}
                     style={[
