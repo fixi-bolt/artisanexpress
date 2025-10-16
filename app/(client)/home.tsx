@@ -143,7 +143,7 @@ export default function ClientHomeScreen() {
 
           <TouchableOpacity 
             style={styles.moreButton}
-            onPress={() => setShowAllCategories(true)}
+            onPress={() => router.push('/(client)/artisans' as any)}
             activeOpacity={0.7}
           >
             <Text style={styles.moreButtonText}>Voir tous les artisans</Text>
