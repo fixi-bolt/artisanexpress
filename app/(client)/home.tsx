@@ -183,23 +183,7 @@ export default function ClientHomeScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
-              <View style={styles.searchBox}>
-                <Search size={20} color={Colors.textLight} strokeWidth={2} />
-                <TextInput
-                  placeholder="Rechercher..."
-                  placeholderTextColor={Colors.textLight}
-                  value={query}
-                  onChangeText={(text) => {
-                    console.log('Modal search query changed:', text);
-                    setQuery(text);
-                  }}
-                  style={styles.searchInput}
-                  returnKeyType="search"
-                  testID="modalSearchInput"
-                />
-              </View>
-            </View>
+            <View style={{ height: 0 }} />
 
             <ScrollView 
               style={styles.modalScroll}
@@ -207,7 +191,7 @@ export default function ClientHomeScreen() {
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.modalGrid}>
-                {(normalizedQuery.length > 0 ? filteredCategories : categories).map((category) => (
+                {categories.map((category) => (
                   <TouchableOpacity
                     key={category.id}
                     style={[
