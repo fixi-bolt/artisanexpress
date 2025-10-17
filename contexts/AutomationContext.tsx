@@ -24,9 +24,9 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
       try {
         const key = 'automation:settings';
         if (Platform.OS === 'web') {
-          const raw = window.localStorage.getItem(key);
-          if (raw) {
-            try {
+          try {
+            const raw = window.localStorage.getItem(key);
+            if (raw && raw.trim()) {
               const parsed = JSON.parse(raw) as AutomationSettings;
               if (parsed && typeof parsed === 'object' && 'autoInvoice' in parsed) {
                 setSettings(parsed);
@@ -35,17 +35,21 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
                 window.localStorage.removeItem(key);
                 setSettings(DEFAULT_SETTINGS);
               }
-            } catch (parseError) {
-              console.error('Invalid JSON in storage, clearing:', parseError);
-              window.localStorage.removeItem(key);
-              setSettings(DEFAULT_SETTINGS);
             }
+          } catch (parseError) {
+            console.error('Invalid JSON in storage, clearing:', parseError);
+            try {
+              window.localStorage.removeItem(key);
+            } catch (removeError) {
+              console.error('Failed to clear storage:', removeError);
+            }
+            setSettings(DEFAULT_SETTINGS);
           }
         } else {
           const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
-          const raw = await AsyncStorage.getItem(key);
-          if (raw) {
-            try {
+          try {
+            const raw = await AsyncStorage.getItem(key);
+            if (raw && raw.trim()) {
               const parsed = JSON.parse(raw) as AutomationSettings;
               if (parsed && typeof parsed === 'object' && 'autoInvoice' in parsed) {
                 setSettings(parsed);
@@ -54,11 +58,15 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
                 await AsyncStorage.removeItem(key);
                 setSettings(DEFAULT_SETTINGS);
               }
-            } catch (parseError) {
-              console.error('Invalid JSON in storage, clearing:', parseError);
-              await AsyncStorage.removeItem(key);
-              setSettings(DEFAULT_SETTINGS);
             }
+          } catch (parseError) {
+            console.error('Invalid JSON in storage, clearing:', parseError);
+            try {
+              await AsyncStorage.removeItem(key);
+            } catch (removeError) {
+              console.error('Failed to clear storage:', removeError);
+            }
+            setSettings(DEFAULT_SETTINGS);
           }
         }
       } catch (e) {
