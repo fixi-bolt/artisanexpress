@@ -26,46 +26,36 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
         if (Platform.OS === 'web') {
           try {
             const raw = window.localStorage.getItem(key);
-            if (raw && raw.trim()) {
+            if (raw && raw.trim() && raw !== '{}' && raw !== 'null' && raw !== 'undefined') {
               const parsed = JSON.parse(raw) as AutomationSettings;
               if (parsed && typeof parsed === 'object' && 'autoInvoice' in parsed) {
                 setSettings(parsed);
-              } else {
-                console.warn('Invalid settings structure, using defaults');
-                window.localStorage.removeItem(key);
-                setSettings(DEFAULT_SETTINGS);
+                return;
               }
             }
+            window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            setSettings(DEFAULT_SETTINGS);
           } catch (parseError) {
-            console.error('Invalid JSON in storage, clearing:', parseError);
-            try {
-              window.localStorage.removeItem(key);
-            } catch (removeError) {
-              console.error('Failed to clear storage:', removeError);
-            }
+            console.error('Invalid JSON in storage, resetting to defaults:', parseError);
+            window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
             setSettings(DEFAULT_SETTINGS);
           }
         } else {
           const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
           try {
             const raw = await AsyncStorage.getItem(key);
-            if (raw && raw.trim()) {
+            if (raw && raw.trim() && raw !== '{}' && raw !== 'null' && raw !== 'undefined') {
               const parsed = JSON.parse(raw) as AutomationSettings;
               if (parsed && typeof parsed === 'object' && 'autoInvoice' in parsed) {
                 setSettings(parsed);
-              } else {
-                console.warn('Invalid settings structure, using defaults');
-                await AsyncStorage.removeItem(key);
-                setSettings(DEFAULT_SETTINGS);
+                return;
               }
             }
+            await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            setSettings(DEFAULT_SETTINGS);
           } catch (parseError) {
-            console.error('Invalid JSON in storage, clearing:', parseError);
-            try {
-              await AsyncStorage.removeItem(key);
-            } catch (removeError) {
-              console.error('Failed to clear storage:', removeError);
-            }
+            console.error('Invalid JSON in storage, resetting to defaults:', parseError);
+            await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
             setSettings(DEFAULT_SETTINGS);
           }
         }

@@ -9,9 +9,10 @@ import Colors from '@/constants/colors';
 export default function WelcomeScreen() {
   const router = useRouter();
   const authContext = useAuth();
-  const { isAuthenticated, isClient } = authContext || { isAuthenticated: false, isClient: false };
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+  
+  const { isAuthenticated, isClient } = authContext || { isAuthenticated: false, isClient: false };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -30,7 +31,11 @@ export default function WelcomeScreen() {
         }),
       ]).start();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isClient, fadeAnim, slideAnim, router]);
+
+  if (!authContext) {
+    return null;
+  }
 
   const features = [
     {
@@ -120,7 +125,7 @@ export default function WelcomeScreen() {
             <View style={styles.stepContent}>
               <Text style={styles.stepTitle}>Décrivez votre problème</Text>
               <Text style={styles.stepDescription}>
-                Choisissez un type d'artisan et décrivez votre besoin
+                Choisissez un type d&apos;artisan et décrivez votre besoin
               </Text>
             </View>
           </View>
@@ -144,7 +149,7 @@ export default function WelcomeScreen() {
             <View style={styles.stepContent}>
               <Text style={styles.stepTitle}>Suivez en temps réel</Text>
               <Text style={styles.stepDescription}>
-                Regardez l'artisan arriver sur la carte avec l'ETA
+                Regardez l&apos;artisan arriver sur la carte avec l&apos;ETA
               </Text>
             </View>
           </View>
@@ -156,7 +161,7 @@ export default function WelcomeScreen() {
             <View style={styles.stepContent}>
               <Text style={styles.stepTitle}>Payez et notez</Text>
               <Text style={styles.stepDescription}>
-                Paiement sécurisé dans l'app et notation de l'artisan
+                Paiement sécurisé dans l&apos;app et notation de l&apos;artisan
               </Text>
             </View>
           </View>
