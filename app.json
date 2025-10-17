@@ -15,7 +15,15 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.artisan-go"
+      "bundleIdentifier": "app.rork.artisan-go",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +33,11 @@
       "package": "app.rork.artisan-go",
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.SCHEDULE_EXACT_ALARM"
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO"
       ]
     },
     "web": {
@@ -48,6 +60,18 @@
             "./local/assets/notification_sound.wav"
           ],
           "enableBackgroundRemoteNotifications": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
         }
       ]
     ],

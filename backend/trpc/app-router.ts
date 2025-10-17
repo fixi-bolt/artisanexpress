@@ -35,6 +35,9 @@ import { suggestCategoryProcedure } from "./routes/ai/suggest-category/route";
 import { chatAssistantProcedure } from "./routes/ai/chat-assistant/route";
 import { visionAnalyzeProcedure } from "./routes/ai/vision-analyze/route";
 import { dynamicPricingProcedure } from "./routes/ai/dynamic-pricing/route";
+import { predictEtaProcedure } from "./routes/ml/predict-eta/route";
+import { dynamicPriceProcedure } from "./routes/ml/dynamic-price/route";
+import { getSmartRecommendationsProcedure } from "./routes/recommendations/get-smart-recommendations/route";
 import { getRevenueAnalyticsProcedure } from "./routes/business/get-revenue-analytics/route";
 import { getUserMetricsProcedure } from "./routes/business/get-user-metrics/route";
 import { getConversionFunnelProcedure } from "./routes/business/get-conversion-funnel/route";
@@ -113,6 +116,13 @@ export const appRouter = createTRPCRouter({
     chatAssistant: chatAssistantProcedure,
     visionAnalyze: visionAnalyzeProcedure,
     dynamicPricing: dynamicPricingProcedure,
+  }),
+  ml: createTRPCRouter({
+    predictEta: predictEtaProcedure,
+    dynamicPrice: dynamicPriceProcedure,
+  }),
+  recommendations: createTRPCRouter({
+    getSmartRecommendations: getSmartRecommendationsProcedure,
   }),
   business: createTRPCRouter({
     getRevenueAnalytics: getRevenueAnalyticsProcedure,

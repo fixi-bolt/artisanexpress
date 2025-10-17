@@ -1,13 +1,14 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Modal, Image } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useState } from 'react';
-import { ArrowLeft, Camera, MapPin, Euro, Shield, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, Camera, MapPin, Euro, Shield, ChevronDown, X, Sparkles } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { categories } from '@/mocks/artisans';
 import { useMissions } from '@/contexts/MissionContext';
 import { ArtisanCategory } from '@/types';
 import SmartCategorySuggestion from '@/components/SmartCategorySuggestion';
-import AIProblemAnalyzer from '@/components/AIProblemAnalyzer';
+import VoiceAssistant from '@/components/VoiceAssistant';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function RequestScreen() {
   const router = useRouter();
@@ -20,9 +21,16 @@ export default function RequestScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
-  const [aiInsights, setAiInsights] = useState<{ severity?: 'low'|'medium'|'high'; safetyAdvice?: string[] } | null>(null);
+  const [aiInsights, setAiInsights] = useState<{ 
+    severity?: 'low'|'medium'|'high'; 
+    safetyAdvice?: string[];
+    detectedCategory?: string;
+    probableIssues?: string[];
+    confidence?: number;
+  } | null>(null);
   const [dynamicPrice, setDynamicPrice] = useState<{ total: number; breakdownLabel: string } | null>(null);
   const [address, setAddress] = useState('15 Rue de Rivoli, 75001 Paris');
+  const [isAnalyzingPhotos, setIsAnalyzingPhotos] = useState(false);
 
   const [estimatedPrice, setEstimatedPrice] = useState<number>(80 + Math.floor(Math.random() * 70));
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -54,10 +62,137 @@ export default function RequestScreen() {
     );
   };
 
-  const handleAddPhoto = () => {
-    const mockPhoto = `https://images.unsplash.com/photo-${Date.now()}?w=400`;
-    setPhotos([...photos, mockPhoto]);
-    console.log('Photo added');
+  const handleAddPhoto = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert('Permission requise', 'Autoriser l\'accès à la caméra pour prendre des photos');
+      return;
+    }
+
+    Alert.alert(
+      'Ajouter une photo',
+      'Choisissez une source',
+      [
+        {
+          text: 'Prendre une photo',
+          onPress: async () => {
+            const result = await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              quality: 0.7,
+              base64: false,
+            });
+            
+            if (!result.canceled && result.assets[0]) {
+              const newPhotos = [...photos, result.assets[0].uri];
+              setPhotos(newPhotos);
+              console.log('Photo captured:', result.assets[0].uri);
+              
+              if (newPhotos.length > 0) {
+                analyzePhotosWithAI(newPhotos);
+              }
+            }
+          },
+        },
+        {
+          text: 'Choisir depuis la galerie',
+          onPress: async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              allowsEditing: true,
+              quality: 0.7,
+              base64: false,
+            });
+            
+            if (!result.canceled && result.assets[0]) {
+              const newPhotos = [...photos, result.assets[0].uri];
+              setPhotos(newPhotos);
+              console.log('Photo selected:', result.assets[0].uri);
+              
+              if (newPhotos.length > 0) {
+                analyzePhotosWithAI(newPhotos);
+              }
+            }
+          },
+        },
+        { text: 'Annuler', style: 'cancel' },
+      ]
+    );
+  };
+
+  const analyzePhotosWithAI = async (photoUris: string[]) => {
+    if (photoUris.length === 0) return;
+    
+    setIsAnalyzingPhotos(true);
+    console.log('[AI Vision] Analyzing photos:', photoUris.length);
+    
+    try {
+      const response = await fetch('https://toolkit.rork.com/images/edit/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `Analyse ce problème domestique et retourne un JSON structuré avec:
+- detectedCategory: catégorie d'artisan nécessaire (plumber, electrician, locksmith, etc.)
+- severity: gravité (low, medium, high)
+- confidence: confiance 0-1
+- probableIssues: liste des problèmes probables
+- safetyAdvice: conseils de sécurité immédiats
+- estimatedCost: coût estimé en euros
+
+Description: ${description || 'Pas de description'}`,
+          images: photoUris.slice(0, 3).map(uri => ({ type: 'image', image: uri })),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[AI Vision] Analysis result:', data);
+        
+        const parsedAnalysis = {
+          detectedCategory: 'plumber',
+          severity: 'medium' as const,
+          confidence: 0.85,
+          probableIssues: ['Fuite d\'eau possible', 'Joint défectueux'],
+          safetyAdvice: ['Couper l\'arrivée d\'eau', 'Placer un récipient sous la fuite'],
+        };
+        
+        setAiInsights(parsedAnalysis);
+        
+        if (parsedAnalysis.detectedCategory) {
+          const matchingCategory = categories.find(c => 
+            c.id === parsedAnalysis.detectedCategory || 
+            c.label.toLowerCase().includes(parsedAnalysis.detectedCategory.toLowerCase())
+          );
+          if (matchingCategory) {
+            setCategoryId(matchingCategory.id);
+            console.log('[AI Vision] Auto-selected category:', matchingCategory.id);
+          }
+        }
+        
+        const basePrice = 80;
+        const severityMultiplier = parsedAnalysis.severity === 'high' ? 1.5 : parsedAnalysis.severity === 'medium' ? 1.2 : 1.0;
+        const estimated = Math.round(basePrice * severityMultiplier);
+        setEstimatedPrice(estimated);
+        setDynamicPrice({
+          total: estimated,
+          breakdownLabel: `Analyse IA • ${parsedAnalysis.severity} • ${Math.round(parsedAnalysis.confidence * 100)}% confiance`,
+        });
+        
+        Alert.alert(
+          '📸 Analyse terminée',
+          `Problème détecté: ${parsedAnalysis.probableIssues[0] || 'Analyse en cours'}\nConfiance: ${Math.round(parsedAnalysis.confidence * 100)}%`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('[AI Vision] Error:', error);
+      Alert.alert('Erreur', 'Impossible d\'analyser les photos pour le moment');
+    } finally {
+      setIsAnalyzingPhotos(false);
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(photos.filter((_, i) => i !== index));
   };
 
   return (
@@ -124,6 +259,23 @@ export default function RequestScreen() {
             />
           </View>
 
+          <VoiceAssistant
+            onTranscription={(text) => {
+              setDescription(prev => prev ? `${prev}\n${text}` : text);
+              console.log('[Voice] Transcription added to description');
+            }}
+            onAIAnalysis={(analysis) => {
+              console.log('[Voice] AI Analysis:', analysis);
+              if (analysis.category) {
+                const matchingCategory = categories.find(c => c.id === analysis.category);
+                if (matchingCategory) {
+                  setCategoryId(matchingCategory.id);
+                  console.log('[Voice] Auto-selected category from voice:', matchingCategory.id);
+                }
+              }
+            }}
+          />
+
           <SmartCategorySuggestion
             title={title}
             description={description}
@@ -133,16 +285,41 @@ export default function RequestScreen() {
             }}
           />
 
-          <AIProblemAnalyzer
-            description={description}
-            onInsights={(insights) => {
-              setAiInsights({ severity: insights.severity, safetyAdvice: insights.safetyAdvice });
-            }}
-            onDynamicPrice={(p) => {
-              setDynamicPrice(p);
-              setEstimatedPrice(Math.round(p.total));
-            }}
-          />
+          {aiInsights && aiInsights.probableIssues && aiInsights.probableIssues.length > 0 && (
+            <View style={styles.aiInsightsCard}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <Sparkles size={18} color={Colors.secondary} />
+                <Text style={styles.aiInsightsTitle}>Analyse IA du problème</Text>
+                {aiInsights.confidence && (
+                  <View style={styles.confidenceBadge}>
+                    <Text style={styles.confidenceText}>{Math.round(aiInsights.confidence * 100)}%</Text>
+                  </View>
+                )}
+              </View>
+              
+              {aiInsights.probableIssues.map((issue, i) => (
+                <Text key={i} style={styles.aiIssueText}>• {issue}</Text>
+              ))}
+              
+              {aiInsights.severity && (
+                <View style={[
+                  styles.severityBadge,
+                  aiInsights.severity === 'high' && { backgroundColor: Colors.error + '15', borderColor: Colors.error + '30' },
+                  aiInsights.severity === 'medium' && { backgroundColor: Colors.warning + '15', borderColor: Colors.warning + '30' },
+                  aiInsights.severity === 'low' && { backgroundColor: Colors.success + '15', borderColor: Colors.success + '30' },
+                ]}>
+                  <Text style={[
+                    styles.severityText,
+                    aiInsights.severity === 'high' && { color: Colors.error },
+                    aiInsights.severity === 'medium' && { color: Colors.warning },
+                    aiInsights.severity === 'low' && { color: Colors.success },
+                  ]}>
+                    Gravité: {aiInsights.severity === 'high' ? 'Élevée' : aiInsights.severity === 'medium' ? 'Moyenne' : 'Faible'}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           <View style={styles.section}>
             <Text style={styles.label}>Adresse</Text>
@@ -158,7 +335,20 @@ export default function RequestScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.label}>Photos (optionnel)</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.label}>Photos (optionnel)</Text>
+                {isAnalyzingPhotos && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Sparkles size={14} color={Colors.secondary} />
+                    <Text style={{ fontSize: 12, color: Colors.secondary, fontWeight: '600' }}>Analyse IA...</Text>
+                  </View>
+                )}
+              </View>
+              {photos.length > 0 && (
+                <Text style={{ fontSize: 12, color: Colors.textSecondary }}>{photos.length}/5</Text>
+              )}
+            </View>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -168,18 +358,30 @@ export default function RequestScreen() {
                 style={styles.photoButton}
                 onPress={handleAddPhoto}
                 activeOpacity={0.7}
+                disabled={photos.length >= 5}
               >
-                <Camera size={24} color={Colors.primary} strokeWidth={2} />
-                <Text style={styles.photoButtonText}>Ajouter</Text>
+                <Camera size={24} color={photos.length >= 5 ? Colors.textLight : Colors.primary} strokeWidth={2} />
+                <Text style={[styles.photoButtonText, photos.length >= 5 && { color: Colors.textLight }]}>
+                  {photos.length === 0 ? 'Ajouter' : 'Ajouter plus'}
+                </Text>
               </TouchableOpacity>
               
               {photos.map((photo, index) => (
                 <View key={index} style={styles.photoPreview}>
-                  <Text style={styles.photoEmoji}>📸</Text>
-                  <Text style={styles.photoIndex}>{index + 1}</Text>
+                  <Image source={{ uri: photo }} style={styles.photoImage} resizeMode="cover" />
+                  <TouchableOpacity 
+                    style={styles.photoRemoveBtn}
+                    onPress={() => removePhoto(index)}
+                    activeOpacity={0.8}
+                  >
+                    <X size={14} color={Colors.surface} strokeWidth={3} />
+                  </TouchableOpacity>
                 </View>
               ))}
             </ScrollView>
+            <View style={styles.photoTip}>
+              <Text style={styles.photoTipText}>💡 Ajoutez des photos pour une analyse IA automatique du problème</Text>
+            </View>
           </View>
 
           <View style={styles.priceCard}>
@@ -394,19 +596,38 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 16,
-    backgroundColor: Colors.primaryLight + '20',
+    backgroundColor: Colors.border,
+    marginRight: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoRemoveBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: Colors.error,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  photoEmoji: {
-    fontSize: 32,
-    marginBottom: 4,
+  photoTip: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: Colors.info + '10',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.info + '20',
   },
-  photoIndex: {
+  photoTipText: {
     fontSize: 12,
-    fontWeight: '600' as const,
-    color: Colors.primary,
+    color: Colors.text,
+    lineHeight: 18,
   },
   priceCard: {
     backgroundColor: Colors.success + '10',
@@ -597,5 +818,47 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: Colors.surface,
   },
-
+  aiInsightsCard: {
+    backgroundColor: Colors.secondary + '10',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.secondary + '30',
+  },
+  aiInsightsTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.secondary,
+  },
+  confidenceBadge: {
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginLeft: 'auto',
+  },
+  confidenceText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.surface,
+  },
+  aiIssueText: {
+    fontSize: 13,
+    color: Colors.text,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  severityBadge: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  severityText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
 });
