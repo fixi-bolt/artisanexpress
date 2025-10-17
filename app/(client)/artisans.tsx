@@ -1,11 +1,11 @@
 import { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Platform, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { mockArtisans, categories } from '@/mocks/artisans';
 import { Artisan } from '@/types';
-import { Star, MapPin, Clock, ArrowLeft } from 'lucide-react-native';
+import { Star, MapPin, Clock, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react-native';
 
 function getCategoryLabel(id: Artisan['category']): string {
   const found = categories.find(c => c.id === id);
@@ -15,17 +15,12 @@ function getCategoryLabel(id: Artisan['category']): string {
 export default function AllArtisansScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [query, setQuery] = useState<string>('');
+  const [isMoreOpen, setIsMoreOpen] = useState<boolean>(false);
 
-  const data = useMemo<Artisan[]>(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return mockArtisans;
-    return mockArtisans.filter(a =>
-      a.name.toLowerCase().includes(q) ||
-      getCategoryLabel(a.category).toLowerCase().includes(q) ||
-      a.category.toLowerCase().includes(q)
-    );
-  }, [query]);
+  const priorityCategories = useMemo(() => categories.filter(c => c.isPriority), []);
+  const otherCategories = useMemo(() => categories.filter(c => !c.isPriority), []);
+
+  const data = useMemo<Artisan[]>(() => mockArtisans, []);
 
   const renderItem = useCallback(({ item }: { item: Artisan }) => {
     const color = (Colors as any).categories[item.category as keyof (typeof Colors)['categories']];
@@ -95,16 +90,56 @@ export default function AllArtisansScreen() {
         <View style={{ width: 44 }} />
       </View>
 
-      <View style={styles.searchBar}>
-        <TextInput
-          placeholder="Rechercher par nom ou catégorie"
-          placeholderTextColor={Colors.textLight}
-          value={query}
-          onChangeText={setQuery}
-          style={styles.input}
-          returnKeyType="search"
-          testID="search-artisans"
-        />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Catégories populaires</Text>
+        <View style={styles.grid}>
+          {priorityCategories.map((c) => (
+            <TouchableOpacity
+              key={c.id}
+              style={styles.catPill}
+              onPress={() => {
+                console.log('Open category', c.id);
+                router.push(`/request?category=${c.id}` as any);
+              }}
+              activeOpacity={0.85}
+              testID={`cat-${c.id}`}
+            >
+              <Text style={styles.catEmoji}>{c.emoji}</Text>
+              <Text style={styles.catLabel}>{c.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          style={styles.dropdownToggle}
+          onPress={() => setIsMoreOpen((v) => !v)}
+          activeOpacity={0.8}
+          testID="toggle-more-cats"
+        >
+          <Text style={styles.dropdownToggleText}>Voir plus de catégories</Text>
+          {isMoreOpen ? <ChevronUp size={18} color={Colors.text} /> : <ChevronDown size={18} color={Colors.text} />}
+        </TouchableOpacity>
+
+        {isMoreOpen && (
+          <View style={styles.dropdown} testID="more-cats">
+            {otherCategories.map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  console.log('Open category from dropdown', c.id);
+                  setIsMoreOpen(false);
+                  router.push(`/request?category=${c.id}` as any);
+                }}
+                activeOpacity={0.8}
+                testID={`more-cat-${c.id}`}
+              >
+                <Text style={styles.dropdownEmoji}>{c.emoji}</Text>
+                <Text style={styles.dropdownLabel}>{c.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       <FlatList
@@ -142,17 +177,18 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background,
   },
   title: { fontSize: 18, fontWeight: '700' as const, color: Colors.text },
-  searchBar: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, backgroundColor: Colors.surface },
-  input: {
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: Colors.text,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
+  section: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, backgroundColor: Colors.surface },
+  sectionTitle: { fontSize: 16, fontWeight: '700' as const, color: Colors.text, marginBottom: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' as const, gap: 10 },
+  catPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, backgroundColor: Colors.background, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderLight },
+  catEmoji: { fontSize: 16, marginRight: 8 },
+  catLabel: { fontSize: 14, color: Colors.text, fontWeight: '600' as const },
+  dropdownToggle: { marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dropdownToggleText: { fontSize: 14, color: Colors.text, fontWeight: '700' as const },
+  dropdown: { marginTop: 8, backgroundColor: Colors.background, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderLight, overflow: 'hidden' },
+  dropdownItem: { paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
+  dropdownEmoji: { fontSize: 16, marginRight: 8 },
+  dropdownLabel: { fontSize: 14, color: Colors.text },
   listContent: { padding: 16, paddingBottom: 40 },
   separator: { height: 12 },
   card: {
