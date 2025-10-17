@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { AuthContext } from '@/contexts/AuthContext';
+import { View, ActivityIndicator } from "react-native";
+import { AuthContext, useAuth } from '@/contexts/AuthContext';
 import { MissionContext } from '@/contexts/MissionContext';
 import { PaymentContext } from '@/contexts/PaymentContext';
 import { ChatProvider } from '@/contexts/ChatContext';
@@ -13,12 +14,33 @@ import { MonetizationProvider } from '@/contexts/MonetizationContext';
 import { trpc, trpcClient } from '@/lib/trpc';
 import { LocalizationProvider } from '@/contexts/LocalizationContext';
 import { AutomationProvider } from '@/contexts/AutomationContext';
+import Colors from '@/constants/colors';
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
+  const { isLoading } = useAuth();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setTimeout(() => {
+        setIsReady(true);
+        SplashScreen.hideAsync().catch(() => {});
+      }, 100);
+    }
+  }, [isLoading]);
+
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <Stack screenOptions={{ headerBackTitle: "Retour", headerShown: false }}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -48,10 +70,6 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
-
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
