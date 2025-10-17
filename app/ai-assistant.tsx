@@ -3,7 +3,7 @@ import { useRouter, Stack } from 'expo-router';
 import { useState, useRef } from 'react';
 import { ArrowLeft, Send, Sparkles, Lightbulb, Euro, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { useRorkAgent, createRorkTool } from '@rork/toolkit-sdk';
+import { generateObject } from '@rork/toolkit-sdk';
 import { z } from 'zod';
 import { useMissions } from '@/contexts/MissionContext';
 import { ArtisanCategory } from '@/types';
@@ -45,47 +45,7 @@ export default function AIAssistantScreen() {
   ]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const { sendMessage } = useRorkAgent({
-    tools: {
-      generateEstimation: createRorkTool({
-        description: "Generate a cost estimation and categorize the problem",
-        zodSchema: z.object({
-          category: z.enum(['plumber', 'electrician', 'carpenter', 'locksmith', 'painter', 'mechanic', 'hvac', 'gardener']).describe('The artisan category needed'),
-          title: z.string().describe('A short, clear title for the mission'),
-          description: z.string().describe('A detailed description of the problem'),
-          estimatedPrice: z.number().describe('Estimated price in euros'),
-          priceMin: z.number().describe('Minimum price estimate'),
-          priceMax: z.number().describe('Maximum price estimate'),
-          urgency: z.enum(['low', 'medium', 'high']).describe('Urgency level'),
-          explanation: z.string().describe('Explanation of the estimation'),
-        }),
-        async execute(result) {
-          const categoryData = categories.find(c => c.id === result.category);
-          
-          const estimation = {
-            category: result.category,
-            categoryLabel: categoryData?.label || result.category,
-            estimatedPrice: result.estimatedPrice,
-            priceRange: { min: result.priceMin, max: result.priceMax },
-            urgency: result.urgency,
-            title: result.title,
-            description: result.description,
-          };
 
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: result.explanation,
-            estimation,
-          }]);
-
-          setIsAnalyzing(false);
-          
-          return 'Estimation generated successfully';
-        },
-      }),
-    },
-  });
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -103,24 +63,60 @@ export default function AIAssistantScreen() {
     setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
-      await sendMessage({
-        text: `You are an AI assistant for ArtisanNow, a platform connecting clients with artisans (plumbers, electricians, carpenters, locksmiths, painters, mechanics, HVAC, gardeners).
+      const result = await generateObject({
+        messages: [
+          {
+            role: 'user',
+            content: `You are an AI assistant for ArtisanNow, a platform connecting clients with artisans.
 
-Analyze the user's problem and provide:
-1. The correct artisan category needed
+Analyze this problem and provide:
+1. The correct artisan category (plumber, electrician, carpenter, locksmith, painter, mechanic, hvac, gardener)
 2. A clear title for the mission (max 60 characters)
 3. A detailed description
-4. A realistic price estimate in euros (consider: diagnosis fee 40-60€, hourly rate 40-80€/h, materials, travel fee 20-40€)
+4. A realistic price estimate in euros (consider: diagnosis 40-60€, hourly rate 40-80€/h, materials, travel 20-40€)
 5. A price range (min-max)
-6. Urgency level
+6. Urgency level (low, medium, high)
 7. A friendly explanation in French
 
-User's problem: "${input.trim()}"
+User's problem: "${userMessage.content}"
 
-Be helpful, professional, and provide realistic French market prices.`,
+Provide realistic French market prices.`
+          }
+        ],
+        schema: z.object({
+          category: z.enum(['plumber', 'electrician', 'carpenter', 'locksmith', 'painter', 'mechanic', 'hvac', 'gardener']),
+          title: z.string(),
+          description: z.string(),
+          estimatedPrice: z.number(),
+          priceMin: z.number(),
+          priceMax: z.number(),
+          urgency: z.enum(['low', 'medium', 'high']),
+          explanation: z.string(),
+        }),
       });
+
+      const categoryData = categories.find(c => c.id === result.category);
+      
+      const estimation = {
+        category: result.category,
+        categoryLabel: categoryData?.label || result.category,
+        estimatedPrice: result.estimatedPrice,
+        priceRange: { min: result.priceMin, max: result.priceMax },
+        urgency: result.urgency,
+        title: result.title,
+        description: result.description,
+      };
+
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: result.explanation,
+        estimation,
+      }]);
+      
+      setIsAnalyzing(false);
     } catch (error) {
-      console.error('AI Agent error:', error);
+      console.error('AI error:', error);
       setIsAnalyzing(false);
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
