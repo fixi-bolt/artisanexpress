@@ -8,7 +8,8 @@ import Colors from '@/constants/colors';
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { isAuthenticated, isClient } = useAuth();
+  const authContext = useAuth();
+  const { isAuthenticated, isClient } = authContext || { isAuthenticated: false, isClient: false };
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
