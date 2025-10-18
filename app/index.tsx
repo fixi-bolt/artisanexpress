@@ -34,7 +34,11 @@ export default function WelcomeScreen() {
   }, [isAuthenticated, isClient, fadeAnim, slideAnim, router]);
 
   if (!authContext) {
-    return null;
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Text>Chargement...</Text>
+      </View>
+    );
   }
 
   const features = [
