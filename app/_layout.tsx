@@ -21,19 +21,20 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { isLoading } = useAuth();
+  const auth = useAuth();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!isLoading) {
-      setTimeout(() => {
+    if (auth && !auth.isLoading) {
+      const timer = setTimeout(() => {
         setIsReady(true);
         SplashScreen.hideAsync().catch(() => {});
       }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [isLoading]);
+  }, [auth]);
 
-  if (!isReady) {
+  if (!auth || !isReady) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="large" color={Colors.primary} />

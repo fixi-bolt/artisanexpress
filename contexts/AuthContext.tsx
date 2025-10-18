@@ -34,21 +34,27 @@ const mockAdmin: Admin = {
 export const [AuthContext, useAuth] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   useEffect(() => {
-    loadUser();
+    let mounted = true;
+    loadUser(mounted);
+    return () => { mounted = false; };
   }, []);
 
-  const loadUser = async () => {
+  const loadUser = async (mounted: boolean) => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
+      if (mounted && stored) {
         setUser(JSON.parse(stored));
       }
     } catch (error) {
       console.error('Error loading user:', error);
     } finally {
-      setIsLoading(false);
+      if (mounted) {
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
     }
   };
 
@@ -101,6 +107,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   return {
     user,
     isLoading,
+    isInitialized,
     isAuthenticated: !!user,
     isClient: user?.type === 'client',
     isArtisan: user?.type === 'artisan',
