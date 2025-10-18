@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, Sparkles, ChevronDown, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -23,19 +23,34 @@ export default function ClientHomeScreen() {
   
   useScreenTracking('client_home');
 
-  const priorityCategories = categories.filter(c => c.isPriority).slice(0, 10);
-  const otherCategories = categories.filter(c => !c.isPriority);
-  const normalizedQuery = query.trim().toLowerCase();
-  const filteredCategories = normalizedQuery.length > 0
-    ? categories.filter(c => c.label.toLowerCase().includes(normalizedQuery) || c.id.toLowerCase().includes(normalizedQuery))
-    : priorityCategories;
+  const priorityCategories = useMemo(
+    () => categories.filter(c => c.isPriority).slice(0, 10),
+    []
+  );
+  
+  const otherCategories = useMemo(
+    () => categories.filter(c => !c.isPriority),
+    []
+  );
+  
+  const normalizedQuery = useMemo(
+    () => query.trim().toLowerCase(),
+    [query]
+  );
+  
+  const filteredCategories = useMemo(
+    () => normalizedQuery.length > 0
+      ? categories.filter(c => c.label.toLowerCase().includes(normalizedQuery) || c.id.toLowerCase().includes(normalizedQuery))
+      : priorityCategories,
+    [normalizedQuery, priorityCategories]
+  );
 
-  const handleCategoryPress = (category: ArtisanCategory) => {
+  const handleCategoryPress = useCallback((category: ArtisanCategory) => {
     console.log('Selected category:', category);
     router.push(`/request?category=${category}` as any);
-  };
+  }, [router]);
 
-  useEffect(() => {
+  const navigateToTracking = useCallback(() => {
     if (activeMission && !hasNavigated.current) {
       hasNavigated.current = true;
       setTimeout(() => {
@@ -45,6 +60,10 @@ export default function ClientHomeScreen() {
       hasNavigated.current = false;
     }
   }, [activeMission, router]);
+
+  useEffect(() => {
+    navigateToTracking();
+  }, [navigateToTracking]);
 
   return (
     <View style={styles.container}>

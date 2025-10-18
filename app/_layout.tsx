@@ -15,6 +15,7 @@ import { trpc, trpcClient } from '@/lib/trpc';
 import { LocalizationProvider } from '@/contexts/LocalizationContext';
 import { AutomationProvider } from '@/contexts/AutomationContext';
 import Colors from '@/constants/colors';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -72,30 +73,32 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <AnalyticsProvider>
-            <AuthContext>
-              <NotificationProvider>
-                <MissionContext>
-                  <PaymentContext>
-                    <MonetizationProvider>
-                      <ChatProvider>
-                        <LocalizationProvider>
-                          <AutomationProvider>
-                            <RootLayoutNav />
-                          </AutomationProvider>
-                        </LocalizationProvider>
-                      </ChatProvider>
-                    </MonetizationProvider>
-                  </PaymentContext>
-                </MissionContext>
-              </NotificationProvider>
-            </AuthContext>
-          </AnalyticsProvider>
-        </GestureHandlerRootView>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <ErrorBoundary>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <AnalyticsProvider>
+              <AuthContext>
+                <NotificationProvider>
+                  <MissionContext>
+                    <PaymentContext>
+                      <MonetizationProvider>
+                        <ChatProvider>
+                          <LocalizationProvider>
+                            <AutomationProvider>
+                              <RootLayoutNav />
+                            </AutomationProvider>
+                          </LocalizationProvider>
+                        </ChatProvider>
+                      </MonetizationProvider>
+                    </PaymentContext>
+                  </MissionContext>
+                </NotificationProvider>
+              </AuthContext>
+            </AnalyticsProvider>
+          </GestureHandlerRootView>
+        </QueryClientProvider>
+      </trpc.Provider>
+    </ErrorBoundary>
   );
 }
