@@ -4,23 +4,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('YOUR_SUPABASE')) {
-  console.error('❌ SUPABASE NOT CONFIGURED!');
-  console.error('❌ Please update your .env file with:');
-  console.error('❌ 1. EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co');
-  console.error('❌ 2. EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key');
-  console.error('❌');
-  console.error('❌ Get these from: https://supabase.com/dashboard > Your Project > Settings > API');
-  console.error('❌');
+console.log('🔧 Supabase Config Check:');
+console.log('  URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
+console.log('  Key:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('\n❌ SUPABASE NOT CONFIGURED!');
+  console.error('❌ Please ensure .env file has:');
+  console.error('   EXPO_PUBLIC_SUPABASE_URL=https://ejjlaccuauzdempjktpt.supabase.co');
+  console.error('   EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key');
+  console.error('\n❌ Then restart with: npx expo start --clear\n');
+  throw new Error('Supabase configuration is missing. Check your .env file.');
 }
 
-const placeholderUrl = 'https://placeholder.supabase.co';
-const placeholderKey = 'placeholder-key';
-
-export const supabase = createClient(
-  supabaseUrl && !supabaseUrl.includes('YOUR_SUPABASE') ? supabaseUrl : placeholderUrl,
-  supabaseAnonKey && !supabaseAnonKey.includes('YOUR_SUPABASE') ? supabaseAnonKey : placeholderKey,
-  {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
