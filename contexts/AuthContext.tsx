@@ -144,14 +144,25 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
   const signUp = async (email: string, password: string, name: string, userType: UserType, additionalData?: Record<string, unknown>) => {
     try {
+      console.log('🔵 Starting signup for:', email, userType);
+      
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('User creation failed');
+      if (authError) {
+        console.error('❌ Supabase Auth Error:', authError);
+        throw authError;
+      }
+      if (!authData.user) {
+        console.error('❌ No user returned from auth');
+        throw new Error('User creation failed');
+      }
+      
+      console.log('✅ Auth user created with ID:', authData.user.id);
 
+      console.log('🔵 Inserting user profile...');
       const { error: userError } = await supabase.from('users').insert({
         id: authData.user.id,
         email,
@@ -161,9 +172,16 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         photo: (additionalData?.photo as string) || null,
       });
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('❌ User profile insertion error:', userError);
+        console.error('Error details:', JSON.stringify(userError, null, 2));
+        throw new Error(`Failed to create user profile: ${userError.message}`);
+      }
+      
+      console.log('✅ User profile created');
 
       if (userType === 'artisan') {
+        console.log('🔵 Creating artisan profile...');
         const { error: artisanError } = await supabase.from('artisans').insert({
           id: authData.user.id,
           category: additionalData?.category as string,
@@ -173,8 +191,14 @@ export const [AuthContext, useAuth] = createContextHook(() => {
           specialties: (additionalData?.specialties as string[]) || [],
         });
 
-        if (artisanError) throw artisanError;
+        if (artisanError) {
+          console.error('❌ Artisan profile error:', artisanError);
+          throw new Error(`Failed to create artisan profile: ${artisanError.message}`);
+        }
+        
+        console.log('✅ Artisan profile created');
 
+        console.log('🔵 Creating wallet...');
         const { error: walletError } = await supabase.from('wallets').insert({
           artisan_id: authData.user.id,
           balance: 0,
@@ -183,27 +207,46 @@ export const [AuthContext, useAuth] = createContextHook(() => {
           total_withdrawals: 0,
         });
 
-        if (walletError) console.warn('Wallet creation failed:', walletError);
+        if (walletError) {
+          console.warn('⚠️ Wallet creation failed:', walletError);
+        } else {
+          console.log('✅ Wallet created');
+        }
       } else if (userType === 'client') {
+        console.log('🔵 Creating client profile...');
         const { error: clientError } = await supabase.from('clients').insert({
           id: authData.user.id,
         });
 
-        if (clientError) throw clientError;
+        if (clientError) {
+          console.error('❌ Client profile error:', clientError);
+          throw new Error(`Failed to create client profile: ${clientError.message}`);
+        }
+        
+        console.log('✅ Client profile created');
       } else if (userType === 'admin') {
+        console.log('🔵 Creating admin profile...');
         const { error: adminError } = await supabase.from('admins').insert({
           id: authData.user.id,
           role: (additionalData?.role as 'super_admin' | 'moderator') || 'moderator',
           permissions: (additionalData?.permissions as string[]) || [],
         });
 
-        if (adminError) throw adminError;
+        if (adminError) {
+          console.error('❌ Admin profile error:', adminError);
+          throw new Error(`Failed to create admin profile: ${adminError.message}`);
+        }
+        
+        console.log('✅ Admin profile created');
       }
 
-      console.log('✅ User signed up:', email, userType);
+      console.log('✅✅✅ User signup complete:', email, userType);
       return authData.user;
-    } catch (error) {
-      console.error('❌ Error signing up:', error);
+    } catch (error: any) {
+      console.error('❌❌❌ SIGNUP ERROR:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error?.message);
+      console.error('Full error:', JSON.stringify(error, null, 2));
       throw error;
     }
   };
