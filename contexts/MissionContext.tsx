@@ -1,16 +1,38 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Mission, Location, ArtisanCategory, Notification } from '@/types';
-import { mockMissions } from '@/mocks/missions';
 import { useAuth } from './AuthContext';
 import { useNotifications } from './NotificationContext';
+import { supabase } from '@/lib/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export const [MissionContext, useMissions] = createContextHook(() => {
   const { user } = useAuth();
   const { sendNotification } = useNotifications();
-  const [missions, setMissions] = useState<Mission[]>(mockMissions);
+  const [missions, setMissions] = useState<Mission[]>([]);
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setMissions([]);
+      setNotifications([]);
+      setIsLoading(false);
+      return;
+    }
+
+    loadMissions();
+    loadNotifications();
+    setupRealtimeSubscription();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     const active = missions.find(
@@ -20,7 +42,127 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     setActiveMission(active || null);
   }, [missions, user?.id]);
 
-  const createMission = (data: {
+  const loadMissions = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      let query = supabase.from('missions').select('*');
+
+      if (user.type === 'client') {
+        query = query.eq('client_id', user.id);
+      } else if (user.type === 'artisan') {
+        query = query.or(`artisan_id.eq.${user.id},status.eq.pending`);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const mapped: Mission[] = (data || []).map(m => ({
+        id: m.id,
+        clientId: m.client_id,
+        artisanId: m.artisan_id || undefined,
+        category: m.category as ArtisanCategory,
+        title: m.title,
+        description: m.description,
+        photos: m.photos,
+        location: {
+          latitude: m.latitude,
+          longitude: m.longitude,
+          address: m.address || undefined,
+        },
+        status: m.status as Mission['status'],
+        estimatedPrice: m.estimated_price,
+        finalPrice: m.final_price || undefined,
+        commission: m.commission,
+        createdAt: new Date(m.created_at),
+        acceptedAt: m.accepted_at ? new Date(m.accepted_at) : undefined,
+        completedAt: m.completed_at ? new Date(m.completed_at) : undefined,
+        eta: m.eta || undefined,
+        artisanLocation: m.artisan_latitude && m.artisan_longitude
+          ? { latitude: m.artisan_latitude, longitude: m.artisan_longitude }
+          : undefined,
+      }));
+
+      setMissions(mapped);
+      console.log('✅ Missions loaded:', mapped.length);
+    } catch (error) {
+      console.error('❌ Error loading missions:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadNotifications = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const mapped: Notification[] = (data || []).map(n => ({
+        id: n.id,
+        userId: n.user_id,
+        type: n.type as Notification['type'],
+        title: n.title,
+        message: n.message,
+        missionId: n.mission_id || undefined,
+        read: n.read,
+        createdAt: new Date(n.created_at),
+      }));
+
+      setNotifications(mapped);
+    } catch (error) {
+      console.error('❌ Error loading notifications:', error);
+    }
+  };
+
+  const setupRealtimeSubscription = () => {
+    if (!user) return;
+
+    const newChannel = supabase
+      .channel('missions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'missions',
+          filter: user.type === 'client' 
+            ? `client_id=eq.${user.id}` 
+            : `artisan_id=eq.${user.id}`,
+        },
+        () => {
+          console.log('✅ Mission updated in realtime');
+          loadMissions();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          console.log('✅ New notification');
+          loadNotifications();
+        }
+      )
+      .subscribe();
+
+    setChannel(newChannel);
+  };
+
+  const createMission = useCallback(async (data: {
     category: ArtisanCategory;
     title: string;
     description: string;
@@ -28,137 +170,193 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     location: Location;
     estimatedPrice: number;
   }) => {
-    const newMission: Mission = {
-      id: `mis-${Date.now()}`,
-      clientId: user?.id || 'cli-1',
-      category: data.category,
-      title: data.title,
-      description: data.description,
-      photos: data.photos,
-      location: data.location,
-      status: 'pending',
-      estimatedPrice: data.estimatedPrice,
-      commission: data.estimatedPrice > 150 ? 0.15 : 0.10,
-      createdAt: new Date(),
-    };
+    if (!user || user.type !== 'client') throw new Error('Only clients can create missions');
 
-    setMissions(prev => [newMission, ...prev]);
-    console.log('Mission created:', newMission.id);
-    
-    const notification: Notification = {
-      id: `notif-${Date.now()}`,
-      userId: user?.id || '',
-      type: 'mission_request',
-      title: 'Nouvelle demande créée',
-      message: `Demande "${data.title}" en attente d'un artisan`,
-      missionId: newMission.id,
-      read: false,
-      createdAt: new Date(),
-    };
-    setNotifications(prev => [notification, ...prev]);
+    try {
+      const commission = data.estimatedPrice > 150 ? 0.15 : 0.10;
 
-    if (user?.id) {
-      sendNotification({
-        userId: user.id,
+      const { data: missionData, error: missionError } = await supabase
+        .from('missions')
+        .insert({
+          client_id: user.id,
+          category: data.category,
+          title: data.title,
+          description: data.description,
+          photos: data.photos || [],
+          latitude: data.location.latitude,
+          longitude: data.location.longitude,
+          address: data.location.address,
+          status: 'pending',
+          estimated_price: data.estimatedPrice,
+          commission,
+        })
+        .select()
+        .single();
+
+      if (missionError) throw missionError;
+
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: user.id,
+        type: 'mission_request',
         title: 'Nouvelle demande créée',
         message: `Demande "${data.title}" en attente d'un artisan`,
-        type: 'mission_request',
-        missionId: newMission.id,
+        mission_id: missionData.id,
       });
+
+      if (notifError) console.warn('Failed to create notification:', notifError);
+
+      if (user.id) {
+        sendNotification({
+          userId: user.id,
+          title: 'Nouvelle demande créée',
+          message: `Demande "${data.title}" en attente d'un artisan`,
+          type: 'mission_request',
+          missionId: missionData.id,
+        });
+      }
+
+      await loadMissions();
+      console.log('✅ Mission created:', missionData.id);
+      
+      return missionData;
+    } catch (error) {
+      console.error('❌ Error creating mission:', error);
+      throw error;
     }
+  }, [user, sendNotification]);
 
-    return newMission;
-  };
+  const acceptMission = useCallback(async (missionId: string, artisanId: string) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('missions')
+        .update({
+          status: 'accepted',
+          artisan_id: artisanId,
+          accepted_at: new Date().toISOString(),
+          eta: 15,
+        })
+        .eq('id', missionId);
 
-  const acceptMission = (missionId: string, artisanId: string) => {
-    setMissions(prev => prev.map(m => 
-      m.id === missionId 
-        ? { ...m, status: 'accepted', artisanId, acceptedAt: new Date(), eta: 15 }
-        : m
-    ));
-    console.log('Mission accepted:', missionId, 'by', artisanId);
-    
-    const mission = missions.find(m => m.id === missionId);
-    if (mission) {
-      const notification: Notification = {
-        id: `notif-${Date.now()}`,
-        userId: mission.clientId,
-        type: 'mission_accepted',
-        title: 'Mission acceptée !',
-        message: 'Un artisan arrive bientôt',
-        missionId,
-        read: false,
-        createdAt: new Date(),
-      };
-      setNotifications(prev => [notification, ...prev]);
+      if (updateError) throw updateError;
 
-      sendNotification({
-        userId: mission.clientId,
-        title: 'Mission acceptée !',
-        message: 'Un artisan arrive bientôt',
-        type: 'mission_accepted',
-        missionId,
-      });
+      const mission = missions.find(m => m.id === missionId);
+      if (mission) {
+        await supabase.from('notifications').insert({
+          user_id: mission.clientId,
+          type: 'mission_accepted',
+          title: 'Mission acceptée !',
+          message: 'Un artisan arrive bientôt',
+          mission_id: missionId,
+        });
+
+        sendNotification({
+          userId: mission.clientId,
+          title: 'Mission acceptée !',
+          message: 'Un artisan arrive bientôt',
+          type: 'mission_accepted',
+          missionId,
+        });
+      }
+
+      await loadMissions();
+      console.log('✅ Mission accepted:', missionId);
+    } catch (error) {
+      console.error('❌ Error accepting mission:', error);
+      throw error;
     }
-  };
+  }, [missions, sendNotification]);
 
-  const startMission = (missionId: string) => {
-    setMissions(prev => prev.map(m => 
-      m.id === missionId 
-        ? { ...m, status: 'in_progress', eta: 0 }
-        : m
-    ));
-    console.log('Mission started:', missionId);
-  };
+  const startMission = useCallback(async (missionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .update({ status: 'in_progress', eta: 0 })
+        .eq('id', missionId);
 
-  const completeMission = (missionId: string, finalPrice: number) => {
-    setMissions(prev => prev.map(m => 
-      m.id === missionId 
-        ? { ...m, status: 'completed', finalPrice, completedAt: new Date() }
-        : m
-    ));
-    console.log('Mission completed:', missionId, 'price:', finalPrice);
-    
-    const mission = missions.find(m => m.id === missionId);
-    if (mission) {
-      const notification: Notification = {
-        id: `notif-${Date.now()}`,
-        userId: mission.clientId,
-        type: 'mission_completed',
-        title: 'Mission terminée',
-        message: `Montant: ${finalPrice}€. Notez votre artisan !`,
-        missionId,
-        read: false,
-        createdAt: new Date(),
-      };
-      setNotifications(prev => [notification, ...prev]);
+      if (error) throw error;
 
-      sendNotification({
-        userId: mission.clientId,
-        title: 'Mission terminée',
-        message: `Montant: ${finalPrice}€. Notez votre artisan !`,
-        type: 'mission_completed',
-        missionId,
-      });
+      await loadMissions();
+      console.log('✅ Mission started:', missionId);
+    } catch (error) {
+      console.error('❌ Error starting mission:', error);
+      throw error;
     }
-  };
+  }, []);
 
-  const cancelMission = (missionId: string) => {
-    setMissions(prev => prev.map(m => 
-      m.id === missionId 
-        ? { ...m, status: 'cancelled' }
-        : m
-    ));
-    console.log('Mission cancelled:', missionId);
-  };
+  const completeMission = useCallback(async (missionId: string, finalPrice: number) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('missions')
+        .update({
+          status: 'completed',
+          final_price: finalPrice,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', missionId);
 
-  const updateArtisanLocation = (missionId: string, location: Location) => {
-    setMissions(prev => prev.map(m => 
-      m.id === missionId 
-        ? { ...m, artisanLocation: location }
-        : m
-    ));
-  };
+      if (updateError) throw updateError;
+
+      const mission = missions.find(m => m.id === missionId);
+      if (mission) {
+        await supabase.from('notifications').insert({
+          user_id: mission.clientId,
+          type: 'mission_completed',
+          title: 'Mission terminée',
+          message: `Montant: ${finalPrice}€. Notez votre artisan !`,
+          mission_id: missionId,
+        });
+
+        sendNotification({
+          userId: mission.clientId,
+          title: 'Mission terminée',
+          message: `Montant: ${finalPrice}€. Notez votre artisan !`,
+          type: 'mission_completed',
+          missionId,
+        });
+      }
+
+      await loadMissions();
+      console.log('✅ Mission completed:', missionId, finalPrice);
+    } catch (error) {
+      console.error('❌ Error completing mission:', error);
+      throw error;
+    }
+  }, [missions, sendNotification]);
+
+  const cancelMission = useCallback(async (missionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .update({ status: 'cancelled' })
+        .eq('id', missionId);
+
+      if (error) throw error;
+
+      await loadMissions();
+      console.log('✅ Mission cancelled:', missionId);
+    } catch (error) {
+      console.error('❌ Error cancelling mission:', error);
+      throw error;
+    }
+  }, []);
+
+  const updateArtisanLocation = useCallback(async (missionId: string, location: Location) => {
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .update({
+          artisan_latitude: location.latitude,
+          artisan_longitude: location.longitude,
+        })
+        .eq('id', missionId);
+
+      if (error) throw error;
+
+      await loadMissions();
+    } catch (error) {
+      console.error('❌ Error updating artisan location:', error);
+    }
+  }, []);
 
   const getUserMissions = () => {
     if (!user) return [];
@@ -179,11 +377,22 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     );
   };
 
-  const markNotificationAsRead = (notificationId: string) => {
-    setNotifications(prev => prev.map(n => 
-      n.id === notificationId ? { ...n, read: true } : n
-    ));
-  };
+  const markNotificationAsRead = useCallback(async (notificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId);
+
+      if (error) throw error;
+
+      setNotifications(prev => prev.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
+      ));
+    } catch (error) {
+      console.error('❌ Error marking notification as read:', error);
+    }
+  }, []);
 
   const unreadNotificationsCount = notifications.filter(n => 
     n.userId === user?.id && !n.read
@@ -194,6 +403,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     activeMission,
     notifications,
     unreadNotificationsCount,
+    isLoading,
     createMission,
     acceptMission,
     startMission,
@@ -203,11 +413,20 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     getUserMissions,
     getPendingMissionsForArtisan,
     markNotificationAsRead,
+    refreshMissions: loadMissions,
+    refreshNotifications: loadNotifications,
   }), [
     missions,
     activeMission,
     notifications,
+    isLoading,
     user?.id,
-    sendNotification,
+    createMission,
+    acceptMission,
+    startMission,
+    completeMission,
+    cancelMission,
+    updateArtisanLocation,
+    markNotificationAsRead,
   ]);
 });
