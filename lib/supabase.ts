@@ -4,11 +4,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Supabase credentials missing. Check your .env file.');
+if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('YOUR_SUPABASE')) {
+  console.error('❌ SUPABASE NOT CONFIGURED!');
+  console.error('❌ Please update your .env file with:');
+  console.error('❌ 1. EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co');
+  console.error('❌ 2. EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key');
+  console.error('❌');
+  console.error('❌ Get these from: https://supabase.com/dashboard > Your Project > Settings > API');
+  console.error('❌');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+const placeholderUrl = 'https://placeholder.supabase.co';
+const placeholderKey = 'placeholder-key';
+
+export const supabase = createClient(
+  supabaseUrl && !supabaseUrl.includes('YOUR_SUPABASE') ? supabaseUrl : placeholderUrl,
+  supabaseAnonKey && !supabaseAnonKey.includes('YOUR_SUPABASE') ? supabaseAnonKey : placeholderKey,
+  {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
