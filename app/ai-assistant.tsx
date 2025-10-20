@@ -3,7 +3,7 @@ import { useRouter, Stack } from 'expo-router';
 import { useState, useRef } from 'react';
 import { ArrowLeft, Send, Sparkles, Lightbulb, Euro, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { generateObject } from '@rork/toolkit-sdk';
+import { generateObject } from '@/lib/rork-toolkit-sdk';
 import { z } from 'zod';
 import { useMissions } from '@/contexts/MissionContext';
 import { ArtisanCategory } from '@/types';
@@ -130,10 +130,10 @@ Provide realistic French market prices.`
     setInput(suggestion);
   };
 
-  const handleCreateMission = (estimation: AIMessage['estimation']) => {
+  const handleCreateMission = async (estimation: AIMessage['estimation']) => {
     if (!estimation) return;
 
-    const mission = createMission({
+    const mission = await createMission({
       category: estimation.category,
       title: estimation.title,
       description: estimation.description,

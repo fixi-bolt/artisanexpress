@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-import { generateObject } from "@rork/toolkit-sdk";
+import { generateObject } from "@/lib/rork-toolkit-sdk";
 import { categories } from "@/mocks/artisans";
 
 export const suggestCategoryProcedure = protectedProcedure

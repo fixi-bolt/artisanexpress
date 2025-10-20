@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-import { generateObject } from "@rork/toolkit-sdk";
+import { generateObject } from "@/lib/rork-toolkit-sdk";
 
 export const visionAnalyzeProcedure = protectedProcedure
   .input(

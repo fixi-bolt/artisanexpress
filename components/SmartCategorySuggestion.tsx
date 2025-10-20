@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { useState } from 'react';
 import { Sparkles, AlertCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { generateText } from '@rork/toolkit-sdk';
+import { generateText } from '@/lib/rork-toolkit-sdk';
 import { ArtisanCategory } from '@/types';
 import { categories } from '@/mocks/artisans';
 

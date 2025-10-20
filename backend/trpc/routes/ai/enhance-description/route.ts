@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-import { generateText } from "@rork/toolkit-sdk";
+import { generateText } from "@/lib/rork-toolkit-sdk";
 
 export const enhanceDescriptionProcedure = protectedProcedure
   .input(
