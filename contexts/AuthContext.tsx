@@ -2,6 +2,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect } from 'react';
 import { User, UserType, Artisan, Client, Admin } from '@/types';
 import { supabase } from '@/lib/supabase';
+import * as Linking from 'expo-linking';
 import type { Session, AuthError } from '@supabase/supabase-js';
 
 
@@ -146,9 +147,12 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     try {
       console.log('🔵 Starting signup for:', email, userType);
       
+      const redirectTo = Linking.createURL('/auth-callback');
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: { emailRedirectTo: redirectTo },
       });
 
       if (authError) {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
 import type { User, UserType } from '@/types';
 
 export const useSupabaseAuth = () => {
@@ -145,9 +146,14 @@ export const useSupabaseAuth = () => {
     userType: UserType,
     additionalData?: Record<string, any>
   ) => {
+    const redirectTo = Linking.createURL('/auth-callback');
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
     });
 
     if (authError) throw authError;

@@ -64,6 +64,7 @@ function RootLayoutNav() {
       <Stack.Screen name="branding" options={{ headerShown: true, title: "Branding" }} />
       <Stack.Screen name="press-kit" options={{ headerShown: true, title: "Press Kit" }} />
       <Stack.Screen name="investor" options={{ headerShown: true, title: "Investor Overview" }} />
+      <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
       <Stack.Screen name="(artisan)/subscription" options={{ headerShown: true, title: "Abonnements" }} />
       <Stack.Screen name="(artisan)/heatmap" options={{ headerShown: true, title: "Carte de la demande" }} />
       <Stack.Screen name="(artisan)/wallet" options={{ headerShown: true, title: "Portefeuille" }} />
