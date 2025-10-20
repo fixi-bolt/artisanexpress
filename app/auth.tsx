@@ -78,8 +78,16 @@ export default function AuthScreen() {
         }
       }, 300);
     } catch (error: any) {
-      console.error('Signup error:', error);
-      Alert.alert('Erreur', error.message || 'Impossible de créer le compte');
+      console.error('❌ Signup error:', error);
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error?.message);
+      console.error('❌ Error stack:', error?.stack);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (typeof error === 'string' ? error : 'Impossible de créer le compte');
+      
+      Alert.alert('Erreur', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -96,8 +104,15 @@ export default function AuthScreen() {
       await signIn(email, password);
       trackEvent('user_logged_in');
     } catch (error: any) {
-      console.error('Login error:', error);
-      Alert.alert('Erreur', error.message || 'Email ou mot de passe incorrect');
+      console.error('❌ Login error:', error);
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error?.message);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (typeof error === 'string' ? error : 'Email ou mot de passe incorrect');
+      
+      Alert.alert('Erreur', errorMessage);
     } finally {
       setLoading(false);
     }

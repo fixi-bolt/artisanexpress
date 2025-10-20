@@ -157,7 +157,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
       if (authError) {
         console.error('❌ Supabase Auth Error:', authError);
-        throw authError;
+        throw new Error(authError.message || 'Authentication failed');
       }
       if (!authData.user) {
         console.error('❌ No user returned from auth');
@@ -250,8 +250,12 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       console.error('❌❌❌ SIGNUP ERROR:', error);
       console.error('Error type:', typeof error);
       console.error('Error message:', error?.message);
-      console.error('Full error:', JSON.stringify(error, null, 2));
-      throw error;
+      
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      throw new Error(typeof error === 'string' ? error : 'Failed to create account');
     }
   };
 
@@ -262,12 +266,19 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message || 'Login failed');
+      }
       console.log('✅ User signed in:', email);
       return data.user;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error signing in:', error);
-      throw error;
+      
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      throw new Error(typeof error === 'string' ? error : 'Failed to sign in');
     }
   };
 
