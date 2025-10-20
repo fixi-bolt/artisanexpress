@@ -348,26 +348,40 @@ CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW
 
 -- Fonction pour mettre à jour les ratings des utilisateurs
 CREATE OR REPLACE FUNCTION update_user_rating()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
+DECLARE
+  v_user_id UUID;
 BEGIN
+  -- Determine which user_id to update based on operation
+  IF TG_OP = 'DELETE' THEN
+    v_user_id := OLD.to_user_id;
+  ELSE
+    v_user_id := NEW.to_user_id;
+  END IF;
+  
+  -- Update user rating and review count
   UPDATE users 
   SET 
     rating = (
       SELECT COALESCE(AVG(rating), 0) 
       FROM reviews 
-      WHERE to_user_id = NEW.to_user_id
+      WHERE to_user_id = v_user_id
     ),
     review_count = (
       SELECT COUNT(*) 
       FROM reviews 
-      WHERE to_user_id = NEW.to_user_id
+      WHERE to_user_id = v_user_id
     ),
     updated_at = NOW()
-  WHERE id = NEW.to_user_id;
+  WHERE id = v_user_id;
   
-  RETURN NEW;
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  ELSE
+    RETURN NEW;
+  END IF;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS update_rating_after_review ON reviews;
 
