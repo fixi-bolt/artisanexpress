@@ -348,18 +348,16 @@ CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW
 
 -- Fonction pour mettre à jour les ratings des utilisateurs
 CREATE OR REPLACE FUNCTION update_user_rating()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 DECLARE
   v_user_id UUID;
 BEGIN
-  -- Determine which user_id to update based on operation
   IF TG_OP = 'DELETE' THEN
     v_user_id := OLD.to_user_id;
   ELSE
     v_user_id := NEW.to_user_id;
   END IF;
   
-  -- Update user rating and review count
   UPDATE users 
   SET 
     rating = (
@@ -381,7 +379,7 @@ BEGIN
     RETURN NEW;
   END IF;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS update_rating_after_review ON reviews;
 
@@ -411,7 +409,6 @@ CREATE TRIGGER validate_mission_artisan
 CREATE OR REPLACE FUNCTION validate_mission_status_transition()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Empêcher les transitions invalides
   IF OLD.status = 'completed' AND NEW.status != 'completed' THEN
     RAISE EXCEPTION 'Impossible de modifier une mission terminée';
   END IF;
@@ -420,7 +417,6 @@ BEGIN
     RAISE EXCEPTION 'Impossible de modifier une mission annulée';
   END IF;
   
-  -- Mettre à jour les timestamps appropriés
   IF NEW.status = 'accepted' AND OLD.status != 'accepted' THEN
     NEW.accepted_at = NOW();
   END IF;
@@ -459,7 +455,6 @@ $$ LANGUAGE plpgsql;
 -- 🔐 ROW LEVEL SECURITY (RLS) - OPTIMIZED
 -- ========================================
 
--- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE artisans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
@@ -476,11 +471,9 @@ ALTER TABLE withdrawals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Users: can read their own data
 CREATE POLICY users_select_own ON users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY users_update_own ON users FOR UPDATE USING (auth.uid() = id);
 
--- Artisans: accès limité pour meilleures performances
 CREATE POLICY artisans_select_limited ON artisans FOR SELECT USING (
   is_available = true 
   AND is_suspended = false
@@ -488,19 +481,15 @@ CREATE POLICY artisans_select_limited ON artisans FOR SELECT USING (
 );
 CREATE POLICY artisans_update_own ON artisans FOR UPDATE USING (auth.uid() = id);
 
--- Clients: can read own data
 CREATE POLICY clients_select_own ON clients FOR SELECT USING (auth.uid() = id);
 CREATE POLICY clients_update_own ON clients FOR UPDATE USING (auth.uid() = id);
 
--- Admins: only admins can access
 CREATE POLICY admins_admin_only ON admins FOR ALL USING (
   EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND user_type = 'admin')
 );
 
--- Payment Methods: only own
 CREATE POLICY payment_methods_own ON payment_methods FOR ALL USING (auth.uid() = client_id);
 
--- Missions: OPTIMISÉ - politique performante avec EXISTS
 CREATE POLICY missions_select_client ON missions FOR SELECT USING (
   auth.uid() = client_id 
   OR auth.uid() = artisan_id
@@ -516,19 +505,15 @@ CREATE POLICY missions_update_own ON missions FOR UPDATE USING (
   auth.uid() = client_id OR auth.uid() = artisan_id
 );
 
--- Transactions: only involved parties
 CREATE POLICY transactions_select_own ON transactions FOR SELECT USING (
   auth.uid() = client_id OR auth.uid() = artisan_id
 );
 
--- Reviews: can read all, can only insert own
 CREATE POLICY reviews_select_all ON reviews FOR SELECT TO authenticated USING (true);
 CREATE POLICY reviews_insert_own ON reviews FOR INSERT WITH CHECK (auth.uid() = from_user_id);
 
--- Notifications: only own
 CREATE POLICY notifications_own ON notifications FOR ALL USING (auth.uid() = user_id);
 
--- Chat Messages: only participants of the mission
 CREATE POLICY chat_messages_select_own ON chat_messages FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM missions 
@@ -538,21 +523,16 @@ CREATE POLICY chat_messages_select_own ON chat_messages FOR SELECT USING (
 );
 CREATE POLICY chat_messages_insert_own ON chat_messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
--- Subscriptions: only own
 CREATE POLICY subscriptions_own ON subscriptions FOR ALL USING (auth.uid() = artisan_id);
 
--- Wallets: only own
 CREATE POLICY wallets_own ON wallets FOR ALL USING (auth.uid() = artisan_id);
 
--- Withdrawals: only own
 CREATE POLICY withdrawals_own ON withdrawals FOR ALL USING (auth.uid() = artisan_id);
 
--- Invoices: only involved parties
 CREATE POLICY invoices_select_own ON invoices FOR SELECT USING (
   auth.uid() = client_id OR auth.uid() = artisan_id
 );
 
--- Audit Logs: only admins can read
 CREATE POLICY audit_logs_admin_only ON audit_logs FOR SELECT USING (
   EXISTS (SELECT 1 FROM admins WHERE admins.id = auth.uid())
 );
@@ -561,7 +541,6 @@ CREATE POLICY audit_logs_admin_only ON audit_logs FOR SELECT USING (
 -- 👑 FONCTIONS UTILITAIRES POUR L'APPLICATION
 -- ========================================
 
--- Fonction pour trouver les artisans disponibles près d'une localisation
 CREATE OR REPLACE FUNCTION find_nearby_artisans(
   p_latitude DECIMAL,
   p_longitude DECIMAL,
@@ -595,7 +574,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Fonction pour calculer les statistiques d'un artisan
 CREATE OR REPLACE FUNCTION get_artisan_stats(p_artisan_id UUID)
 RETURNS TABLE(
   total_missions INTEGER,
@@ -607,8 +585,8 @@ RETURNS TABLE(
 BEGIN
   RETURN QUERY
   SELECT 
-    COUNT(m.id) as total_missions,
-    COUNT(CASE WHEN m.status = 'completed' THEN 1 END) as completed_missions,
+    COUNT(m.id)::INTEGER as total_missions,
+    COUNT(CASE WHEN m.status = 'completed' THEN 1 END)::INTEGER as completed_missions,
     COALESCE(u.rating, 0) as avg_rating,
     COALESCE(SUM(t.artisan_payout), 0) as total_earnings,
     CASE 
@@ -625,24 +603,4 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ========================================
--- ✅ SCHEMA OPTIMISÉ COMPLET
--- ========================================
-
 COMMENT ON SCHEMA public IS 'ArtisanNow - Schema de base de données optimisé pour la plateforme de mise en relation avec des artisans';
-
--- ========================================
--- 🎯 RÉSUMÉ DES AMÉLIORATIONS APPLIQUÉES :
--- ========================================
--- 
--- 1. ✅ EXTENSIONS : earthdistance pour les calculs de distance
--- 2. ✅ CONTRAINTES : Validation des coordonnées géographiques
--- 3. ✅ INDEXES : Index GIST pour la géolocalisation et GIN pour les tableaux
--- 4. ✅ PERFORMANCE : Politiques RLS optimisées avec ANY au lieu de sous-requêtes
--- 5. ✅ TRIGGERS : Validation métier pour les transitions de statut
--- 6. ✅ FONCTIONS : Utilitaires pour l'application (recherche, statistiques)
--- 7. ✅ COHÉRENCE : Types DECIMAL standardisés
--- 8. ✅ SÉCURITÉ : Politiques RLS renforcées
--- 
--- PRODUCTION READY: ✅ 100%
--- ========================================
