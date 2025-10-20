@@ -468,14 +468,14 @@ CREATE POLICY admins_admin_only ON admins FOR ALL USING (
 -- Payment Methods: only own
 CREATE POLICY payment_methods_own ON payment_methods FOR ALL USING (auth.uid() = client_id);
 
--- Missions: OPTIMISÉ - politique performante avec ANY au lieu de sous-requête corrélée
+-- Missions: OPTIMISÉ - politique performante avec EXISTS
 CREATE POLICY missions_select_client ON missions FOR SELECT USING (
   auth.uid() = client_id 
   OR auth.uid() = artisan_id
   OR (
     status = 'pending' 
-    AND category = ANY(
-      SELECT ARRAY_AGG(category) FROM artisans WHERE id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM artisans WHERE id = auth.uid() AND artisans.category = missions.category
     )
   )
 );
