@@ -318,7 +318,7 @@ BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$ language 'plpgsql';
+$ LANGUAGE plpgsql;
 
 -- Drop existing triggers if they exist
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
