@@ -313,13 +313,25 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC)
 -- ========================================
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ language 'plpgsql';
+$ language 'plpgsql';
 
+-- Drop existing triggers if they exist
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP TRIGGER IF EXISTS update_artisans_updated_at ON artisans;
+DROP TRIGGER IF EXISTS update_clients_updated_at ON clients;
+DROP TRIGGER IF EXISTS update_missions_updated_at ON missions;
+DROP TRIGGER IF EXISTS update_transactions_updated_at ON transactions;
+DROP TRIGGER IF EXISTS update_subscriptions_updated_at ON subscriptions;
+DROP TRIGGER IF EXISTS update_wallets_updated_at ON wallets;
+DROP TRIGGER IF EXISTS update_withdrawals_updated_at ON withdrawals;
+DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices;
+
+-- Create triggers
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_artisans_updated_at BEFORE UPDATE ON artisans FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -357,6 +369,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_rating_after_review ON reviews;
+
 CREATE TRIGGER update_rating_after_review
   AFTER INSERT OR UPDATE OR DELETE ON reviews
   FOR EACH ROW EXECUTE FUNCTION update_user_rating();
@@ -372,6 +386,8 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS validate_mission_artisan ON missions;
 
 CREATE TRIGGER validate_mission_artisan 
   BEFORE INSERT OR UPDATE ON missions 
@@ -402,6 +418,8 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS validate_mission_status ON missions;
 
 CREATE TRIGGER validate_mission_status
   BEFORE UPDATE ON missions
