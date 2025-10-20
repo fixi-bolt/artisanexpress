@@ -471,13 +471,36 @@ ALTER TABLE withdrawals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies to make this script idempotent
+DROP POLICY IF EXISTS users_select_own ON users;
+DROP POLICY IF EXISTS users_update_own ON users;
+DROP POLICY IF EXISTS artisans_select_limited ON artisans;
+DROP POLICY IF EXISTS artisans_update_own ON artisans;
+DROP POLICY IF EXISTS clients_select_own ON clients;
+DROP POLICY IF EXISTS clients_update_own ON clients;
+DROP POLICY IF EXISTS admins_admin_only ON admins;
+DROP POLICY IF EXISTS payment_methods_own ON payment_methods;
+DROP POLICY IF EXISTS missions_select_client ON missions;
+DROP POLICY IF EXISTS missions_insert_client ON missions;
+DROP POLICY IF EXISTS missions_update_own ON missions;
+DROP POLICY IF EXISTS transactions_select_own ON transactions;
+DROP POLICY IF EXISTS reviews_select_all ON reviews;
+DROP POLICY IF EXISTS reviews_insert_own ON reviews;
+DROP POLICY IF EXISTS notifications_own ON notifications;
+DROP POLICY IF EXISTS chat_messages_select_own ON chat_messages;
+DROP POLICY IF EXISTS chat_messages_insert_own ON chat_messages;
+DROP POLICY IF EXISTS subscriptions_own ON subscriptions;
+DROP POLICY IF EXISTS wallets_own ON wallets;
+DROP POLICY IF EXISTS withdrawals_own ON withdrawals;
+DROP POLICY IF EXISTS invoices_select_own ON invoices;
+DROP POLICY IF EXISTS audit_logs_admin_only ON audit_logs;
+
+-- Re-create policies
 CREATE POLICY users_select_own ON users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY users_update_own ON users FOR UPDATE USING (auth.uid() = id);
 
 CREATE POLICY artisans_select_limited ON artisans FOR SELECT USING (
-  is_available = true 
-  AND is_suspended = false
-  OR auth.uid() = id
+  (is_available = true AND is_suspended = false) OR auth.uid() = id
 );
 CREATE POLICY artisans_update_own ON artisans FOR UPDATE USING (auth.uid() = id);
 
