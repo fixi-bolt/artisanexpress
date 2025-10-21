@@ -1,43 +1,57 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+function resolveEnv(): { url: string; key: string; source: string } {
+  const rorkEnv = (globalThis as unknown as { __RORK__?: { env?: Record<string, string> }; RORK_ENV?: Record<string, string> }).__RORK__?.env
+    ?? (globalThis as unknown as { RORK_ENV?: Record<string, string> }).RORK_ENV
+    ?? {};
+
+  const candidates: Array<{ url?: string; key?: string; source: string }> = [
+    { url: process.env.EXPO_PUBLIC_SUPABASE_URL, key: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, source: 'process.env (EXPO_PUBLIC_*)' },
+    { url: process.env.SUPABASE_URL, key: process.env.SUPABASE_ANON_KEY, source: 'process.env' },
+    { url: (Constants?.expoConfig as any)?.extra?.supabaseUrl, key: (Constants?.expoConfig as any)?.extra?.supabaseAnonKey, source: 'app.json extra' },
+    { url: rorkEnv.EXPO_PUBLIC_SUPABASE_URL ?? rorkEnv.SUPABASE_URL, key: rorkEnv.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? rorkEnv.SUPABASE_ANON_KEY, source: 'RORK_ENV' },
+  ];
+
+  for (const c of candidates) {
+    const url = (c.url ?? '').trim();
+    const key = (c.key ?? '').trim();
+    if (url && key) return { url, key, source: c.source };
+  }
+  return { url: (candidates[0].url ?? '').trim(), key: (candidates[0].key ?? '').trim(), source: 'fallback-empty' };
+}
+
+const { url: supabaseUrl, key: supabaseAnonKey, source } = resolveEnv();
 
 console.log('🔧 Supabase Config Check:');
+console.log('  Source:', source);
 console.log('  URL:', supabaseUrl || '❌ MISSING');
 console.log('  Key:', supabaseAnonKey ? `✅ ${supabaseAnonKey.substring(0, 4)}...${supabaseAnonKey.substring(supabaseAnonKey.length - 4)}` : '❌ MISSING');
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('\n❌ SUPABASE NOT CONFIGURED!');
-  console.error('❌ Please ensure .env file has one of the following:');
-  console.error('   EXPO_PUBLIC_SUPABASE_URL=...          EXPO_PUBLIC_SUPABASE_ANON_KEY=...');
-  console.error('   or');
-  console.error('   SUPABASE_URL=...                      SUPABASE_ANON_KEY=...');
-  console.error('\n❌ Then restart with: npx expo start --clear (or your start script with --clear)\n');
-  throw new Error('Supabase configuration is missing. Check your .env file.');
+  console.error('❌ Variables attendues: EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY');
+  console.error('❌ Aucune coupure de l\'app. On continue pour éviter un crash sur votre environnement.');
 }
 
-if (!supabaseUrl.includes('.supabase.co')) {
-  console.error('\n❌ INVALID SUPABASE URL!');
-  console.error('❌ URL should be like: https://xxx.supabase.co');
-  console.error('❌ Current URL:', supabaseUrl);
-  throw new Error('Invalid Supabase URL format');
+if (supabaseUrl && !supabaseUrl.includes('.supabase.co')) {
+  console.warn('\n⚠️ Format URL Supabase inattendu');
+  console.warn('   Attendu: https://xxx.supabase.co');
+  console.warn('   Actuel :', supabaseUrl);
 }
 
-if (!supabaseAnonKey.startsWith('eyJ')) {
-  console.error('\n❌ INVALID SUPABASE KEY!');
-  console.error('❌ Key should start with: eyJ');
-  console.error('❌ Current key:', supabaseAnonKey.substring(0, 20) + '...');
-  throw new Error('Invalid Supabase anon key format');
+if (supabaseAnonKey && !supabaseAnonKey.startsWith('eyJ')) {
+  console.warn('\n⚠️ Clé Supabase semble invalide (ne commence pas par eyJ). Vérifiez vos variables.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl || 'https://invalid.supabase.co', supabaseAnonKey || 'invalid', {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: Platform.OS === 'web' ? true : false,
   },
 });
 
