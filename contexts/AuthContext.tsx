@@ -180,7 +180,13 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
       if (authError) {
         console.error('❌ Supabase Auth Error:', authError);
-        throw new Error(authError.message || 'Authentication failed');
+        
+        let errorMessage = authError.message || 'Authentication failed';
+        if (errorMessage.includes('User already registered') || authError.message?.includes('already registered')) {
+          errorMessage = 'Un compte existe déjà avec cet email';
+        }
+        
+        throw new Error(errorMessage);
       }
       if (!authData.user) {
         console.error('❌ No user returned from auth');

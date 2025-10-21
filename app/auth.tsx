@@ -99,7 +99,21 @@ export default function AuthScreen() {
         ? error.message 
         : (typeof error === 'string' ? error : 'Impossible de créer le compte');
       
-      Alert.alert('Erreur', errorMessage);
+      if (errorMessage.includes('already registered') || errorMessage.includes('déjà enregistré') || errorMessage.includes('déjà inscrit')) {
+        Alert.alert(
+          'Compte existant',
+          'Un compte existe déjà avec cet email. Voulez-vous vous connecter à la place ?',
+          [
+            { text: 'Annuler', style: 'cancel' },
+            { 
+              text: 'Se connecter', 
+              onPress: () => setMode('login')
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Erreur', errorMessage);
+      }
     } finally {
       setLoading(false);
     }
