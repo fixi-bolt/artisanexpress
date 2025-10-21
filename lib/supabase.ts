@@ -1,19 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 
 console.log('🔧 Supabase Config Check:');
 console.log('  URL:', supabaseUrl || '❌ MISSING');
-console.log('  Key:', supabaseAnonKey ? `✅ ${supabaseAnonKey.substring(0, 20)}...` : '❌ MISSING');
+console.log('  Key:', supabaseAnonKey ? `✅ ${supabaseAnonKey.substring(0, 4)}...${supabaseAnonKey.substring(supabaseAnonKey.length - 4)}` : '❌ MISSING');
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('\n❌ SUPABASE NOT CONFIGURED!');
-  console.error('❌ Please ensure .env file has:');
-  console.error('   EXPO_PUBLIC_SUPABASE_URL=https://nkxucjhavjfsogzpitry.supabase.co');
-  console.error('   EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key');
-  console.error('\n❌ Then restart with: npx expo start --clear\n');
+  console.error('❌ Please ensure .env file has one of the following:');
+  console.error('   EXPO_PUBLIC_SUPABASE_URL=...          EXPO_PUBLIC_SUPABASE_ANON_KEY=...');
+  console.error('   or');
+  console.error('   SUPABASE_URL=...                      SUPABASE_ANON_KEY=...');
+  console.error('\n❌ Then restart with: npx expo start --clear (or your start script with --clear)\n');
   throw new Error('Supabase configuration is missing. Check your .env file.');
 }
 
