@@ -146,48 +146,95 @@ export const useSupabaseAuth = () => {
     userType: UserType,
     additionalData?: Record<string, any>
   ) => {
-    const redirectTo = Linking.createURL('/auth-callback');
+    try {
+      const redirectTo = Linking.createURL('/auth-callback');
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
-    });
+      console.log('📝 Starting signup for:', email, 'Type:', userType);
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('User creation failed');
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectTo,
+        },
+      });
 
-    await supabase.from('users').insert({
-      id: authData.user.id,
-      email,
-      name,
-      user_type: userType,
-      phone: additionalData?.phone || null,
-      photo: additionalData?.photo || null,
-    });
+      if (authError) {
+        console.error('❌ Auth signup error:', authError);
+        throw authError;
+      }
+      if (!authData.user) {
+        console.error('❌ No user data returned');
+        throw new Error('User creation failed');
+      }
 
-    if (userType === 'artisan') {
-      await supabase.from('artisans').insert({
+      console.log('✅ Auth user created:', authData.user.id);
+
+      const { error: userInsertError } = await supabase.from('users').insert({
         id: authData.user.id,
-        category: additionalData?.category,
-        hourly_rate: additionalData?.hourlyRate || 50,
-        travel_fee: additionalData?.travelFee || 25,
-        intervention_radius: additionalData?.interventionRadius || 20,
-        specialties: additionalData?.specialties || [],
+        email,
+        name,
+        user_type: userType,
+        phone: additionalData?.phone || null,
+        photo: additionalData?.photo || null,
       });
 
-      await supabase.from('wallets').insert({
-        artisan_id: authData.user.id,
-      });
-    } else if (userType === 'client') {
-      await supabase.from('clients').insert({
-        id: authData.user.id,
-      });
+      if (userInsertError) {
+        console.error('❌ User profile insertion error:', userInsertError);
+        throw new Error(`Failed to create user profile: ${userInsertError.message}`);
+      }
+
+      console.log('✅ User profile created');
+
+      if (userType === 'artisan') {
+        const { error: artisanInsertError } = await supabase.from('artisans').insert({
+          id: authData.user.id,
+          category: additionalData?.category,
+          hourly_rate: additionalData?.hourlyRate || 50,
+          travel_fee: additionalData?.travelFee || 25,
+          intervention_radius: additionalData?.interventionRadius || 20,
+          specialties: additionalData?.specialties || [],
+        });
+
+        if (artisanInsertError) {
+          console.error('❌ Artisan profile insertion error:', artisanInsertError);
+          throw new Error(`Failed to create artisan profile: ${artisanInsertError.message}`);
+        }
+
+        console.log('✅ Artisan profile created');
+
+        const { error: walletInsertError } = await supabase.from('wallets').insert({
+          artisan_id: authData.user.id,
+        });
+
+        if (walletInsertError) {
+          console.error('❌ Wallet creation error:', walletInsertError);
+          throw new Error(`Failed to create wallet: ${walletInsertError.message}`);
+        }
+
+        console.log('✅ Wallet created');
+      } else if (userType === 'client') {
+        const { error: clientInsertError } = await supabase.from('clients').insert({
+          id: authData.user.id,
+        });
+
+        if (clientInsertError) {
+          console.error('❌ Client profile insertion error:', clientInsertError);
+          throw new Error(`Failed to create client profile: ${clientInsertError.message}`);
+        }
+
+        console.log('✅ Client profile created');
+      }
+
+      console.log('✅✅✅ SIGNUP COMPLETE');
+      return authData.user;
+    } catch (error: any) {
+      console.error('❌❌❌ SIGNUP ERROR:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error?.message);
+      console.error('Error stack:', error?.stack);
+      throw error;
     }
-
-    return authData.user;
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
