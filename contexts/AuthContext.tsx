@@ -47,14 +47,30 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
   const loadUserProfile = async (userId: string) => {
     try {
+      console.log('🔵 Loading user profile for ID:', userId);
+      
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (userError) throw userError;
-      if (!userData) throw new Error('User not found');
+      if (userError) {
+        console.error('❌ Error fetching user from database:', {
+          message: userError.message,
+          code: userError.code,
+          details: userError.details,
+          hint: userError.hint
+        });
+        throw userError;
+      }
+      
+      if (!userData) {
+        console.error('❌ User not found in database for ID:', userId);
+        throw new Error('User not found');
+      }
+      
+      console.log('✅ User data fetched:', userData.email, userData.user_type);
 
       let profile: User;
 
@@ -134,9 +150,14 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       }
 
       setUser(profile);
-      console.log('✅ User profile loaded:', profile.name, profile.type);
-    } catch (error) {
-      console.error('❌ Error loading user profile:', error);
+      console.log('✅✅✅ User profile fully loaded:', profile.name, profile.type);
+    } catch (error: any) {
+      console.error('❌❌❌ Error loading user profile:');
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error?.message || 'Unknown error');
+      console.error('Error code:', error?.code);
+      console.error('Error details:', error?.details);
+      console.error('Full error:', JSON.stringify(error, null, 2));
     } finally {
       setIsLoading(false);
       setIsInitialized(true);
