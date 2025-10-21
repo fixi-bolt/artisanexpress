@@ -1,0 +1,84 @@
+═══════════════════════════════════════════════════════════
+🚨 À FAIRE MAINTENANT - 3 ÉTAPES SIMPLES
+═══════════════════════════════════════════════════════════
+
+📝 ÉTAPE 1: CONFIGURER SUPABASE
+────────────────────────────────────────────────────────────
+
+1. Ouvrez: https://nkxucjhavjfsogzpitry.supabase.co
+
+2. Cliquez sur "SQL Editor" (menu de gauche)
+
+3. Cliquez sur "New query"
+
+4. Ouvrez le fichier: database/setup-new-supabase.sql
+
+5. Copiez TOUT le contenu du fichier
+
+6. Collez dans l'éditeur SQL de Supabase
+
+7. Cliquez "Run" (ou Ctrl+Enter)
+
+✅ Résultat attendu: "Success. No rows returned"
+
+
+═══════════════════════════════════════════════════════════
+
+🚀 ÉTAPE 2: REDÉMARRER L'APPLICATION
+────────────────────────────────────────────────────────────
+
+Dans votre terminal, exécutez EXACTEMENT cette commande:
+
+npx expo start --clear
+
+⚠️ NE PAS oublier "--clear" !
+
+
+═══════════════════════════════════════════════════════════
+
+🧪 ÉTAPE 3: TESTER
+────────────────────────────────────────────────────────────
+
+1. Ouvrez l'application (web ou mobile)
+
+2. Créez un compte de test:
+   Email: test@example.com
+   Mot de passe: Test1234!
+   Type: Client
+
+3. Cliquez sur "Créer un compte"
+
+✅ Si ça fonctionne: Vous êtes connecté!
+
+
+═══════════════════════════════════════════════════════════
+
+❌ SI ÇA NE FONCTIONNE PAS
+────────────────────────────────────────────────────────────
+
+1. Vérifiez que le script SQL a été exécuté (Étape 1)
+
+2. Vérifiez que vous avez bien redémarré avec --clear (Étape 2)
+
+3. Lisez le fichier: SOLUTION_RAPIDE.md
+
+
+═══════════════════════════════════════════════════════════
+
+📋 VÉRIFICATION RAPIDE
+────────────────────────────────────────────────────────────
+
+Dans la console, vous devriez voir:
+
+🔧 Supabase Config Check:
+  URL: https://nkxucjhavjfsogzpitry.supabase.co
+  Key: ✅ eyJhbGciOiJIUzI1NiIsInR...
+🔵 Starting signup for: test@example.com client
+✅ Auth user created with ID: xxx
+✅ User profile created
+✅✅✅ User signup complete
+
+
+═══════════════════════════════════════════════════════════
+
+C'EST TOUT! 🎉

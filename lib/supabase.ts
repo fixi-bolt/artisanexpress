@@ -1,20 +1,34 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://ejjlaccuauzdempjktpt.supabase.co';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqamxhY2N1YXV6ZGVtcGprdHB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4ODQwOTIsImV4cCI6MjA3NjQ2MDA5Mn0.lBGJOIiBzkr5-0EsA4lMvBk84L77fsedlK-CujoD5vk';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 console.log('🔧 Supabase Config Check:');
-console.log('  URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
-console.log('  Key:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
+console.log('  URL:', supabaseUrl || '❌ MISSING');
+console.log('  Key:', supabaseAnonKey ? `✅ ${supabaseAnonKey.substring(0, 20)}...` : '❌ MISSING');
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('\n❌ SUPABASE NOT CONFIGURED!');
   console.error('❌ Please ensure .env file has:');
-  console.error('   EXPO_PUBLIC_SUPABASE_URL=https://ejjlaccuauzdempjktpt.supabase.co');
+  console.error('   EXPO_PUBLIC_SUPABASE_URL=https://nkxucjhavjfsogzpitry.supabase.co');
   console.error('   EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key');
   console.error('\n❌ Then restart with: npx expo start --clear\n');
   throw new Error('Supabase configuration is missing. Check your .env file.');
+}
+
+if (!supabaseUrl.includes('.supabase.co')) {
+  console.error('\n❌ INVALID SUPABASE URL!');
+  console.error('❌ URL should be like: https://xxx.supabase.co');
+  console.error('❌ Current URL:', supabaseUrl);
+  throw new Error('Invalid Supabase URL format');
+}
+
+if (!supabaseAnonKey.startsWith('eyJ')) {
+  console.error('\n❌ INVALID SUPABASE KEY!');
+  console.error('❌ Key should start with: eyJ');
+  console.error('❌ Current key:', supabaseAnonKey.substring(0, 20) + '...');
+  throw new Error('Invalid Supabase anon key format');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
