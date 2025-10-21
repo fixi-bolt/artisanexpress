@@ -27,16 +27,21 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
           try {
             const raw = window.localStorage.getItem(key);
             if (raw && raw.trim() && raw !== '{}' && raw !== 'null' && raw !== 'undefined') {
-              const parsed = JSON.parse(raw) as AutomationSettings;
-              if (parsed && typeof parsed === 'object' && 'autoInvoice' in parsed) {
-                setSettings(parsed);
-                return;
+              try {
+                const parsed = JSON.parse(raw) as AutomationSettings;
+                if (parsed && typeof parsed === 'object' && 'autoInvoice' in parsed) {
+                  setSettings(parsed);
+                  return;
+                }
+              } catch (jsonError) {
+                console.error('Failed to parse automation settings JSON:', jsonError);
+                window.localStorage.removeItem(key);
               }
             }
             window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
             setSettings(DEFAULT_SETTINGS);
           } catch (parseError) {
-            console.error('Invalid JSON in storage, resetting to defaults:', parseError);
+            console.error('Error accessing localStorage:', parseError);
             window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
             setSettings(DEFAULT_SETTINGS);
           }
@@ -45,16 +50,21 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
           try {
             const raw = await AsyncStorage.getItem(key);
             if (raw && raw.trim() && raw !== '{}' && raw !== 'null' && raw !== 'undefined') {
-              const parsed = JSON.parse(raw) as AutomationSettings;
-              if (parsed && typeof parsed === 'object' && 'autoInvoice' in parsed) {
-                setSettings(parsed);
-                return;
+              try {
+                const parsed = JSON.parse(raw) as AutomationSettings;
+                if (parsed && typeof parsed === 'object' && 'autoInvoice' in parsed) {
+                  setSettings(parsed);
+                  return;
+                }
+              } catch (jsonError) {
+                console.error('Failed to parse automation settings JSON:', jsonError);
+                await AsyncStorage.removeItem(key);
               }
             }
             await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
             setSettings(DEFAULT_SETTINGS);
           } catch (parseError) {
-            console.error('Invalid JSON in storage, resetting to defaults:', parseError);
+            console.error('Error accessing AsyncStorage:', parseError);
             await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
             setSettings(DEFAULT_SETTINGS);
           }

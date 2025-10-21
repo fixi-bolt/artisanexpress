@@ -53,7 +53,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         .from('users')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (userError) {
         console.error('❌ Error fetching user from database:', {
@@ -67,7 +67,9 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       
       if (!userData) {
         console.error('❌ User not found in database for ID:', userId);
-        throw new Error('User not found');
+        console.error('⚠️ User exists in auth but not in users table. This might be a schema cache issue.');
+        console.error('🔧 Try restarting your Supabase project from the Dashboard.');
+        throw new Error('User profile not found. Please contact support.');
       }
       
       console.log('✅ User data fetched:', userData.email, userData.user_type);
