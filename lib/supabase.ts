@@ -1,52 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-function resolveEnv(): { url: string; key: string; source: string } {
-  const rorkEnv = (globalThis as unknown as { __RORK__?: { env?: Record<string, string> }; RORK_ENV?: Record<string, string> }).__RORK__?.env
-    ?? (globalThis as unknown as { RORK_ENV?: Record<string, string> }).RORK_ENV
-    ?? {};
+const SUPABASE_URL = 'https://nkxucjhavjfsogzpitry.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5reHVjamhhdmpmc29nenBpdHJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNzMxMzAsImV4cCI6MjA3NjY0OTEzMH0.-JKjKW2_2ZQag1E7GzGEMvkuWxcWDzVSMB8mCoiNzig';
 
-  const candidates: Array<{ url?: string; key?: string; source: string }> = [
-    { url: process.env.EXPO_PUBLIC_SUPABASE_URL, key: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, source: 'process.env (EXPO_PUBLIC_*)' },
-    { url: process.env.SUPABASE_URL, key: process.env.SUPABASE_ANON_KEY, source: 'process.env' },
-    { url: (Constants?.expoConfig as any)?.extra?.supabaseUrl, key: (Constants?.expoConfig as any)?.extra?.supabaseAnonKey, source: 'app.json extra' },
-    { url: rorkEnv.EXPO_PUBLIC_SUPABASE_URL ?? rorkEnv.SUPABASE_URL, key: rorkEnv.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? rorkEnv.SUPABASE_ANON_KEY, source: 'RORK_ENV' },
-  ];
+console.log('🔧 Supabase Config (hardcoded for Rork):');
+console.log('  URL:', SUPABASE_URL);
+console.log('  Key:', `${SUPABASE_ANON_KEY.substring(0, 10)}...${SUPABASE_ANON_KEY.substring(SUPABASE_ANON_KEY.length - 4)}`);
 
-  for (const c of candidates) {
-    const url = (c.url ?? '').trim();
-    const key = (c.key ?? '').trim();
-    if (url && key) return { url, key, source: c.source };
-  }
-  return { url: (candidates[0].url ?? '').trim(), key: (candidates[0].key ?? '').trim(), source: 'fallback-empty' };
-}
-
-const { url: supabaseUrl, key: supabaseAnonKey, source } = resolveEnv();
-
-console.log('🔧 Supabase Config Check:');
-console.log('  Source:', source);
-console.log('  URL:', supabaseUrl || '❌ MISSING');
-console.log('  Key:', supabaseAnonKey ? `✅ ${supabaseAnonKey.substring(0, 4)}...${supabaseAnonKey.substring(supabaseAnonKey.length - 4)}` : '❌ MISSING');
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('\n❌ SUPABASE NOT CONFIGURED!');
-  console.error('❌ Variables attendues: EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY');
-  console.error('❌ Aucune coupure de l\'app. On continue pour éviter un crash sur votre environnement.');
-}
-
-if (supabaseUrl && !supabaseUrl.includes('.supabase.co')) {
-  console.warn('\n⚠️ Format URL Supabase inattendu');
-  console.warn('   Attendu: https://xxx.supabase.co');
-  console.warn('   Actuel :', supabaseUrl);
-}
-
-if (supabaseAnonKey && !supabaseAnonKey.startsWith('eyJ')) {
-  console.warn('\n⚠️ Clé Supabase semble invalide (ne commence pas par eyJ). Vérifiez vos variables.');
-}
-
-export const supabase = createClient(supabaseUrl || 'https://invalid.supabase.co', supabaseAnonKey || 'invalid', {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
