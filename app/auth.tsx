@@ -10,7 +10,7 @@ import { UserType } from '@/types';
 
 export default function AuthScreen() {
   const router = useRouter();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, isAuthenticated } = useAuth();
   const { trackEvent } = useAnalytics();
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'select' | 'login' | 'signup'>('select');
@@ -38,6 +38,18 @@ export default function AuthScreen() {
       }),
     ]).start();
   }, [scaleAnim, fadeAnim]);
+
+  useEffect(() => {
+    if (!loading && isAuthenticated && user) {
+      if (user.type === 'admin') {
+        router.replace('/(admin)/dashboard' as any);
+      } else if (user.type === 'client') {
+        router.replace('/(client)/home' as any);
+      } else {
+        router.replace('/(artisan)/dashboard' as any);
+      }
+    }
+  }, [isAuthenticated, user, loading, router]);
 
   const handleSelectType = (type: UserType) => {
     setSelectedType(type);
