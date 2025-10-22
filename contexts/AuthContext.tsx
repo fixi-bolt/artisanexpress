@@ -497,22 +497,18 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
   const logout = useCallback(async () => {
     try {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
-      if (currentSession) {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          logger.error('SignOut error:', error.message);
-        }
-      } else {
-        logger.info('No active session to sign out from');
+      // Always try to sign out, ignore session errors
+      const { error } = await supabase.auth.signOut();
+      if (error && !error.message?.includes('session') && !error.message?.includes('refresh')) {
+        logger.error('SignOut error:', error.message);
       }
       
       setUser(null);
       setSession(null);
       logger.success('User logged out');
-    } catch (error) {
-      logger.error('Error during logout:', error);
+    } catch (error: any) {
+      // Even if signOut fails, clear local state
+      logger.warn('Error during logout, clearing local state:', error?.message);
       setUser(null);
       setSession(null);
     }
