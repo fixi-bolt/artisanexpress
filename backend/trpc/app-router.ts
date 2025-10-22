@@ -57,6 +57,7 @@ import { requestPartnershipProcedure } from "./routes/monetization/b2b/request-p
 import { getFinanceDashboardProcedure } from "./routes/monetization/finance/get-dashboard/route";
 import { createApiKeyProcedure } from "./routes/public-api/create-api-key/route";
 import { listEndpointsProcedure } from "./routes/public-api/list-endpoints/route";
+import { verifySiretProcedure } from "./routes/compliance/verify-siret/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -162,6 +163,9 @@ export const appRouter = createTRPCRouter({
   publicApi: createTRPCRouter({
     createApiKey: createApiKeyProcedure,
     listEndpoints: listEndpointsProcedure,
+  }),
+  compliance: createTRPCRouter({
+    verifySiret: verifySiretProcedure,
   }),
 });
 
