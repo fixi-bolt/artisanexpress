@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import Colors from '@/constants/colors';
 import { trpc } from '@/lib/trpc';
@@ -8,6 +8,7 @@ import { Building2, FileText, ShieldCheck, AlertCircle } from 'lucide-react-nati
 
 export default function SiretVerificationScreen() {
   const { signUp } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [name, setName] = useState<string>('');
@@ -54,6 +55,9 @@ export default function SiretVerificationScreen() {
         address: prefill?.address,
         ape: prefill?.ape,
       });
+      setTimeout(() => {
+        router.replace('/(artisan)/dashboard' as any);
+      }, 300);
     } catch (e: any) {
       console.error('Signup error', e);
       setErrorText(e?.message ?? 'Erreur lors de la création du compte');

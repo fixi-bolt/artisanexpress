@@ -19,7 +19,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [category, setCategory] = useState('');
+
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -52,6 +52,10 @@ export default function AuthScreen() {
   }, [isAuthenticated, user, loading, router]);
 
   const handleSelectType = (type: UserType) => {
+    if (type === 'artisan') {
+      router.push('/(artisan)/siret-verification' as any);
+      return;
+    }
     setSelectedType(type);
     setMode('signup');
   };
@@ -67,16 +71,10 @@ export default function AuthScreen() {
       const additionalData: Record<string, unknown> = { phone };
       
       if (selectedType === 'artisan') {
-        if (!category) {
-          Alert.alert('Erreur', 'Veuillez sélectionner une catégorie');
-          setLoading(false);
-          return;
-        }
-        additionalData.category = category;
-        additionalData.hourlyRate = 50;
-        additionalData.travelFee = 25;
-        additionalData.interventionRadius = 20;
-        additionalData.specialties = [];
+        Alert.alert('Inscription artisan', "La création d'un compte artisan se fait via la vérification SIRET.");
+        setLoading(false);
+        router.push('/(artisan)/siret-verification' as any);
+        return;
       }
 
       await signUp(email, password, name, selectedType, additionalData);
@@ -151,7 +149,7 @@ export default function AuthScreen() {
     setPassword('');
     setName('');
     setPhone('');
-    setCategory('');
+
   };
 
   if (mode === 'select') {
@@ -275,7 +273,7 @@ export default function AuthScreen() {
           <Text style={styles.subtitle}>
             {mode === 'login' 
               ? 'Connectez-vous pour continuer'
-              : `Inscription en tant que ${selectedType === 'client' ? 'Client' : 'Artisan'}`
+              : `Inscription en tant que ${selectedType === 'client' ? 'Client' : ''}`
             }
           </Text>
         </View>
@@ -336,19 +334,7 @@ export default function AuthScreen() {
             </View>
           )}
 
-          {mode === 'signup' && selectedType === 'artisan' && (
-            <View style={styles.inputGroup}>
-              <Briefcase size={20} color={Colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Catégorie (ex: Plombier, Électricien)"
-                placeholderTextColor={Colors.textLight}
-                value={category}
-                onChangeText={setCategory}
-                autoCapitalize="words"
-              />
-            </View>
-          )}
+
 
           <TouchableOpacity
             style={[styles.submitButton, loading && styles.submitButtonDisabled]}

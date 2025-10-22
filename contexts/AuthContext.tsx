@@ -217,7 +217,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         console.log('🔵 Creating artisan profile...');
         const { error: artisanError } = await supabase.from('artisans').insert({
           id: authData.user.id,
-          category: additionalData?.category as string,
+          category: (additionalData?.category as string) ?? 'Non spécifié',
           hourly_rate: (additionalData?.hourlyRate as number) || 50,
           travel_fee: (additionalData?.travelFee as number) || 25,
           intervention_radius: (additionalData?.interventionRadius as number) || 20,
