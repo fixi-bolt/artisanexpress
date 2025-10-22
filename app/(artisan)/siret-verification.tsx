@@ -56,7 +56,7 @@ export default function SiretVerificationScreen() {
         ape: prefill?.ape,
       });
       setTimeout(() => {
-        router.replace('/(artisan)/dashboard' as any);
+        router.replace('/(artisan)/specialty' as any);
       }, 300);
     } catch (e: any) {
       console.error('Signup error', e);

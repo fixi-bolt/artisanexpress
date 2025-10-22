@@ -1,9 +1,32 @@
-import { Tabs } from "expo-router";
+import { Tabs, useRouter, useSegments, usePathname } from "expo-router";
 import { Briefcase, DollarSign, User } from "lucide-react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ArtisanTabLayout() {
+  const { user, isArtisan } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const segments = useSegments();
+
+  useEffect(() => {
+    try {
+      console.log("[ArtisanLayout] path=", pathname, "segments=", JSON.stringify(segments));
+      if (isArtisan) {
+        const category = (user as any)?.category as string | undefined;
+        const needsSpecialty = !category || category === 'Non spécifié';
+        const isOnSpecialty = pathname?.includes('/(artisan)/specialty');
+        if (needsSpecialty && !isOnSpecialty) {
+          console.log("[ArtisanLayout] Redirecting to specialty selection");
+          router.replace('/(artisan)/specialty' as any);
+        }
+      }
+    } catch (e) {
+      console.log("[ArtisanLayout] guard error", e);
+    }
+  }, [isArtisan, user, pathname]);
+
   return (
     <Tabs
       screenOptions={{
