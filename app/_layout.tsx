@@ -68,6 +68,8 @@ function RootLayoutNav() {
       <Stack.Screen name="(artisan)/subscription" options={{ headerShown: true, title: "Abonnements" }} />
       <Stack.Screen name="(artisan)/heatmap" options={{ headerShown: true, title: "Carte de la demande" }} />
       <Stack.Screen name="(artisan)/wallet" options={{ headerShown: true, title: "Portefeuille" }} />
+      <Stack.Screen name="(artisan)/siret-verification" options={{ headerShown: true, title: "Vérification SIRET" }} />
+      <Stack.Screen name="(artisan)/specialty" options={{ headerShown: true, title: "Votre spécialité" }} />
     </Stack>
   );
 }

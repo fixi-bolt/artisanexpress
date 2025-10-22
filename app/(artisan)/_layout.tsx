@@ -25,7 +25,7 @@ export default function ArtisanTabLayout() {
     } catch (e) {
       console.log("[ArtisanLayout] guard error", e);
     }
-  }, [isArtisan, user, pathname]);
+  }, [isArtisan, user, pathname, router, segments]);
 
   return (
     <Tabs
@@ -64,6 +64,30 @@ export default function ArtisanTabLayout() {
         options={{
           title: "Profil",
           tabBarIcon: ({ color, size }) => <User size={size} color={color} strokeWidth={2} />,
+        }}
+      />
+      <Tabs.Screen
+        name="siret-verification"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="specialty"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="subscription"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="heatmap"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
