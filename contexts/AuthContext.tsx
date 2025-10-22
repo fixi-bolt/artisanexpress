@@ -1,11 +1,16 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { User, UserType, Artisan, Client, Admin } from '@/types';
 import { supabase } from '@/lib/supabase';
 import * as Linking from 'expo-linking';
-import type { Session, AuthError } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 
+const __DEV__ = process.env.NODE_ENV !== 'production';
 
+const logger = {
+  info: (...args: any[]) => __DEV__ && console.log(...args),
+  error: (...args: any[]) => console.error(...args),
+};
 
 export const [AuthContext, useAuth] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
@@ -13,41 +18,16 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
-  useEffect(() => {
-    let mounted = true;
-    
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      if (mounted) {
-        setSession(currentSession);
-        if (currentSession?.user) {
-          loadUserProfile(currentSession.user.id);
-        } else {
-          setIsLoading(false);
-          setIsInitialized(true);
-        }
-      }
-    });
+  const loadUserProfile = useCallback(async (userId: string, retryCount = 0) => {
+    if (retryCount > 2) {
+      logger.error('❌ Failed to load user profile after 3 attempts');
+      setIsLoading(false);
+      setIsInitialized(true);
+      return;
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (mounted) {
-        setSession(newSession);
-        if (newSession?.user) {
-          loadUserProfile(newSession.user.id);
-        } else {
-          setUser(null);
-        }
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const loadUserProfile = async (userId: string) => {
     try {
-      console.log('🔵 Loading user profile for ID:', userId);
+      logger.info('🔵 Loading user profile for ID:', userId, `(attempt ${retryCount + 1})`);
       
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -56,7 +36,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         .maybeSingle();
 
       if (userError) {
-        console.error('❌ Error fetching user from database:', {
+        logger.error('❌ Error fetching user from database:', {
           message: userError.message,
           code: userError.code,
           details: userError.details,
@@ -66,13 +46,21 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       }
       
       if (!userData) {
-        console.error('❌ User not found in database for ID:', userId);
-        console.error('⚠️ User exists in auth but not in users table. This might be a schema cache issue.');
-        console.error('🔧 Try restarting your Supabase project from the Dashboard.');
+        logger.error('❌ User not found in database for ID:', userId);
+        
+        if (retryCount === 0) {
+          logger.info('🔄 Waiting for user profile to be created...');
+          const exists = await waitForProfile(userId);
+          if (exists) {
+            await loadUserProfile(userId, retryCount + 1);
+            return;
+          }
+        }
+        
         throw new Error('User profile not found. Please contact support.');
       }
       
-      console.log('✅ User data fetched:', userData.email, userData.user_type);
+      logger.info('✅ User data fetched:', userData.email, userData.user_type);
 
       let profile: User;
 
@@ -152,34 +140,84 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       }
 
       setUser(profile);
-      console.log('✅✅✅ User profile fully loaded:', profile.name, profile.type);
+      logger.info('✅ User profile fully loaded:', profile.name, profile.type);
     } catch (error: any) {
-      console.error('❌❌❌ Error loading user profile:');
-      console.error('Error type:', typeof error);
-      console.error('Error message:', error?.message || 'Unknown error');
-      console.error('Error code:', error?.code);
-      console.error('Error details:', error?.details);
-      console.error('Full error:', JSON.stringify(error, null, 2));
+      logger.error('❌ Error loading user profile:');
+      logger.error('Error message:', error?.message || 'Unknown error');
+      if (__DEV__) {
+        logger.error('Error details:', { code: error?.code, details: error?.details });
+      }
     } finally {
       setIsLoading(false);
       setIsInitialized(true);
     }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      if (mounted) {
+        setSession(currentSession);
+        if (currentSession?.user) {
+          loadUserProfile(currentSession.user.id);
+        } else {
+          setIsLoading(false);
+          setIsInitialized(true);
+        }
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (mounted) {
+        setSession(newSession);
+        if (newSession?.user) {
+          loadUserProfile(newSession.user.id);
+        } else {
+          setUser(null);
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [loadUserProfile]);
+
+  const waitForProfile = async (userId: string, maxAttempts = 10): Promise<boolean> => {
+    for (let i = 0; i < maxAttempts; i++) {
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (data) return true;
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    return false;
   };
 
-  const signUp = async (email: string, password: string, name: string, userType: UserType, additionalData?: Record<string, unknown>) => {
+  const signUp = useCallback(async (email: string, password: string, name: string, userType: UserType, additionalData?: Record<string, unknown>) => {
+    let authData: any = null;
+    
     try {
-      console.log('🔵 Starting signup for:', email, userType);
+      logger.info('🔵 Starting signup for:', email, userType);
       
       const redirectTo = Linking.createURL('/auth-callback');
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const result = await supabase.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: redirectTo },
       });
+      
+      authData = result;
+      const authError = result.error;
 
       if (authError) {
-        console.error('❌ Supabase Auth Error:', authError);
+        logger.error('❌ Supabase Auth Error:', authError);
         
         let errorMessage = authError.message || 'Authentication failed';
         if (errorMessage.includes('User already registered') || authError.message?.includes('already registered')) {
@@ -188,16 +226,16 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         
         throw new Error(errorMessage);
       }
-      if (!authData.user) {
-        console.error('❌ No user returned from auth');
+      if (!authData?.data?.user) {
+        logger.error('❌ No user returned from auth');
         throw new Error('User creation failed');
       }
       
-      console.log('✅ Auth user created with ID:', authData.user.id);
+      logger.info('✅ Auth user created with ID:', authData.data.user.id);
 
-      console.log('🔵 Inserting user profile...');
+      logger.info('🔵 Inserting user profile...');
       const { error: userError } = await supabase.from('users').insert({
-        id: authData.user.id,
+        id: authData.data.user.id,
         email,
         name,
         user_type: userType,
@@ -206,17 +244,24 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       });
 
       if (userError) {
-        console.error('❌ User profile insertion error:', userError);
-        console.error('Error details:', JSON.stringify(userError, null, 2));
+        logger.error('❌ User profile insertion error:', userError);
+        if (__DEV__) {
+          logger.error('Error details:', JSON.stringify(userError, null, 2));
+        }
         throw new Error(`Failed to create user profile: ${userError.message}`);
       }
       
-      console.log('✅ User profile created');
+      logger.info('✅ User profile created');
+      
+      const profileExists = await waitForProfile(authData.data.user.id);
+      if (!profileExists) {
+        throw new Error('Failed to create user profile');
+      }
 
       if (userType === 'artisan') {
-        console.log('🔵 Creating artisan profile...');
+        logger.info('🔵 Creating artisan profile...');
         const { error: artisanError } = await supabase.from('artisans').insert({
-          id: authData.user.id,
+          id: authData.data.user.id,
           category: (additionalData?.category as string) ?? 'Non spécifié',
           hourly_rate: (additionalData?.hourlyRate as number) || 50,
           travel_fee: (additionalData?.travelFee as number) || 25,
@@ -225,15 +270,15 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         });
 
         if (artisanError) {
-          console.error('❌ Artisan profile error:', artisanError);
+          logger.error('❌ Artisan profile error:', artisanError);
           throw new Error(`Failed to create artisan profile: ${artisanError.message}`);
         }
         
-        console.log('✅ Artisan profile created');
+        logger.info('✅ Artisan profile created');
 
-        console.log('🔵 Creating wallet...');
+        logger.info('🔵 Creating wallet...');
         const { error: walletError } = await supabase.from('wallets').insert({
-          artisan_id: authData.user.id,
+          artisan_id: authData.data.user.id,
           balance: 0,
           pending_balance: 0,
           total_earnings: 0,
@@ -241,44 +286,47 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         });
 
         if (walletError) {
-          console.warn('⚠️ Wallet creation failed:', walletError);
+          logger.error('⚠️ Wallet creation failed:', walletError);
         } else {
-          console.log('✅ Wallet created');
+          logger.info('✅ Wallet created');
         }
       } else if (userType === 'client') {
-        console.log('🔵 Creating client profile...');
+        logger.info('🔵 Creating client profile...');
         const { error: clientError } = await supabase.from('clients').insert({
-          id: authData.user.id,
+          id: authData.data.user.id,
         });
 
         if (clientError) {
-          console.error('❌ Client profile error:', clientError);
+          logger.error('❌ Client profile error:', clientError);
           throw new Error(`Failed to create client profile: ${clientError.message}`);
         }
         
-        console.log('✅ Client profile created');
+        logger.info('✅ Client profile created');
       } else if (userType === 'admin') {
-        console.log('🔵 Creating admin profile...');
+        logger.info('🔵 Creating admin profile...');
         const { error: adminError } = await supabase.from('admins').insert({
-          id: authData.user.id,
+          id: authData.data.user.id,
           role: (additionalData?.role as 'super_admin' | 'moderator') || 'moderator',
           permissions: (additionalData?.permissions as string[]) || [],
         });
 
         if (adminError) {
-          console.error('❌ Admin profile error:', adminError);
+          logger.error('❌ Admin profile error:', adminError);
           throw new Error(`Failed to create admin profile: ${adminError.message}`);
         }
         
-        console.log('✅ Admin profile created');
+        logger.info('✅ Admin profile created');
       }
 
-      console.log('✅✅✅ User signup complete:', email, userType);
-      return authData.user;
+      logger.info('✅ User signup complete:', email, userType);
+      return authData.data.user;
     } catch (error: any) {
-      console.error('❌❌❌ SIGNUP ERROR:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error message:', error?.message);
+      logger.error('❌ SIGNUP ERROR:', error?.message);
+      
+      if (authData?.data?.user) {
+        logger.info('🔄 Cleaning up failed signup...');
+        await supabase.auth.signOut();
+      }
       
       if (error instanceof Error) {
         throw error;
@@ -286,9 +334,9 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       
       throw new Error(typeof error === 'string' ? error : 'Failed to create account');
     }
-  };
+  }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -296,12 +344,18 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       });
 
       if (error) {
-        throw new Error(error.message || 'Login failed');
+        let errorMessage = error.message;
+        if (error.message?.includes('Invalid login credentials')) {
+          errorMessage = 'Email ou mot de passe incorrect';
+        } else if (error.message?.includes('Email not confirmed')) {
+          errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
+        }
+        throw new Error(errorMessage);
       }
-      console.log('✅ User signed in:', email);
+      logger.info('✅ User signed in:', email);
       return data.user;
     } catch (error: any) {
-      console.error('❌ Error signing in:', error);
+      logger.error('❌ Error signing in:', error?.message);
       
       if (error instanceof Error) {
         throw error;
@@ -309,37 +363,32 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       
       throw new Error(typeof error === 'string' ? error : 'Failed to sign in');
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
-      // Check if there's an active session before trying to sign out
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       
       if (currentSession) {
         const { error } = await supabase.auth.signOut();
         if (error) {
-          console.error('❌ Supabase signOut error:', error);
-          // Don't throw, just clear local state
+          logger.error('❌ Supabase signOut error:', error);
         }
       } else {
-        console.log('ℹ️ No active session to sign out from');
+        logger.info('ℹ️ No active session to sign out from');
       }
       
-      // Always clear local state regardless of signOut result
       setUser(null);
       setSession(null);
-      console.log('✅ User logged out');
+      logger.info('✅ User logged out');
     } catch (error) {
-      console.error('❌ Error during logout:', error);
-      // Still clear local state even if there's an error
+      logger.error('❌ Error during logout:', error);
       setUser(null);
       setSession(null);
-      // Don't throw the error to prevent UI issues
     }
-  };
+  }, []);
 
-  const updateUser = async (updates: Partial<User>) => {
+  const updateUser = useCallback(async (updates: Partial<User>) => {
     if (!user) return;
     
     try {
@@ -371,14 +420,14 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
       const updated = { ...user, ...updates };
       setUser(updated);
-      console.log('✅ User updated:', updated.name);
+      logger.info('✅ User updated:', updated.name);
     } catch (error) {
-      console.error('❌ Error updating user:', error);
+      logger.error('❌ Error updating user:', error);
       throw error;
     }
-  };
+  }, [user]);
 
-  return {
+  return useMemo(() => ({
     user,
     session,
     isLoading,
@@ -391,5 +440,5 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     signIn,
     logout,
     updateUser,
-  };
+  }), [user, session, isLoading, isInitialized, signUp, signIn, logout, updateUser]);
 });
