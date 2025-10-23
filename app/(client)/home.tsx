@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,21 +9,7 @@ import { useMissions } from '@/contexts/MissionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { ArtisanCategory } from '@/types';
-
-let MapView: any = null;
-let Marker: any = null;
-let PROVIDER_GOOGLE: any = null;
-
-if (Platform.OS !== 'web') {
-  try {
-    const maps = require('react-native-maps');
-    MapView = maps.default;
-    Marker = maps.Marker;
-    PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
-  } catch (e) {
-    console.log('Maps not available on this platform');
-  }
-}
+import { MapView, Marker, PROVIDER_GOOGLE } from '@/components/MapView';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -89,33 +75,24 @@ export default function ClientHomeScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.mapContainer, { paddingTop: insets.top }]}>
-        {Platform.OS === 'web' ? (
-          <View style={styles.mapPlaceholder}>
-            <View style={styles.mapOverlay}>
-              <Text style={styles.mapText}>🗺️</Text>
-              <Text style={styles.mapSubtext}>Carte interactive (non disponible sur web)</Text>
-            </View>
-          </View>
-        ) : (
-          <MapView
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            initialRegion={region}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-            showsCompass={true}
-            testID="map-view"
-          >
-            <Marker
-              coordinate={{
-                latitude: region.latitude,
-                longitude: region.longitude,
-              }}
-              title="Paris"
-              description="Votre position"
-            />
-          </MapView>
-        )}
+        <MapView
+          style={styles.map}
+          provider={PROVIDER_GOOGLE}
+          initialRegion={region}
+          showsUserLocation={true}
+          showsMyLocationButton={true}
+          showsCompass={true}
+          testID="map-view"
+        >
+          <Marker
+            coordinate={{
+              latitude: region.latitude,
+              longitude: region.longitude,
+            }}
+            title="Paris"
+            description="Votre position"
+          />
+        </MapView>
       </View>
 
       <View style={styles.content}>
@@ -304,25 +281,6 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
-  },
-  mapPlaceholder: {
-    height: 320,
-    backgroundColor: Colors.primaryLight + '30',
-    position: 'relative',
-  },
-  mapOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mapText: {
-    fontSize: 72,
-    marginBottom: 8,
-  },
-  mapSubtext: {
-    fontSize: 16,
-    color: Colors.primary,
-    fontWeight: '600' as const,
   },
   content: {
     flex: 1,
