@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings, MapPin, DollarSign, HelpCircle, LogOut, ChevronRight, Star, Briefcase } from 'lucide-react-native';
@@ -11,26 +11,13 @@ import { useState } from 'react';
 export default function ArtisanProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const { missions } = useMissions();
   const [isAvailable, setIsAvailable] = useState(true);
   
   const artisan = user?.type === 'artisan' ? (user as Artisan) : null;
   const artisanMissions = missions.filter(m => m.artisanId === user?.id);
   const completedCount = artisanMissions.filter(m => m.status === 'completed').length;
-
-  if (!artisan) {
-    return (
-      <View style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <Text style={styles.headerTitle}>Profil</Text>
-        </View>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Erreur de chargement du profil artisan</Text>
-        </View>
-      </View>
-    );
-  }
 
   const handleLogout = () => {
     Alert.alert(
@@ -50,19 +37,53 @@ export default function ArtisanProfileScreen() {
     );
   };
 
+  if (isLoading || !user) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <Text style={styles.headerTitle}>Profil</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.secondary} />
+          <Text style={styles.loadingText}>Chargement du profil...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!artisan) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <Text style={styles.headerTitle}>Profil</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Accès refusé</Text>
+          <Text style={styles.errorSubtext}>Cette page est réservée aux artisans</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.replace('/')}
+          >
+            <Text style={styles.backButtonText}>Retour</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   const menuSections = [
     {
       items: [
         { 
           icon: MapPin, 
           label: 'Rayon d\'intervention', 
-          value: `${artisan?.interventionRadius || 20} km`,
+          value: `${artisan.interventionRadius || 20} km`,
           onPress: () => console.log('Intervention radius') 
         },
         { 
           icon: DollarSign, 
           label: 'Tarifs', 
-          value: `${artisan?.hourlyRate || 50}€/h`,
+          value: `${artisan.hourlyRate || 50}€/h`,
           onPress: () => console.log('Rates') 
         },
         { 
@@ -378,6 +399,17 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     textAlign: 'center',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    marginTop: 16,
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -385,8 +417,27 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600' as const,
     color: Colors.error,
     textAlign: 'center',
+    marginBottom: 8,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.surface,
   },
 });
