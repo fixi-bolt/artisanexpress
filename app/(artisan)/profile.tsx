@@ -3,21 +3,64 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings, MapPin, DollarSign, HelpCircle, LogOut, ChevronRight, Star, Briefcase } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMissions } from '@/contexts/MissionContext';
 import { Artisan } from '@/types';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 export default function ArtisanProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, logout, isLoading } = useAuth();
   const { missions } = useMissions();
-  const [isAvailable, setIsAvailable] = useState(true);
+  const [isAvailable, setIsAvailable] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   const artisan = user?.type === 'artisan' ? (user as Artisan) : null;
-  const artisanMissions = missions.filter(m => m.artisanId === user?.id);
-  const completedCount = artisanMissions.filter(m => m.status === 'completed').length;
+  
+  useEffect(() => {
+    if (user && user.type !== 'artisan') {
+      router.replace('/(client)/profile');
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+    if (artisan?.isAvailable !== undefined) {
+      setIsAvailable(artisan.isAvailable);
+    }
+  }, [artisan]);
+
+  const artisanMissions = useMemo(
+    () => missions.filter(m => m.artisanId === user?.id),
+    [missions, user?.id]
+  );
+  const completedCount = useMemo(
+    () => artisanMissions.filter(m => m.status === 'completed').length,
+    [artisanMissions]
+  );
+
+  const handleAvailabilityChange = async (value: boolean) => {
+    if (!user?.id) return;
+    
+    try {
+      setIsSaving(true);
+      setIsAvailable(value);
+      
+      const { error } = await supabase
+        .from('artisans')
+        .update({ is_available: value })
+        .eq('id', user.id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('❌ Erreur disponibilité:', err);
+      setIsAvailable(!value);
+      Alert.alert('Erreur', 'Impossible de mettre à jour votre disponibilité.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -37,6 +80,39 @@ export default function ArtisanProfileScreen() {
     );
   };
 
+  const menuSections = useMemo(() => {
+    if (!artisan) return [];
+    
+    return [
+      {
+        items: [
+          { 
+            icon: MapPin, 
+            label: 'Rayon d\'intervention', 
+            value: `${artisan.interventionRadius || 20} km`,
+            onPress: () => console.log('Intervention radius') 
+          },
+          { 
+            icon: DollarSign, 
+            label: 'Tarifs', 
+            value: `${artisan.hourlyRate || 50}€/h`,
+            onPress: () => console.log('Rates') 
+          },
+          { 
+            icon: Settings, 
+            label: 'Paramètres', 
+            onPress: () => console.log('Settings') 
+          },
+        ],
+      },
+      {
+        items: [
+          { icon: HelpCircle, label: 'Aide & Support', onPress: () => router.push('/support') },
+        ],
+      },
+    ];
+  }, [artisan, router]);
+
   if (isLoading || !user) {
     return (
       <View style={styles.container}>
@@ -52,53 +128,8 @@ export default function ArtisanProfileScreen() {
   }
 
   if (!artisan) {
-    return (
-      <View style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <Text style={styles.headerTitle}>Profil</Text>
-        </View>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Accès refusé</Text>
-          <Text style={styles.errorSubtext}>Cette page est réservée aux artisans</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.replace('/')}
-          >
-            <Text style={styles.backButtonText}>Retour</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+    return null;
   }
-
-  const menuSections = [
-    {
-      items: [
-        { 
-          icon: MapPin, 
-          label: 'Rayon d\'intervention', 
-          value: `${artisan.interventionRadius || 20} km`,
-          onPress: () => console.log('Intervention radius') 
-        },
-        { 
-          icon: DollarSign, 
-          label: 'Tarifs', 
-          value: `${artisan.hourlyRate || 50}€/h`,
-          onPress: () => console.log('Rates') 
-        },
-        { 
-          icon: Settings, 
-          label: 'Paramètres', 
-          onPress: () => console.log('Settings') 
-        },
-      ],
-    },
-    {
-      items: [
-        { icon: HelpCircle, label: 'Aide & Support', onPress: () => console.log('Help') },
-      ],
-    },
-  ];
 
   return (
     <View style={styles.container}>
@@ -116,6 +147,12 @@ export default function ArtisanProfileScreen() {
             <Text style={styles.avatarText}>
               {user?.name?.charAt(0) || 'A'}
             </Text>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: isAvailable ? Colors.success : Colors.border },
+              ]}
+            />
           </View>
           <Text style={styles.name}>{user?.name || 'Artisan'}</Text>
           <Text style={styles.email}>{user?.email || 'artisan@example.com'}</Text>
@@ -129,19 +166,19 @@ export default function ArtisanProfileScreen() {
               ))}
             </View>
           )}
+        </View>
 
-          <View style={styles.stats}>
-            <View style={styles.stat}>
-              <Briefcase size={20} color={Colors.secondary} strokeWidth={2} />
-              <Text style={styles.statValue}>{completedCount}</Text>
-              <Text style={styles.statLabel}>Missions</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Star size={20} color={Colors.warning} strokeWidth={2} />
-              <Text style={styles.statValue}>{user?.rating || '4.9'}</Text>
-              <Text style={styles.statLabel}>Note moyenne</Text>
-            </View>
+        <View style={styles.statsCard}>
+          <View style={styles.stat}>
+            <Briefcase size={22} color={Colors.secondary} />
+            <Text style={styles.statValue}>{completedCount}</Text>
+            <Text style={styles.statLabel}>Missions</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Star size={22} color={Colors.warning} />
+            <Text style={styles.statValue}>{user?.rating || '4.9'}</Text>
+            <Text style={styles.statLabel}>Note moyenne</Text>
           </View>
         </View>
 
@@ -154,9 +191,10 @@ export default function ArtisanProfileScreen() {
           </View>
           <Switch
             value={isAvailable}
-            onValueChange={setIsAvailable}
+            onValueChange={handleAvailabilityChange}
             trackColor={{ false: Colors.border, true: Colors.success }}
             thumbColor={Colors.surface}
+            disabled={isSaving}
           />
         </View>
 
@@ -201,7 +239,7 @@ export default function ArtisanProfileScreen() {
           <Text style={styles.logoutText}>Déconnexion</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>Version 1.0.0</Text>
+        <Text style={styles.version}>Version 1.1.0</Text>
       </ScrollView>
     </View>
   );
@@ -251,6 +289,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    position: 'relative',
+  },
+  statusDot: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: Colors.surface,
   },
   avatarText: {
     fontSize: 32,
@@ -273,7 +322,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 20,
+    marginTop: 12,
   },
   specialtyBadge: {
     backgroundColor: Colors.secondary + '15',
@@ -286,15 +335,18 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: Colors.secondary,
   },
-  stats: {
+  statsCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
   },
   stat: {
-    flex: 1,
     alignItems: 'center',
-    gap: 6,
+    flex: 1,
   },
   statValue: {
     fontSize: 20,
