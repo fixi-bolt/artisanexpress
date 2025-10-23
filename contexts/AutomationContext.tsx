@@ -34,22 +34,22 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
             return;
           }
 
-          if (!raw || raw === 'null' || raw === 'undefined' || raw.trim() === '') {
-            window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-            setSettings(DEFAULT_SETTINGS);
-            return;
-          }
-
-          const trimmed = raw.trim();
-          if (!trimmed.startsWith('{')) {
-            console.warn('Invalid JSON format, resetting');
-            window.localStorage.removeItem(key);
-            window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+          if (!raw || raw === 'null' || raw === 'undefined') {
+            try {
+              window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            } catch (e) {
+              console.error('Cannot write to localStorage');
+            }
             setSettings(DEFAULT_SETTINGS);
             return;
           }
 
           try {
+            const trimmed = raw.trim();
+            if (!trimmed || trimmed === '' || !trimmed.startsWith('{')) {
+              throw new Error('Invalid format');
+            }
+
             const parsed = JSON.parse(trimmed);
             if (
               parsed &&
@@ -63,9 +63,13 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
               throw new Error('Invalid structure');
             }
           } catch (parseError: any) {
-            console.warn('JSON parse error:', parseError?.message);
-            window.localStorage.removeItem(key);
-            window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            console.warn('Storage corrupted, resetting:', parseError?.message);
+            try {
+              window.localStorage.removeItem(key);
+              window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            } catch (e) {
+              console.error('Cannot reset localStorage');
+            }
             setSettings(DEFAULT_SETTINGS);
           }
         } else {
@@ -81,22 +85,22 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
             return;
           }
 
-          if (!raw || raw === 'null' || raw === 'undefined' || raw.trim() === '') {
-            await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-            setSettings(DEFAULT_SETTINGS);
-            return;
-          }
-
-          const trimmed = raw.trim();
-          if (!trimmed.startsWith('{')) {
-            console.warn('Invalid JSON format, resetting');
-            await AsyncStorage.removeItem(key);
-            await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+          if (!raw || raw === 'null' || raw === 'undefined') {
+            try {
+              await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            } catch (e) {
+              console.error('Cannot write to AsyncStorage');
+            }
             setSettings(DEFAULT_SETTINGS);
             return;
           }
 
           try {
+            const trimmed = raw.trim();
+            if (!trimmed || trimmed === '' || !trimmed.startsWith('{')) {
+              throw new Error('Invalid format');
+            }
+
             const parsed = JSON.parse(trimmed);
             if (
               parsed &&
@@ -110,9 +114,13 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
               throw new Error('Invalid structure');
             }
           } catch (parseError: any) {
-            console.warn('JSON parse error:', parseError?.message);
-            await AsyncStorage.removeItem(key);
-            await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            console.warn('Storage corrupted, resetting:', parseError?.message);
+            try {
+              await AsyncStorage.removeItem(key);
+              await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            } catch (e) {
+              console.error('Cannot reset AsyncStorage');
+            }
             setSettings(DEFAULT_SETTINGS);
           }
         }
