@@ -3,20 +3,11 @@ import { useRouter, Stack } from 'expo-router';
 import { useMemo, useCallback } from 'react';
 import Colors from '@/constants/colors';
 import { categories } from '@/mocks/artisans';
-import { ShieldCheck, ShoppingBag, TicketPercent, MapPin, ChevronRight, Crown, Sparkles, Home, Car, Wrench } from 'lucide-react-native';
+import { ShieldCheck, ShoppingBag, TicketPercent, MapPin, Sparkles, Home, Car, Wrench } from 'lucide-react-native';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-
-function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
-    </View>
-  );
-}
 
 export default function SuperHubScreen() {
   const router = useRouter();
@@ -67,14 +58,13 @@ export default function SuperHubScreen() {
             <Text style={styles.heroTitle}>ArtisanNow Super App</Text>
             <Text style={styles.heroSubtitle}>Réparez, déménagez, nettoyez, installez. 24/7.</Text>
             <View style={styles.heroCtas}>
-              <TouchableOpacity style={styles.primaryCta} onPress={() => go('/(client)/premium' as any)} activeOpacity={0.85} testID="ctaPremium">
-                <Crown size={18} color={Colors.surface} strokeWidth={2} />
-                <Text style={styles.primaryCtaText}>Abonnement multi-services</Text>
-                <ChevronRight size={18} color={Colors.surface} strokeWidth={2} />
+              <TouchableOpacity style={styles.primaryCta} onPress={() => go('/(client)/marketplace' as any)} activeOpacity={0.85} testID="ctaMarketplace">
+                <ShoppingBag size={18} color={Colors.surface} strokeWidth={2} />
+                <Text style={styles.primaryCtaText}>Marketplace</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryCta} onPress={() => go('/(client)/marketplace' as any)} activeOpacity={0.85} testID="ctaMarketplace">
-                <ShoppingBag size={18} color={Colors.primary} strokeWidth={2} />
-                <Text style={styles.secondaryCtaText}>Marketplace</Text>
+              <TouchableOpacity style={styles.secondaryCta} onPress={() => go('/ai-assistant' as any)} activeOpacity={0.85} testID="ctaAI">
+                <Sparkles size={18} color={Colors.primary} strokeWidth={2} />
+                <Text style={styles.secondaryCtaText}>Assistant IA</Text>
               </TouchableOpacity>
             </View>
           </View>

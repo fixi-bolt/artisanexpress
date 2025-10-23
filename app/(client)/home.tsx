@@ -8,8 +8,18 @@ import { categories } from '@/mocks/artisans';
 import { useMissions } from '@/contexts/MissionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ArtisanCategory } from '@/types';
+
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
+
+if (Platform.OS !== 'web') {
+  const maps = require('react-native-maps');
+  MapView = maps.default;
+  Marker = maps.Marker;
+  PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
+}
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 

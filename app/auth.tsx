@@ -52,10 +52,6 @@ export default function AuthScreen() {
   }, [isAuthenticated, user, loading, router]);
 
   const handleSelectType = (type: UserType) => {
-    if (type === 'artisan') {
-      router.push('/(artisan)/siret-verification' as any);
-      return;
-    }
     setSelectedType(type);
     setMode('signup');
   };
@@ -69,13 +65,6 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       const additionalData: Record<string, unknown> = { phone };
-      
-      if (selectedType === 'artisan') {
-        Alert.alert('Inscription artisan', "La création d'un compte artisan se fait via la vérification SIRET.");
-        setLoading(false);
-        router.push('/(artisan)/siret-verification' as any);
-        return;
-      }
 
       await signUp(email, password, name, selectedType, additionalData);
       trackEvent('user_logged_in', { userType: selectedType });
@@ -273,7 +262,7 @@ export default function AuthScreen() {
           <Text style={styles.subtitle}>
             {mode === 'login' 
               ? 'Connectez-vous pour continuer'
-              : `Inscription en tant que ${selectedType === 'client' ? 'Client' : ''}`
+              : `Inscription en tant que ${selectedType === 'client' ? 'Client' : 'Artisan'}`
             }
           </Text>
         </View>
