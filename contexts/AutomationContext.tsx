@@ -21,98 +21,103 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
 
   useEffect(() => {
     const load = async () => {
+      const key = 'automation:settings';
       try {
-        const key = 'automation:settings';
         if (Platform.OS === 'web') {
+          let raw: string | null = null;
+          
           try {
-            const raw = window.localStorage.getItem(key);
-            if (!raw || raw.trim() === '' || raw === 'null' || raw === 'undefined') {
-              window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-              setSettings(DEFAULT_SETTINGS);
-              return;
-            }
-            
-            // Check if it looks like valid JSON
-            const trimmed = raw.trim();
-            if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-              console.warn('⚠️ Invalid JSON in localStorage, resetting');
-              window.localStorage.removeItem(key);
-              window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-              setSettings(DEFAULT_SETTINGS);
-              return;
-            }
-            
+            raw = window.localStorage.getItem(key);
+          } catch (accessError) {
+            console.error('localStorage access error:', accessError);
+            setSettings(DEFAULT_SETTINGS);
+            return;
+          }
+
+          if (!raw || raw === 'null' || raw === 'undefined' || raw.trim() === '') {
+            window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            setSettings(DEFAULT_SETTINGS);
+            return;
+          }
+
+          const trimmed = raw.trim();
+          if (!trimmed.startsWith('{')) {
+            console.warn('Invalid JSON format, resetting');
+            window.localStorage.removeItem(key);
+            window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            setSettings(DEFAULT_SETTINGS);
+            return;
+          }
+
+          try {
             const parsed = JSON.parse(trimmed);
             if (
-              parsed && 
-              typeof parsed === 'object' && 
-              'autoInvoice' in parsed &&
-              'autoReminderDays' in parsed &&
-              'accountingExport' in parsed
+              parsed &&
+              typeof parsed === 'object' &&
+              typeof parsed.autoInvoice === 'boolean' &&
+              typeof parsed.autoReminderDays === 'number' &&
+              ['off', 'weekly', 'monthly'].includes(parsed.accountingExport)
             ) {
               setSettings(parsed as AutomationSettings);
             } else {
-              console.warn('⚠️ Invalid automation settings structure, using defaults');
-              window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-              setSettings(DEFAULT_SETTINGS);
+              throw new Error('Invalid structure');
             }
-          } catch (error: any) {
-            console.error('❌ Failed to load automation settings:', error?.message);
-            try {
-              window.localStorage.removeItem(key);
-              window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-            } catch (e) {
-              console.error('❌ Failed to reset localStorage:', e);
-            }
+          } catch (parseError: any) {
+            console.warn('JSON parse error:', parseError?.message);
+            window.localStorage.removeItem(key);
+            window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
             setSettings(DEFAULT_SETTINGS);
           }
         } else {
           const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
+          
+          let raw: string | null = null;
+          
           try {
-            const raw = await AsyncStorage.getItem(key);
-            if (!raw || raw.trim() === '' || raw === 'null' || raw === 'undefined') {
-              await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-              setSettings(DEFAULT_SETTINGS);
-              return;
-            }
-            
-            // Check if it looks like valid JSON
-            const trimmed = raw.trim();
-            if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-              console.warn('⚠️ Invalid JSON in AsyncStorage, resetting');
-              await AsyncStorage.removeItem(key);
-              await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-              setSettings(DEFAULT_SETTINGS);
-              return;
-            }
-            
+            raw = await AsyncStorage.getItem(key);
+          } catch (accessError) {
+            console.error('AsyncStorage access error:', accessError);
+            setSettings(DEFAULT_SETTINGS);
+            return;
+          }
+
+          if (!raw || raw === 'null' || raw === 'undefined' || raw.trim() === '') {
+            await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            setSettings(DEFAULT_SETTINGS);
+            return;
+          }
+
+          const trimmed = raw.trim();
+          if (!trimmed.startsWith('{')) {
+            console.warn('Invalid JSON format, resetting');
+            await AsyncStorage.removeItem(key);
+            await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+            setSettings(DEFAULT_SETTINGS);
+            return;
+          }
+
+          try {
             const parsed = JSON.parse(trimmed);
             if (
-              parsed && 
-              typeof parsed === 'object' && 
-              'autoInvoice' in parsed &&
-              'autoReminderDays' in parsed &&
-              'accountingExport' in parsed
+              parsed &&
+              typeof parsed === 'object' &&
+              typeof parsed.autoInvoice === 'boolean' &&
+              typeof parsed.autoReminderDays === 'number' &&
+              ['off', 'weekly', 'monthly'].includes(parsed.accountingExport)
             ) {
               setSettings(parsed as AutomationSettings);
             } else {
-              console.warn('⚠️ Invalid automation settings structure, using defaults');
-              await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-              setSettings(DEFAULT_SETTINGS);
+              throw new Error('Invalid structure');
             }
-          } catch (error: any) {
-            console.error('❌ Failed to load automation settings:', error?.message);
-            try {
-              await AsyncStorage.removeItem(key);
-              await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-            } catch (e) {
-              console.error('❌ Failed to reset AsyncStorage:', e);
-            }
+          } catch (parseError: any) {
+            console.warn('JSON parse error:', parseError?.message);
+            await AsyncStorage.removeItem(key);
+            await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
             setSettings(DEFAULT_SETTINGS);
           }
         }
       } catch (e: any) {
-        console.error('❌ Failed to load automation settings', e?.message);
+        console.error('Failed to load automation settings:', e?.message);
         setSettings(DEFAULT_SETTINGS);
       }
     };
