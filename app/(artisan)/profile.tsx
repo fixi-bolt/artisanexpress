@@ -15,9 +15,22 @@ export default function ArtisanProfileScreen() {
   const { missions } = useMissions();
   const [isAvailable, setIsAvailable] = useState(true);
   
-  const artisan = user as Artisan;
+  const artisan = user?.type === 'artisan' ? (user as Artisan) : null;
   const artisanMissions = missions.filter(m => m.artisanId === user?.id);
   const completedCount = artisanMissions.filter(m => m.status === 'completed').length;
+
+  if (!artisan) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <Text style={styles.headerTitle}>Profil</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Erreur de chargement du profil artisan</Text>
+        </View>
+      </View>
+    );
+  }
 
   const handleLogout = () => {
     Alert.alert(
@@ -43,13 +56,13 @@ export default function ArtisanProfileScreen() {
         { 
           icon: MapPin, 
           label: 'Rayon d\'intervention', 
-          value: `${artisan.interventionRadius} km`,
+          value: `${artisan?.interventionRadius || 20} km`,
           onPress: () => console.log('Intervention radius') 
         },
         { 
           icon: DollarSign, 
           label: 'Tarifs', 
-          value: `${artisan.hourlyRate}€/h`,
+          value: `${artisan?.hourlyRate || 50}€/h`,
           onPress: () => console.log('Rates') 
         },
         { 
@@ -86,13 +99,15 @@ export default function ArtisanProfileScreen() {
           <Text style={styles.name}>{user?.name || 'Artisan'}</Text>
           <Text style={styles.email}>{user?.email || 'artisan@example.com'}</Text>
 
-          <View style={styles.specialtiesContainer}>
-            {artisan.specialties?.slice(0, 3).map((specialty, index) => (
-              <View key={index} style={styles.specialtyBadge}>
-                <Text style={styles.specialtyText}>{specialty}</Text>
-              </View>
-            ))}
-          </View>
+          {artisan?.specialties && artisan.specialties.length > 0 && (
+            <View style={styles.specialtiesContainer}>
+              {artisan.specialties.slice(0, 3).map((specialty, index) => (
+                <View key={index} style={styles.specialtyBadge}>
+                  <Text style={styles.specialtyText}>{specialty}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View style={styles.stats}>
             <View style={styles.stat}>
@@ -361,6 +376,17 @@ const styles = StyleSheet.create({
   version: {
     fontSize: 13,
     color: Colors.textLight,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.error,
     textAlign: 'center',
   },
 });
