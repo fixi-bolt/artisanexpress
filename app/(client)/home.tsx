@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { categories } from '@/mocks/artisans';
 import { useMissions } from '@/contexts/MissionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ArtisanCategory } from '@/types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -20,6 +21,12 @@ export default function ClientHomeScreen() {
   const hasNavigated = useRef(false);
   const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
   const [query, setQuery] = useState<string>('');
+  const [region] = useState({
+    latitude: 48.8566,
+    longitude: 2.3522,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
   
   useScreenTracking('client_home');
 
@@ -67,11 +74,34 @@ export default function ClientHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.mapPlaceholder, { paddingTop: insets.top }]}>
-        <View style={styles.mapOverlay}>
-          <Text style={styles.mapText}>🗺️</Text>
-          <Text style={styles.mapSubtext}>Carte interactive</Text>
-        </View>
+      <View style={[styles.mapContainer, { paddingTop: insets.top }]}>
+        {Platform.OS === 'web' ? (
+          <View style={styles.mapPlaceholder}>
+            <View style={styles.mapOverlay}>
+              <Text style={styles.mapText}>🗺️</Text>
+              <Text style={styles.mapSubtext}>Carte interactive (non disponible sur web)</Text>
+            </View>
+          </View>
+        ) : (
+          <MapView
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            initialRegion={region}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            showsCompass={true}
+            testID="map-view"
+          >
+            <Marker
+              coordinate={{
+                latitude: region.latitude,
+                longitude: region.longitude,
+              }}
+              title="Paris"
+              description="Votre position"
+            />
+          </MapView>
+        )}
       </View>
 
       <View style={styles.content}>
@@ -253,6 +283,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  mapContainer: {
+    height: 320,
+    position: 'relative',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
   },
   mapPlaceholder: {
     height: 320,

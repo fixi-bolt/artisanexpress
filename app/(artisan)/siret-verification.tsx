@@ -62,12 +62,20 @@ export default function SiretVerificationScreen() {
       console.error('Signup error', e);
       setErrorText(e?.message ?? 'Erreur lors de la création du compte');
     }
-  }, [canSubmit, email, password, name, signUp, formattedSiret, kbisUrl, prefill]);
+  }, [canSubmit, email, password, name, signUp, formattedSiret, kbisUrl, prefill, router]);
 
   return (
     <View style={styles.container} testID="siretVerificationScreen">
-      <Stack.Screen options={{ headerShown: true, title: 'Vérification SIRET' }} />
+      <Stack.Screen options={{ 
+        headerShown: true, 
+        title: 'Vérification SIRET',
+        headerStyle: {
+          backgroundColor: Colors.surface,
+        },
+        headerTintColor: Colors.text,
+      }} />
       <Text style={styles.title} testID="title">Inscription Artisan</Text>
+      <Text style={styles.subtitle}>Créez votre compte professionnel en quelques étapes</Text>
       <View style={styles.card} testID="formCard">
         <Text style={styles.sectionTitle}>Compte</Text>
         <TextInput
@@ -147,8 +155,22 @@ export default function SiretVerificationScreen() {
         </View>
       )}
 
+      {!canSubmit && !prefill && formattedSiret.length === 14 && (
+        <View style={styles.infoBox}>
+          <AlertCircle color={Colors.warning} size={18} />
+          <Text style={styles.infoText}>Veuillez d&apos;abord vérifier votre SIRET en cliquant sur &quot;Vérifier le SIRET&quot;</Text>
+        </View>
+      )}
+
+      {!canSubmit && prefill && (email.length <= 3 || password.length < 6 || name.length <= 1) && (
+        <View style={styles.infoBox}>
+          <AlertCircle color={Colors.warning} size={18} />
+          <Text style={styles.infoText}>Veuillez remplir tous les champs du formulaire (nom, email, mot de passe)</Text>
+        </View>
+      )}
+
       <TouchableOpacity onPress={onSubmit} disabled={!canSubmit} style={[styles.cta, !canSubmit && styles.buttonDisabled]} testID="submitButton">
-        <Text style={styles.ctaText}>Créer mon compte artisan</Text>
+        <Text style={styles.ctaText}>{canSubmit ? 'Créer mon compte artisan' : 'Complétez le formulaire'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -156,7 +178,8 @@ export default function SiretVerificationScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: Colors.background },
-  title: { fontSize: 24, fontWeight: '700' as const, color: Colors.text, marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: '700' as const, color: Colors.text, marginBottom: 4 },
+  subtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 16 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   sectionTitle: { fontSize: 16, fontWeight: '600' as const, color: Colors.textSecondary, marginBottom: 8 },
   input: { backgroundColor: '#F8FAFC', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#E2E8F0', color: Colors.text, marginBottom: 10 },
@@ -169,6 +192,8 @@ const styles = StyleSheet.create({
   prefillValue: { fontSize: 14, color: Colors.text },
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', padding: 10, borderRadius: 10, marginBottom: 12 },
   errorText: { color: Colors.error, flex: 1 },
+  infoBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.warning + '15', borderWidth: 1, borderColor: Colors.warning + '50', padding: 12, borderRadius: 10, marginBottom: 12 },
+  infoText: { color: Colors.textSecondary, flex: 1, fontSize: 13 },
   cta: { backgroundColor: Colors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   ctaText: { color: '#fff', fontWeight: '700' as const, fontSize: 16 },
 });
