@@ -288,17 +288,25 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   useEffect(() => {
     let mounted = true;
     
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      if (mounted) {
-        setSession(currentSession);
-        if (currentSession?.user) {
-          loadUserProfile(currentSession.user.id);
-        } else {
+    supabase.auth.getSession()
+      .then(({ data: { session: currentSession } }) => {
+        if (mounted) {
+          setSession(currentSession);
+          if (currentSession?.user) {
+            loadUserProfile(currentSession.user.id);
+          } else {
+            setIsLoading(false);
+            setIsInitialized(true);
+          }
+        }
+      })
+      .catch((error) => {
+        logger.error('Error getting session:', error?.message);
+        if (mounted) {
           setIsLoading(false);
           setIsInitialized(true);
         }
-      }
-    });
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (mounted) {
@@ -307,6 +315,8 @@ export const [AuthContext, useAuth] = createContextHook(() => {
           loadUserProfile(newSession.user.id);
         } else {
           setUser(null);
+          setIsLoading(false);
+          setIsInitialized(true);
         }
       }
     });

@@ -26,12 +26,23 @@ function RootLayoutNav() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (auth && !auth.isLoading) {
-      const timer = setTimeout(() => {
+    if (auth) {
+      if (!auth.isLoading) {
+        const timer = setTimeout(() => {
+          setIsReady(true);
+          SplashScreen.hideAsync().catch(() => {});
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+      
+      // Force ready state after 5 seconds to prevent infinite loading
+      const forceReadyTimer = setTimeout(() => {
+        console.log('⚠️ Force showing app after timeout');
         setIsReady(true);
         SplashScreen.hideAsync().catch(() => {});
-      }, 100);
-      return () => clearTimeout(timer);
+      }, 5000);
+      
+      return () => clearTimeout(forceReadyTimer);
     }
   }, [auth]);
 

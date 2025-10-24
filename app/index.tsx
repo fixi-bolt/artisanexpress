@@ -12,12 +12,19 @@ export default function WelcomeScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   
-  const { isAuthenticated, isClient } = authContext || { isAuthenticated: false, isClient: false };
+  const { isAuthenticated } = authContext || { isAuthenticated: false };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace(isClient ? '/(client)/home' as any : '/(artisan)/dashboard' as any);
-    } else {
+    if (isAuthenticated && authContext.user) {
+      const userType = authContext.user.type;
+      if (userType === 'client') {
+        router.replace('/(client)/home' as any);
+      } else if (userType === 'artisan') {
+        router.replace('/(artisan)/dashboard' as any);
+      } else if (userType === 'admin') {
+        router.replace('/(admin)/dashboard' as any);
+      }
+    } else if (!isAuthenticated && authContext && !authContext.isLoading) {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -31,12 +38,12 @@ export default function WelcomeScreen() {
         }),
       ]).start();
     }
-  }, [isAuthenticated, isClient, fadeAnim, slideAnim, router]);
+  }, [isAuthenticated, authContext, fadeAnim, slideAnim, router]);
 
-  if (!authContext) {
+  if (!authContext || (authContext.isLoading && !authContext.isInitialized)) {
     return (
       <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
-        <Text>Chargement...</Text>
+        <Text style={{ color: Colors.text, fontSize: 16 }}>Chargement...</Text>
       </View>
     );
   }
