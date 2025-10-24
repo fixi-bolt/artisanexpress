@@ -28,17 +28,16 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
           
           try {
             raw = window.localStorage.getItem(key);
-          } catch (accessError) {
-            console.error('localStorage access error:', accessError);
+          } catch {
             setSettings(DEFAULT_SETTINGS);
             return;
           }
 
-          if (!raw || raw === 'null' || raw === 'undefined') {
+          if (!raw || raw === 'null' || raw === 'undefined' || raw.trim() === '') {
             try {
               window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-            } catch (e) {
-              console.error('Cannot write to localStorage');
+            } catch {
+              
             }
             setSettings(DEFAULT_SETTINGS);
             return;
@@ -46,7 +45,7 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
 
           try {
             const trimmed = raw.trim();
-            if (!trimmed || trimmed === '' || !trimmed.startsWith('{')) {
+            if (!trimmed.startsWith('{')) {
               throw new Error('Invalid format');
             }
 
@@ -62,13 +61,12 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
             } else {
               throw new Error('Invalid structure');
             }
-          } catch (parseError: any) {
-            console.warn('Storage corrupted, resetting:', parseError?.message);
+          } catch {
             try {
               window.localStorage.removeItem(key);
               window.localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-            } catch (e) {
-              console.error('Cannot reset localStorage');
+            } catch {
+              
             }
             setSettings(DEFAULT_SETTINGS);
           }
@@ -79,17 +77,16 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
           
           try {
             raw = await AsyncStorage.getItem(key);
-          } catch (accessError) {
-            console.error('AsyncStorage access error:', accessError);
+          } catch {
             setSettings(DEFAULT_SETTINGS);
             return;
           }
 
-          if (!raw || raw === 'null' || raw === 'undefined') {
+          if (!raw || raw === 'null' || raw === 'undefined' || raw.trim() === '') {
             try {
               await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-            } catch (e) {
-              console.error('Cannot write to AsyncStorage');
+            } catch {
+              
             }
             setSettings(DEFAULT_SETTINGS);
             return;
@@ -97,7 +94,7 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
 
           try {
             const trimmed = raw.trim();
-            if (!trimmed || trimmed === '' || !trimmed.startsWith('{')) {
+            if (!trimmed.startsWith('{')) {
               throw new Error('Invalid format');
             }
 
@@ -113,19 +110,17 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
             } else {
               throw new Error('Invalid structure');
             }
-          } catch (parseError: any) {
-            console.warn('Storage corrupted, resetting:', parseError?.message);
+          } catch {
             try {
               await AsyncStorage.removeItem(key);
               await AsyncStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
-            } catch (e) {
-              console.error('Cannot reset AsyncStorage');
+            } catch {
+              
             }
             setSettings(DEFAULT_SETTINGS);
           }
         }
-      } catch (e: any) {
-        console.error('Failed to load automation settings:', e?.message);
+      } catch {
         setSettings(DEFAULT_SETTINGS);
       }
     };
