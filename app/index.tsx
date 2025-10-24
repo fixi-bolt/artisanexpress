@@ -11,12 +11,21 @@ export default function WelcomeScreen() {
   const authContext = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+  const hasRedirected = useRef(false);
   
-  const { isAuthenticated } = authContext || { isAuthenticated: false };
+  const { isAuthenticated, user, isLoading, isInitialized } = authContext || { 
+    isAuthenticated: false, 
+    user: null,
+    isLoading: true,
+    isInitialized: false
+  };
 
   useEffect(() => {
-    if (isAuthenticated && authContext.user) {
-      const userType = authContext.user.type;
+    if (!isInitialized) return;
+    
+    if (isAuthenticated && user && !hasRedirected.current) {
+      hasRedirected.current = true;
+      const userType = user.type;
       if (userType === 'client') {
         router.replace('/(client)/home' as any);
       } else if (userType === 'artisan') {
@@ -24,7 +33,7 @@ export default function WelcomeScreen() {
       } else if (userType === 'admin') {
         router.replace('/(admin)/dashboard' as any);
       }
-    } else if (!isAuthenticated && authContext && !authContext.isLoading) {
+    } else if (!isAuthenticated && !isLoading && isInitialized && !hasRedirected.current) {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -38,7 +47,7 @@ export default function WelcomeScreen() {
         }),
       ]).start();
     }
-  }, [isAuthenticated, authContext?.isLoading, authContext?.user?.type]);
+  }, [isAuthenticated, isLoading, isInitialized, user?.id, fadeAnim, slideAnim, router]);
 
   if (!authContext || (authContext.isLoading && !authContext.isInitialized)) {
     return (

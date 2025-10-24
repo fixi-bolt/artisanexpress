@@ -287,6 +287,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
   useEffect(() => {
     let mounted = true;
+    let initialLoad = true;
     
     supabase.auth.getSession()
       .then(({ data: { session: currentSession } }) => {
@@ -309,15 +310,20 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (mounted) {
-        setSession(newSession);
-        if (newSession?.user) {
-          loadUserProfile(newSession.user.id);
-        } else {
-          setUser(null);
-          setIsLoading(false);
-          setIsInitialized(true);
-        }
+      if (!mounted) return;
+      
+      if (initialLoad) {
+        initialLoad = false;
+        return;
+      }
+      
+      setSession(newSession);
+      if (newSession?.user) {
+        loadUserProfile(newSession.user.id);
+      } else {
+        setUser(null);
+        setIsLoading(false);
+        setIsInitialized(true);
       }
     });
 
