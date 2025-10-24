@@ -38,7 +38,7 @@ export default function WelcomeScreen() {
         }),
       ]).start();
     }
-  }, [isAuthenticated, authContext, fadeAnim, slideAnim, router]);
+  }, [isAuthenticated, authContext?.isLoading, authContext?.user?.type]);
 
   if (!authContext || (authContext.isLoading && !authContext.isInitialized)) {
     return (
