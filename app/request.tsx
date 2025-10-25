@@ -180,7 +180,7 @@ Description: ${description || 'Pas de description'}`,
         
         const parsedAnalysis = {
           detectedCategory: 'plumber',
-          severity: 'medium' as const,
+          severity: 'medium' as 'low' | 'medium' | 'high',
           confidence: 0.85,
           probableIssues: ['Fuite d\'eau possible', 'Joint défectueux'],
           safetyAdvice: ['Couper l\'arrivée d\'eau', 'Placer un récipient sous la fuite'],
@@ -200,7 +200,8 @@ Description: ${description || 'Pas de description'}`,
         }
         
         const basePrice = 80;
-        const severityMultiplier = parsedAnalysis.severity === 'high' ? 1.5 : parsedAnalysis.severity === 'medium' ? 1.2 : 1.0;
+        const severity = parsedAnalysis.severity;
+        const severityMultiplier = severity === 'high' ? 1.5 : severity === 'medium' ? 1.2 : 1.0;
         const estimated = Math.round(basePrice * severityMultiplier);
         setEstimatedPrice(estimated);
         setDynamicPrice({
