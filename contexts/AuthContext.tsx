@@ -288,6 +288,13 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   useEffect(() => {
     let mounted = true;
     let initialLoad = true;
+    const timeout = setTimeout(() => {
+      if (mounted && !isInitialized) {
+        logger.warn('⏱️  Auth initialization timeout - forcing ready state');
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
+    }, 8000);
     
     supabase.auth.getSession()
       .then(({ data: { session: currentSession } }) => {
@@ -329,9 +336,10 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, [loadUserProfile]);
+  }, [loadUserProfile, isInitialized]);
 
 
 
