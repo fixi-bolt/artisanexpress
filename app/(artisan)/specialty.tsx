@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import { CheckCircle2, ChevronDown, ChevronUp, Wrench } from 'lucide-react-native';
@@ -40,7 +40,7 @@ const ALL_CATEGORIES = [
 
 export default function SpecialtySelectionScreen() {
   const router = useRouter();
-  const { user, isArtisan, updateUser } = useAuth();
+  const { user, isArtisan } = useAuth();
   const [selected, setSelected] = useState<string>('');
   const [custom, setCustom] = useState<string>('');
   const [showOthers, setShowOthers] = useState<boolean>(false);
@@ -50,6 +50,8 @@ export default function SpecialtySelectionScreen() {
   const canContinue = useMemo(() => Boolean((selected && selected.length > 0) || (custom && custom.trim().length > 1)), [selected, custom]);
 
   const onSave = useCallback(async () => {
+    if (isSaving) return;
+    
     setError('');
     if (!isArtisan || !user) {
       setError("Action non autorisée");
@@ -68,15 +70,14 @@ export default function SpecialtySelectionScreen() {
         .update({ category: chosen })
         .eq('id', user.id);
       if (dbError) throw dbError;
-      await updateUser({ ...(user as any), category: chosen } as any);
+      
       router.replace('/(artisan)/dashboard' as any);
     } catch (e: any) {
       console.error('Save specialty error', e);
       setError(e?.message ?? 'Erreur lors de la sauvegarde');
-    } finally {
       setIsSaving(false);
     }
-  }, [isArtisan, user, canContinue, custom, selected, updateUser, router]);
+  }, [isArtisan, user, canContinue, custom, selected, router, isSaving]);
 
   return (
     <View style={styles.container} testID="specialtyScreen">
