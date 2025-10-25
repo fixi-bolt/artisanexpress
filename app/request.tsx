@@ -35,31 +35,62 @@ export default function RequestScreen() {
   const [estimatedPrice, setEstimatedPrice] = useState<number>(80 + Math.floor(Math.random() * 70));
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim() || !description.trim()) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs requis');
       return;
     }
 
-    const mission = createMission({
-      category: categoryId,
-      title: title.trim(),
-      description: description.trim(),
-      photos,
-      location: {
-        latitude: 48.8566,
-        longitude: 2.3522,
-        address,
-      },
-      estimatedPrice,
-    });
+    try {
+      console.log('Creating mission with data:', {
+        category: categoryId,
+        title: title.trim(),
+        description: description.trim(),
+        photos,
+        location: {
+          latitude: 48.8566,
+          longitude: 2.3522,
+          address,
+        },
+        estimatedPrice,
+      });
 
-    console.log('Mission created:', mission.id);
-    Alert.alert(
-      'Demande envoyée !',
-      'Nous recherchons un artisan disponible. Vous serez notifié dès qu\'un artisan accepte.',
-      [{ text: 'OK', onPress: () => router.back() }]
-    );
+      const mission = await createMission({
+        category: categoryId,
+        title: title.trim(),
+        description: description.trim(),
+        photos,
+        location: {
+          latitude: 48.8566,
+          longitude: 2.3522,
+          address,
+        },
+        estimatedPrice,
+      });
+
+      console.log('✅ Mission created successfully:', mission);
+      Alert.alert(
+        'Demande envoyée !',
+        'Nous recherchons un artisan disponible. Vous serez notifié dès qu\'un artisan accepte.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    } catch (error: any) {
+      console.error('❌ Error creating mission:', error);
+      
+      let errorMessage = 'Une erreur est survenue lors de la création de la mission.';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.details) {
+        errorMessage = error.details;
+      } else if (error?.hint) {
+        errorMessage = error.hint;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      Alert.alert('Erreur', errorMessage);
+    }
   };
 
   const handleAddPhoto = async () => {

@@ -170,7 +170,24 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     location: Location;
     estimatedPrice: number;
   }) => {
-    if (!user || user.type !== 'client') throw new Error('Only clients can create missions');
+    if (!user || user.type !== 'client') {
+      const error = new Error('Only clients can create missions');
+      console.error('❌ Auth error:', error);
+      throw error;
+    }
+
+    console.log('[MissionContext] Creating mission with:', {
+      client_id: user.id,
+      category: data.category,
+      title: data.title,
+      description: data.description,
+      photos: data.photos?.length || 0,
+      latitude: data.location.latitude,
+      longitude: data.location.longitude,
+      address: data.location.address,
+      status: 'pending',
+      estimated_price: data.estimatedPrice,
+    });
 
     try {
       const commission = data.estimatedPrice > 150 ? 0.15 : 0.10;
@@ -193,7 +210,17 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         .select()
         .single();
 
-      if (missionError) throw missionError;
+      if (missionError) {
+        console.error('❌ Supabase error:', {
+          message: missionError.message,
+          details: missionError.details,
+          hint: missionError.hint,
+          code: missionError.code,
+        });
+        throw new Error(missionError.message || 'Failed to create mission');
+      }
+
+      console.log('✅ Mission created successfully:', missionData);
 
       const { error: notifError } = await supabase.from('notifications').insert({
         user_id: user.id,
@@ -216,11 +243,17 @@ export const [MissionContext, useMissions] = createContextHook(() => {
       }
 
       await loadMissions();
-      console.log('✅ Mission created:', missionData.id);
+      console.log('✅ Mission list refreshed');
       
       return missionData;
-    } catch (error) {
-      console.error('❌ Error creating mission:', error);
+    } catch (error: any) {
+      console.error('❌ Error in createMission:', {
+        error,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        stack: error?.stack,
+      });
       throw error;
     }
   }, [user, sendNotification]);
