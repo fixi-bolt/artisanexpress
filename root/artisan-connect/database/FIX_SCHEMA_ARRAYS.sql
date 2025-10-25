@@ -27,7 +27,7 @@ ALTER COLUMN photos TYPE text[] USING photos::text[];
 ALTER TABLE public.subscriptions
 ALTER COLUMN features TYPE text[] USING features::text[];
 
-RAISE NOTICE '✅ Types ARRAY corrigés';
+DO $$ BEGIN RAISE NOTICE '✅ Types ARRAY corrigés'; END $$;
 
 -- ========================================
 -- 2️⃣ AJOUTER CONTRAINTES DE COHÉRENCE
@@ -103,7 +103,7 @@ ADD CONSTRAINT valid_invoice_amounts CHECK (
   AND total_amount >= amount
 );
 
-RAISE NOTICE '✅ Contraintes de cohérence ajoutées';
+DO $$ BEGIN RAISE NOTICE '✅ Contraintes de cohérence ajoutées'; END $$;
 
 -- ========================================
 -- 3️⃣ AMÉLIORER LA PRÉCISION DES DECIMALS
@@ -155,7 +155,7 @@ ALTER TABLE public.subscriptions
 ALTER COLUMN commission TYPE numeric(10,4),
 ALTER COLUMN monthly_price TYPE numeric(10,2);
 
-RAISE NOTICE '✅ Précision des decimals améliorée';
+DO $$ BEGIN RAISE NOTICE '✅ Précision des decimals améliorée'; END $$;
 
 -- ========================================
 -- 4️⃣ NETTOYER LES DONNÉES INVALIDES
@@ -176,7 +176,7 @@ UPDATE public.users
 SET rating = 5.00, updated_at = NOW()
 WHERE rating > 5.00;
 
-RAISE NOTICE '✅ Données invalides nettoyées';
+DO $$ BEGIN RAISE NOTICE '✅ Données invalides nettoyées'; END $$;
 
 -- ========================================
 -- 5️⃣ VÉRIFICATION FINALE
