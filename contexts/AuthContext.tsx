@@ -4,6 +4,7 @@ import { User, UserType, Artisan, Client, Admin } from '@/types';
 import { supabase } from '@/lib/supabase';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
+import { clearAuthState } from '@/utils/clearAuthState';
 
 const __DEV__ = process.env.NODE_ENV !== 'production';
 
@@ -308,19 +309,40 @@ export const [AuthContext, useAuth] = createContextHook(() => {
           }
         }
       })
-      .catch((error) => {
+      .catch(async (error) => {
         logger.error('Error getting session:', error?.message);
+        
+        if (error?.message?.includes('refresh') || error?.message?.includes('token')) {
+          logger.warn('🔄 Invalid session detected, clearing auth state...');
+          await clearAuthState();
+        }
+        
         if (mounted) {
+          setSession(null);
+          setUser(null);
           setIsLoading(false);
           setIsInitialized(true);
         }
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
       
       if (initialLoad) {
         initialLoad = false;
+        return;
+      }
+      
+      if (event === 'TOKEN_REFRESHED') {
+        logger.info('🔄 Token refreshed successfully');
+      }
+      
+      if (event === 'SIGNED_OUT') {
+        logger.info('👋 User signed out');
+        setUser(null);
+        setSession(null);
+        setIsLoading(false);
+        setIsInitialized(true);
         return;
       }
       
@@ -521,20 +543,17 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
   const logout = useCallback(async () => {
     try {
-      // Always try to sign out, ignore session errors
       const { error } = await supabase.auth.signOut();
       if (error && !error.message?.includes('session') && !error.message?.includes('refresh')) {
         logger.error('SignOut error:', error.message);
       }
-      
+    } catch (error: any) {
+      logger.warn('Error during logout:', error?.message);
+    } finally {
+      await clearAuthState();
       setUser(null);
       setSession(null);
       logger.success('User logged out');
-    } catch (error: any) {
-      // Even if signOut fails, clear local state
-      logger.warn('Error during logout, clearing local state:', error?.message);
-      setUser(null);
-      setSession(null);
     }
   }, []);
 

@@ -16,6 +16,7 @@ import { LocalizationProvider } from '@/contexts/LocalizationContext';
 import { AutomationProvider } from '@/contexts/AutomationContext';
 import Colors from '@/constants/colors';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AuthErrorHandler } from '@/components/AuthErrorHandler';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -55,8 +56,10 @@ function RootLayoutNav() {
   }
 
   return (
-    <Stack screenOptions={{ headerBackTitle: "Retour", headerShown: false }}>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+    <>
+      <AuthErrorHandler />
+      <Stack screenOptions={{ headerBackTitle: "Retour", headerShown: false }}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="(client)" options={{ headerShown: false }} />
@@ -81,7 +84,8 @@ function RootLayoutNav() {
       <Stack.Screen name="(artisan)/wallet" options={{ headerShown: true, title: "Portefeuille" }} />
       <Stack.Screen name="(artisan)/siret-verification" options={{ headerShown: true, title: "Vérification SIRET" }} />
       <Stack.Screen name="(artisan)/specialty" options={{ headerShown: true, title: "Votre spécialité" }} />
-    </Stack>
+      </Stack>
+    </>
   );
 }
 
