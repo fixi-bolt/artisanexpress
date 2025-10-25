@@ -1,5 +1,5 @@
 import React from 'react';
-import MapViewNative, { Marker as MarkerNative, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapViewNative, { Marker as MarkerNative, PROVIDER_DEFAULT } from 'react-native-maps';
 
 interface MapViewProps {
   style?: any;
@@ -21,7 +21,7 @@ export function MapView(props: MapViewProps) {
   return (
     <MapViewNative
       style={props.style}
-      provider={PROVIDER_GOOGLE}
+      provider={PROVIDER_DEFAULT}
       initialRegion={props.initialRegion}
       showsUserLocation={props.showsUserLocation}
       showsMyLocationButton={props.showsMyLocationButton}
@@ -52,4 +52,4 @@ export function Marker(props: MarkerProps) {
   );
 }
 
-export { PROVIDER_GOOGLE };
+export const PROVIDER_GOOGLE = PROVIDER_DEFAULT;
