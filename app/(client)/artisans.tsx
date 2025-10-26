@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
@@ -90,73 +90,79 @@ export default function AllArtisansScreen() {
         <View style={{ width: 44 }} />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Catégories populaires</Text>
-        <View style={styles.grid}>
-          {priorityCategories.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              style={styles.catPill}
-              onPress={() => {
-                console.log('Open category', c.id);
-                router.push(`/request?category=${c.id}` as any);
-              }}
-              activeOpacity={0.85}
-              testID={`cat-${c.id}`}
-            >
-              <Text style={styles.catEmoji}>{c.emoji}</Text>
-              <Text style={styles.catLabel}>{c.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity
-          style={styles.dropdownToggle}
-          onPress={() => setIsMoreOpen((v) => !v)}
-          activeOpacity={0.8}
-          testID="toggle-more-cats"
-        >
-          <Text style={styles.dropdownToggleText}>Voir plus de catégories</Text>
-          {isMoreOpen ? <ChevronUp size={18} color={Colors.text} /> : <ChevronDown size={18} color={Colors.text} />}
-        </TouchableOpacity>
-
-        {isMoreOpen && (
-          <View style={styles.dropdown} testID="more-cats">
-            {otherCategories.map((c) => (
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Catégories populaires</Text>
+          <View style={styles.grid}>
+            {priorityCategories.map((c) => (
               <TouchableOpacity
                 key={c.id}
-                style={styles.dropdownItem}
+                style={styles.catPill}
                 onPress={() => {
-                  console.log('Open category from dropdown', c.id);
-                  setIsMoreOpen(false);
+                  console.log('Open category', c.id);
                   router.push(`/request?category=${c.id}` as any);
                 }}
-                activeOpacity={0.8}
-                testID={`more-cat-${c.id}`}
+                activeOpacity={0.85}
+                testID={`cat-${c.id}`}
               >
-                <Text style={styles.dropdownEmoji}>{c.emoji}</Text>
-                <Text style={styles.dropdownLabel}>{c.label}</Text>
+                <Text style={styles.catEmoji}>{c.emoji}</Text>
+                <Text style={styles.catLabel}>{c.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
-        )}
-      </View>
 
-      <FlatList
-        data={data}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={() => (
+          <TouchableOpacity
+            style={styles.dropdownToggle}
+            onPress={() => setIsMoreOpen((v) => !v)}
+            activeOpacity={0.8}
+            testID="toggle-more-cats"
+          >
+            <Text style={styles.dropdownToggleText}>Voir plus de catégories</Text>
+            {isMoreOpen ? <ChevronUp size={18} color={Colors.text} /> : <ChevronDown size={18} color={Colors.text} />}
+          </TouchableOpacity>
+
+          {isMoreOpen && (
+            <View style={styles.dropdown} testID="more-cats">
+              {otherCategories.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    console.log('Open category from dropdown', c.id);
+                    setIsMoreOpen(false);
+                    router.push(`/request?category=${c.id}` as any);
+                  }}
+                  activeOpacity={0.8}
+                  testID={`more-cat-${c.id}`}
+                >
+                  <Text style={styles.dropdownEmoji}>{c.emoji}</Text>
+                  <Text style={styles.dropdownLabel}>{c.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {data.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>Aucun artisan trouvé</Text>
             <Text style={styles.emptyText}>Essayez un autre mot-clé.</Text>
           </View>
+        ) : (
+          <View style={styles.artisansList}>
+            {data.map((item, index) => (
+              <View key={item.id}>
+                {renderItem({ item })}
+                {index < data.length - 1 && <View style={styles.separator} />}
+              </View>
+            ))}
+          </View>
         )}
-        showsVerticalScrollIndicator={false}
-        testID="artisans-list"
-      />
+      </ScrollView>
     </View>
   );
 }
@@ -187,9 +193,12 @@ const styles = StyleSheet.create({
   dropdownToggleText: { fontSize: 14, color: Colors.text, fontWeight: '700' as const },
   dropdown: { marginTop: 8, backgroundColor: Colors.background, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderLight, overflow: 'hidden' },
   dropdownItem: { paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
+  scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
+  artisansList: { padding: 16, paddingBottom: 40 },
   dropdownEmoji: { fontSize: 16, marginRight: 8 },
   dropdownLabel: { fontSize: 14, color: Colors.text },
-  listContent: { padding: 16, paddingBottom: 40 },
+
   separator: { height: 12 },
   card: {
     backgroundColor: Colors.surface,
