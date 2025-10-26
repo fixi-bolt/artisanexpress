@@ -14,7 +14,7 @@ import { LocalizationProvider } from '@/contexts/LocalizationContext';
 import { AutomationProvider } from '@/contexts/AutomationContext';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { StripeProvider } from '@stripe/stripe-react-native';
+import { StripeProvider } from '@/components/StripeProvider';
 import { useEffect } from 'react';
 
 const queryClient = new QueryClient();
