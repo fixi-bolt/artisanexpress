@@ -30,31 +30,40 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
       return '';
     }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
 
-    if (finalStatus !== 'granted') {
-      console.log('[Notifications] Permission not granted');
+      if (finalStatus !== 'granted') {
+        console.log('[Notifications] Permission not granted');
+        return '';
+      }
+
+      const token = (await Notifications.getExpoPushTokenAsync()).data;
+      console.log('[Notifications] Expo push token:', token);
+
+      return token;
+    } catch (error) {
+      console.log('[Notifications] Error getting push token:', error);
       return '';
     }
-
-    const token = (await Notifications.getExpoPushTokenAsync()).data;
-    console.log('[Notifications] Expo push token:', token);
-
-    return token;
   }, []);
 
   useEffect(() => {
-    registerForPushNotificationsAsync().then((token) => {
-      if (token) {
-        setExpoPushToken(token);
-      }
-    });
+    registerForPushNotificationsAsync()
+      .then((token) => {
+        if (token) {
+          setExpoPushToken(token);
+        }
+      })
+      .catch((error) => {
+        console.log('[Notifications] Failed to register for push notifications:', error);
+      });
 
     if (Platform.OS !== 'web') {
       notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
