@@ -2,7 +2,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CardField, useConfirmPayment } from '@stripe/stripe-react-native';
+import { StripeCardField } from '@/components/StripeCardField';
+import { useStripePayment } from '@/hooks/useStripePayment';
 import { CreditCard, DollarSign, CheckCircle, XCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { trpc } from '@/lib/trpc';
@@ -17,7 +18,7 @@ export default function PaymentStripeScreen() {
 
   const { user } = useAuth();
   const { missions } = useMissions();
-  const { confirmPayment, loading: confirmingPayment } = useConfirmPayment();
+  const { confirmCardPayment, loading: confirmingPayment } = useStripePayment();
 
   const mission = missions.find(m => m.id === missionId);
   
@@ -78,9 +79,7 @@ export default function PaymentStripeScreen() {
       setPaymentStatus('confirming');
       console.log('[STRIPE] Confirming payment...');
 
-      const { error, paymentIntent: confirmedPayment } = await confirmPayment(paymentIntent.clientSecret, {
-        paymentMethodType: 'Card',
-      });
+      const { error, paymentIntent: confirmedPayment } = await confirmCardPayment(paymentIntent.clientSecret);
 
       if (error) {
         console.error('[STRIPE] Payment confirmation error:', error);
@@ -90,7 +89,7 @@ export default function PaymentStripeScreen() {
         return;
       }
 
-      if (confirmedPayment?.status === 'Succeeded') {
+      if (confirmedPayment?.status === 'succeeded') {
         console.log('[STRIPE] Payment succeeded! Processing...');
         
         const result = await processPaymentMutation.mutateAsync({
@@ -183,7 +182,7 @@ export default function PaymentStripeScreen() {
           <View style={styles.cardFieldContainer}>
             <CreditCard size={24} color={Colors.primary} strokeWidth={2} style={styles.cardIcon} />
             
-            <CardField
+            <StripeCardField
               postalCodeEnabled={false}
               placeholders={{
                 number: '4242 4242 4242 4242',
