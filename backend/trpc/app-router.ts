@@ -58,6 +58,8 @@ import { getFinanceDashboardProcedure } from "./routes/monetization/finance/get-
 import { createApiKeyProcedure } from "./routes/public-api/create-api-key/route";
 import { listEndpointsProcedure } from "./routes/public-api/list-endpoints/route";
 import { verifySiretProcedure } from "./routes/compliance/verify-siret/route";
+import { updateLocationProcedure } from "./routes/location/update-location/route";
+import { getNearbyMissionsProcedure } from "./routes/location/get-nearby-missions/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -166,6 +168,10 @@ export const appRouter = createTRPCRouter({
   }),
   compliance: createTRPCRouter({
     verifySiret: verifySiretProcedure,
+  }),
+  location: createTRPCRouter({
+    updateLocation: updateLocationProcedure,
+    getNearbyMissions: getNearbyMissionsProcedure,
   }),
 });
 

@@ -1,19 +1,104 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bell, MapPin, Clock, Euro, Navigation, Image as ImageIcon } from 'lucide-react-native';
+import { Bell, MapPin, Clock, Euro, Navigation, Image as ImageIcon, Satellite } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMissions } from '@/contexts/MissionContext';
 import { Mission } from '@/types';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import { trpc } from '@/lib/trpc';
+import { useCallback, useState } from 'react';
+
+interface NearbyMission {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  status: string;
+  estimatedPrice: number;
+  address: string;
+  clientId: string;
+  clientName: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    address: string;
+  };
+  photos: string[];
+  distanceKm: number;
+  createdAt: Date;
+}
 
 export default function ArtisanDashboardScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { getPendingMissionsForArtisan, acceptMission, unreadNotificationsCount } = useMissions();
+  const [nearbyMissions, setNearbyMissions] = useState<NearbyMission[]>([]);
+  const [isLoadingMissions, setIsLoadingMissions] = useState<boolean>(false);
   
   const pendingMissions = getPendingMissionsForArtisan();
+
+  const updateLocationMutation = trpc.location.updateLocation.useMutation();
+
+  const handleLocationUpdate = useCallback(
+    async (position: { latitude: number; longitude: number; accuracy: number | null }) => {
+      if (!user?.id) return;
+
+      console.log('[Dashboard] Updating artisan location:', position);
+
+      try {
+        await updateLocationMutation.mutateAsync({
+          artisanId: user.id,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          accuracy: position.accuracy || undefined,
+        });
+
+        console.log('[Dashboard] Fetching nearby missions...');
+        setIsLoadingMissions(true);
+
+        const response = await fetch(
+          `${process.env.EXPO_PUBLIC_API_URL || ''}/api/trpc/location.getNearbyMissions?input=${encodeURIComponent(
+            JSON.stringify({
+              artisanId: user.id,
+              latitude: position.latitude,
+              longitude: position.longitude,
+            })
+          )}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.result?.data?.missions) {
+            console.log('[Dashboard] Found missions:', data.result.data.missions.length);
+            setNearbyMissions(data.result.data.missions);
+          }
+        }
+      } catch (error) {
+        console.error('[Dashboard] Error updating location or fetching missions:', error);
+      } finally {
+        setIsLoadingMissions(false);
+      }
+    },
+    [user?.id]
+  );
+
+  const handleLocationError = useCallback((error: Error) => {
+    console.error('[Dashboard] Location error:', error);
+    Alert.alert(
+      'Erreur de localisation',
+      'Impossible d\'accéder à votre position. Les missions à proximité ne seront pas disponibles.',
+      [{ text: 'OK' }]
+    );
+  }, []);
+
+  const { position, error: locationError, isLoading: isLoadingLocation, hasPermission } = useGeolocation({
+    enabled: true,
+    updateInterval: 30000,
+    onLocationUpdate: handleLocationUpdate,
+    onError: handleLocationError,
+  });
 
   const handleAcceptMission = (missionId: string) => {
     Alert.alert(
@@ -57,6 +142,31 @@ export default function ArtisanDashboardScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {hasPermission && position && (
+          <View style={styles.locationCard}>
+            <View style={styles.locationHeader}>
+              <Satellite size={20} color={Colors.secondary} strokeWidth={2} />
+              <Text style={styles.locationTitle}>Position GPS active</Text>
+            </View>
+            <Text style={styles.locationText}>
+              📍 Lat: {position.latitude.toFixed(4)}, Lng: {position.longitude.toFixed(4)}
+            </Text>
+            {position.accuracy && (
+              <Text style={styles.locationAccuracy}>Précision: ±{Math.round(position.accuracy)}m</Text>
+            )}
+          </View>
+        )}
+
+        {!hasPermission && (
+          <View style={styles.permissionCard}>
+            <Text style={styles.permissionEmoji}>📍</Text>
+            <Text style={styles.permissionTitle}>Localisation désactivée</Text>
+            <Text style={styles.permissionText}>
+              Activez la localisation pour voir les missions à proximité
+            </Text>
+          </View>
+        )}
+
         <View style={styles.statusCard}>
           <View style={styles.statusContent}>
             <Text style={styles.statusLabel}>Statut</Text>
@@ -73,7 +183,39 @@ export default function ArtisanDashboardScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              Nouvelles demandes
+              Missions à proximité
+            </Text>
+            {isLoadingMissions && <ActivityIndicator size="small" color={Colors.secondary} />}
+            {!isLoadingMissions && nearbyMissions.length > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{nearbyMissions.length}</Text>
+              </View>
+            )}
+          </View>
+
+          {nearbyMissions.length === 0 && !isLoadingMissions ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyEmoji}>🔍</Text>
+              <Text style={styles.emptyTitle}>Aucune mission à proximité</Text>
+              <Text style={styles.emptyText}>
+                Les missions dans votre rayon d&apos;intervention apparaîtront ici
+              </Text>
+            </View>
+          ) : (
+            nearbyMissions.map((mission) => (
+              <NearbyMissionCard
+                key={mission.id}
+                mission={mission}
+                onAccept={() => handleAcceptMission(mission.id)}
+              />
+            ))
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              Toutes les demandes
             </Text>
             <View style={styles.countBadge}>
               <Text style={styles.countBadgeText}>{pendingMissions.length}</Text>
@@ -82,7 +224,7 @@ export default function ArtisanDashboardScreen() {
 
           {pendingMissions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>🔍</Text>
+              <Text style={styles.emptyEmoji}>✅</Text>
               <Text style={styles.emptyTitle}>Aucune demande</Text>
               <Text style={styles.emptyText}>
                 Les nouvelles demandes apparaîtront ici
@@ -108,6 +250,61 @@ export default function ArtisanDashboardScreen() {
           </Text>
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+function NearbyMissionCard({ mission, onAccept }: { mission: NearbyMission; onAccept: () => void }) {
+  const timeAgo = Math.floor((Date.now() - new Date(mission.createdAt).getTime()) / 60000);
+
+  return (
+    <View style={styles.requestCard}>
+      <View style={styles.requestHeader}>
+        <View style={styles.requestTimeContainer}>
+          <Clock size={14} color={Colors.secondary} strokeWidth={2} />
+          <Text style={styles.requestTime}>Il y a {timeAgo} min</Text>
+        </View>
+        <View style={styles.distanceBadge}>
+          <Navigation size={12} color={Colors.surface} strokeWidth={2} />
+          <Text style={styles.distanceText}>{mission.distanceKm.toFixed(1)} km</Text>
+        </View>
+      </View>
+
+      <Text style={styles.requestTitle}>{mission.title}</Text>
+      <Text style={styles.requestDescription} numberOfLines={2}>
+        {mission.description}
+      </Text>
+
+      <View style={styles.requestDetails}>
+        <View style={styles.requestDetail}>
+          <MapPin size={16} color={Colors.textSecondary} strokeWidth={2} />
+          <Text style={styles.requestDetailText} numberOfLines={1}>
+            {mission.address?.split(',')[0] || 'Adresse non spécifiée'}
+          </Text>
+        </View>
+        {mission.photos && mission.photos.length > 0 && (
+          <View style={styles.requestDetail}>
+            <ImageIcon size={16} color={Colors.textSecondary} strokeWidth={2} />
+            <Text style={styles.requestDetailText}>
+              {mission.photos.length} photo{mission.photos.length > 1 ? 's' : ''}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.requestFooter}>
+        <View style={styles.priceContainer}>
+          <Euro size={18} color={Colors.success} strokeWidth={2} />
+          <Text style={styles.priceValue}>{mission.estimatedPrice}€</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.acceptButton}
+          onPress={onAccept}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.acceptButtonText}>Accepter</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -433,5 +630,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     lineHeight: 22,
+  },
+  locationCard: {
+    backgroundColor: Colors.secondary + '15',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.secondary + '30',
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  locationTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.secondary,
+  },
+  locationText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  locationAccuracy: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  permissionCard: {
+    backgroundColor: Colors.warning + '10',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.warning + '30',
+  },
+  permissionEmoji: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+  permissionTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 6,
+  },
+  permissionText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  distanceBadge: {
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  distanceText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: Colors.surface,
   },
 });
