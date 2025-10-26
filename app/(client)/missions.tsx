@@ -49,7 +49,7 @@ export default function ClientMissionsScreen() {
               <MissionCard 
                 key={mission.id} 
                 mission={mission}
-                onPress={() => router.push('/tracking' as any)}
+                onPress={() => router.push(`/mission-details?missionId=${mission.id}` as any)}
               />
             ))}
           </View>
@@ -62,7 +62,7 @@ export default function ClientMissionsScreen() {
               <MissionCard 
                 key={mission.id} 
                 mission={mission}
-                onPress={() => router.push(`/rate?missionId=${mission.id}` as any)}
+                onPress={() => router.push(`/mission-details?missionId=${mission.id}` as any)}
               />
             ))}
           </View>
@@ -75,6 +75,7 @@ export default function ClientMissionsScreen() {
               <MissionCard 
                 key={mission.id} 
                 mission={mission}
+                onPress={() => router.push(`/mission-details?missionId=${mission.id}` as any)}
               />
             ))}
           </View>
