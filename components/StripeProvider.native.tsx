@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, ReactElement } from 'react';
 import { StripeProvider as NativeStripeProvider } from '@stripe/stripe-react-native';
 
 interface StripeProviderProps {
@@ -9,7 +9,7 @@ interface StripeProviderProps {
 export function StripeProvider({ publishableKey, children }: StripeProviderProps) {
   return (
     <NativeStripeProvider publishableKey={publishableKey}>
-      <>{children}</>
+      {children as ReactElement}
     </NativeStripeProvider>
   );
 }
