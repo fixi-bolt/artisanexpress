@@ -1,122 +1,104 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { View, ActivityIndicator } from "react-native";
-import { AuthContext, useAuth } from '@/contexts/AuthContext';
+import { Stack } from 'expo-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthContext } from '@/contexts/AuthContext';
 import { MissionContext } from '@/contexts/MissionContext';
 import { PaymentContext } from '@/contexts/PaymentContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AnalyticsProvider } from '@/contexts/AnalyticsContext';
+import { BusinessAnalyticsContext } from '@/contexts/BusinessAnalyticsContext';
+import { MarketingContext } from '@/contexts/MarketingContext';
+import { CRMContext } from '@/contexts/CRMContext';
 import { MonetizationProvider } from '@/contexts/MonetizationContext';
-import { trpc, trpcClient } from '@/lib/trpc';
 import { LocalizationProvider } from '@/contexts/LocalizationContext';
 import { AutomationProvider } from '@/contexts/AutomationContext';
-import Colors from '@/constants/colors';
+import { BrandingProvider } from '@/contexts/BrandingContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { AuthErrorHandler } from '@/components/AuthErrorHandler';
-
-SplashScreen.preventAutoHideAsync();
+import { StripeProvider } from '@stripe/stripe-react-native';
+import { useEffect } from 'react';
 
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const auth = useAuth();
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    if (auth) {
-      if (!auth.isLoading) {
-        const timer = setTimeout(() => {
-          setIsReady(true);
-          SplashScreen.hideAsync().catch(() => {});
-        }, 100);
-        return () => clearTimeout(timer);
-      }
-      
-      // Force ready state after 5 seconds to prevent infinite loading
-      const forceReadyTimer = setTimeout(() => {
-        console.log('⚠️ Force showing app after timeout');
-        setIsReady(true);
-        SplashScreen.hideAsync().catch(() => {});
-      }, 5000);
-      
-      return () => clearTimeout(forceReadyTimer);
-    }
-  }, [auth]);
-
-  if (!auth || !isReady) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
-
   return (
-    <>
-      <AuthErrorHandler />
-      <Stack screenOptions={{ headerBackTitle: "Retour", headerShown: false }}>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-      <Stack.Screen name="auth" options={{ headerShown: false }} />
-      <Stack.Screen name="(client)" options={{ headerShown: false }} />
-      <Stack.Screen name="(artisan)" options={{ headerShown: false }} />
-      <Stack.Screen name="(admin)" options={{ headerShown: false }} />
-      <Stack.Screen name="admin-users" options={{ headerShown: true, title: "Gestion Utilisateurs" }} />
-      <Stack.Screen name="admin-missions" options={{ headerShown: true, title: "Gestion Missions" }} />
-      <Stack.Screen name="admin-transactions" options={{ headerShown: true, title: "Transactions" }} />
-      <Stack.Screen name="payment" options={{ presentation: "modal" }} />
-      <Stack.Screen name="chat" options={{ presentation: "modal", headerShown: true, title: "Chat" }} />
-      <Stack.Screen name="support" options={{ headerShown: false }} />
-      <Stack.Screen name="settings" options={{ presentation: "modal", headerShown: true, title: "Paramètres" }} />
-      <Stack.Screen name="automation" options={{ headerShown: true, title: "Automatisations" }} />
-      <Stack.Screen name="api-docs" options={{ headerShown: true, title: "API Publique" }} />
-      <Stack.Screen name="web-portal" options={{ headerShown: true, title: "Portail Web" }} />
-      <Stack.Screen name="branding" options={{ headerShown: true, title: "Branding" }} />
-      <Stack.Screen name="press-kit" options={{ headerShown: true, title: "Press Kit" }} />
-      <Stack.Screen name="investor" options={{ headerShown: true, title: "Investor Overview" }} />
-      <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-      <Stack.Screen name="(artisan)/subscription" options={{ headerShown: true, title: "Abonnements" }} />
-      <Stack.Screen name="(artisan)/heatmap" options={{ headerShown: true, title: "Carte de la demande" }} />
-      <Stack.Screen name="(artisan)/wallet" options={{ headerShown: true, title: "Portefeuille" }} />
-      <Stack.Screen name="(artisan)/siret-verification" options={{ headerShown: true, title: "Vérification SIRET" }} />
-      <Stack.Screen name="(artisan)/specialty" options={{ headerShown: true, title: "Votre spécialité" }} />
-      </Stack>
-    </>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="index" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="auth" />
+      <Stack.Screen name="auth-callback" />
+      <Stack.Screen name="request" />
+      <Stack.Screen name="tracking" />
+      <Stack.Screen name="payment" />
+      <Stack.Screen name="rate" />
+      <Stack.Screen name="chat" />
+      <Stack.Screen name="(client)" />
+      <Stack.Screen name="(artisan)" />
+      <Stack.Screen name="(admin)" />
+      <Stack.Screen name="admin-users" />
+      <Stack.Screen name="admin-missions" />
+      <Stack.Screen name="admin-transactions" />
+      <Stack.Screen name="admin-analytics" />
+      <Stack.Screen name="admin-marketing" />
+      <Stack.Screen name="admin-crm" />
+      <Stack.Screen name="admin-finance" />
+      <Stack.Screen name="ai-assistant" />
+      <Stack.Screen name="support" />
+      <Stack.Screen name="settings" />
+      <Stack.Screen name="automation" />
+      <Stack.Screen name="api-docs" />
+      <Stack.Screen name="web-portal" />
+      <Stack.Screen name="branding" />
+      <Stack.Screen name="investor" />
+      <Stack.Screen name="press-kit" />
+      <Stack.Screen name="mission-details" />
+    </Stack>
   );
 }
 
 export default function RootLayout() {
+  const publishableKey = process.env.STRIPE_PUBLIC_KEY || '';
+
+  useEffect(() => {
+    console.log('[STRIPE] Publishable key loaded:', publishableKey ? 'Yes' : 'No');
+  }, [publishableKey]);
+
   return (
     <ErrorBoundary>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <StripeProvider publishableKey={publishableKey}>
+          <AuthContext>
             <AnalyticsProvider>
-              <AuthContext>
-                <NotificationProvider>
-                  <MissionContext>
-                    <PaymentContext>
-                      <MonetizationProvider>
-                        <ChatProvider>
-                          <LocalizationProvider>
-                            <AutomationProvider>
-                              <RootLayoutNav />
-                            </AutomationProvider>
-                          </LocalizationProvider>
-                        </ChatProvider>
-                      </MonetizationProvider>
-                    </PaymentContext>
-                  </MissionContext>
-                </NotificationProvider>
-              </AuthContext>
+              <MissionContext>
+                <PaymentContext>
+                  <ChatProvider>
+                    <NotificationProvider>
+                      <BusinessAnalyticsContext>
+                        <MarketingContext>
+                          <CRMContext>
+                            <MonetizationProvider>
+                              <LocalizationProvider>
+                                <AutomationProvider>
+                                  <BrandingProvider>
+                                    <RootLayoutNav />
+                                  </BrandingProvider>
+                                </AutomationProvider>
+                              </LocalizationProvider>
+                            </MonetizationProvider>
+                          </CRMContext>
+                        </MarketingContext>
+                      </BusinessAnalyticsContext>
+                    </NotificationProvider>
+                  </ChatProvider>
+                </PaymentContext>
+              </MissionContext>
             </AnalyticsProvider>
-          </GestureHandlerRootView>
-        </QueryClientProvider>
-      </trpc.Provider>
+          </AuthContext>
+        </StripeProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }
