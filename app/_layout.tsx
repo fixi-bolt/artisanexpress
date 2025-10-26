@@ -72,10 +72,10 @@ export default function RootLayout() {
         <StripeProvider publishableKey={publishableKey}>
           <AuthContext>
             <AnalyticsProvider>
-              <MissionContext>
-                <PaymentContext>
-                  <ChatProvider>
-                    <NotificationProvider>
+              <NotificationProvider>
+                <MissionContext>
+                  <PaymentContext>
+                    <ChatProvider>
                       <BusinessAnalyticsContext>
                         <MarketingContext>
                           <CRMContext>
@@ -91,10 +91,10 @@ export default function RootLayout() {
                           </CRMContext>
                         </MarketingContext>
                       </BusinessAnalyticsContext>
-                    </NotificationProvider>
-                  </ChatProvider>
-                </PaymentContext>
-              </MissionContext>
+                    </ChatProvider>
+                  </PaymentContext>
+                </MissionContext>
+              </NotificationProvider>
             </AnalyticsProvider>
           </AuthContext>
         </StripeProvider>
