@@ -41,7 +41,8 @@ export default function ChatScreen() {
   const handleSend = async () => {
     if (!inputText.trim() || !user) return;
 
-    await sendMessage(inputText.trim(), user.id, user.name, user.type);
+    const userType = user.type === 'admin' ? 'client' : user.type;
+    await sendMessage(inputText.trim(), user.id, user.name, userType);
     setInputText('');
   };
 
