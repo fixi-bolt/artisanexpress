@@ -15,6 +15,7 @@ import { AutomationProvider } from '@/contexts/AutomationContext';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { StripeProvider } from '@/components/StripeProvider';
+import { trpc, trpcClient } from '@/lib/trpc';
 import { useEffect } from 'react';
 
 const queryClient = new QueryClient();
@@ -68,37 +69,39 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <StripeProvider publishableKey={publishableKey}>
-          <AuthContext>
-            <AnalyticsProvider>
-              <NotificationProvider>
-                <MissionContext>
-                  <PaymentContext>
-                    <ChatProvider>
-                      <BusinessAnalyticsContext>
-                        <MarketingContext>
-                          <CRMContext>
-                            <MonetizationProvider>
-                              <LocalizationProvider>
-                                <AutomationProvider>
-                                  <BrandingProvider>
-                                    <RootLayoutNav />
-                                  </BrandingProvider>
-                                </AutomationProvider>
-                              </LocalizationProvider>
-                            </MonetizationProvider>
-                          </CRMContext>
-                        </MarketingContext>
-                      </BusinessAnalyticsContext>
-                    </ChatProvider>
-                  </PaymentContext>
-                </MissionContext>
-              </NotificationProvider>
-            </AnalyticsProvider>
-          </AuthContext>
-        </StripeProvider>
-      </QueryClientProvider>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <StripeProvider publishableKey={publishableKey}>
+            <AuthContext>
+              <AnalyticsProvider>
+                <NotificationProvider>
+                  <MissionContext>
+                    <PaymentContext>
+                      <ChatProvider>
+                        <BusinessAnalyticsContext>
+                          <MarketingContext>
+                            <CRMContext>
+                              <MonetizationProvider>
+                                <LocalizationProvider>
+                                  <AutomationProvider>
+                                    <BrandingProvider>
+                                      <RootLayoutNav />
+                                    </BrandingProvider>
+                                  </AutomationProvider>
+                                </LocalizationProvider>
+                              </MonetizationProvider>
+                            </CRMContext>
+                          </MarketingContext>
+                        </BusinessAnalyticsContext>
+                      </ChatProvider>
+                    </PaymentContext>
+                  </MissionContext>
+                </NotificationProvider>
+              </AnalyticsProvider>
+            </AuthContext>
+          </StripeProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
     </ErrorBoundary>
   );
 }
