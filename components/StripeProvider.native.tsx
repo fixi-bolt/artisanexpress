@@ -7,5 +7,9 @@ interface StripeProviderProps {
 }
 
 export function StripeProvider({ publishableKey, children }: StripeProviderProps) {
-  return <NativeStripeProvider publishableKey={publishableKey}>{children}</NativeStripeProvider>;
+  return (
+    <NativeStripeProvider publishableKey={publishableKey}>
+      <>{children}</>
+    </NativeStripeProvider>
+  );
 }
