@@ -61,7 +61,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const publishableKey = process.env.STRIPE_PUBLIC_KEY || '';
+  const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLIC_KEY || '';
 
   useEffect(() => {
     console.log('[STRIPE] Publishable key loaded:', publishableKey ? 'Yes' : 'No');

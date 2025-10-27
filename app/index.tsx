@@ -49,10 +49,16 @@ export default function WelcomeScreen() {
     }
   }, [isAuthenticated, isLoading, isInitialized, user?.id, fadeAnim, slideAnim, router]);
 
-  if (!authContext || (authContext.isLoading && !authContext.isInitialized)) {
+  if (!authContext || !authContext.isInitialized) {
     return (
-      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={{ color: Colors.text, fontSize: 16 }}>Chargement...</Text>
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background }]}>
+        <View style={styles.logoContainer}>
+          <View style={styles.logo}>
+            <Wrench size={48} color={Colors.surface} strokeWidth={2.5} />
+          </View>
+        </View>
+        <Text style={styles.loadingTitle}>ArtisanExpress</Text>
+        <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
   }
@@ -363,5 +369,16 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600' as const,
     color: Colors.surface,
+  },
+  loadingTitle: {
+    fontSize: 28,
+    fontWeight: '800' as const,
+    color: Colors.text,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  loadingText: {
+    fontSize: 15,
+    color: Colors.textSecondary,
   },
 });
