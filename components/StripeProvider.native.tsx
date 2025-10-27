@@ -7,6 +7,10 @@ interface StripeProviderProps {
 }
 
 export function StripeProvider({ publishableKey, children }: StripeProviderProps) {
+  if (!publishableKey) {
+    console.warn('[Stripe Native] No publishable key provided, Stripe features will be disabled');
+    return <>{children}</>;
+  }
   return (
     <NativeStripeProvider publishableKey={publishableKey}>
       {children as ReactElement}

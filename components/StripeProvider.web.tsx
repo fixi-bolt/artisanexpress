@@ -8,6 +8,10 @@ interface StripeProviderProps {
 }
 
 export function StripeProvider({ publishableKey, children }: StripeProviderProps) {
+  if (!publishableKey) {
+    console.warn('[Stripe Web] No publishable key provided, Stripe features will be disabled');
+    return <>{children}</>;
+  }
   const stripePromise = loadStripe(publishableKey);
   return <Elements stripe={stripePromise}>{children}</Elements>;
 }
