@@ -73,8 +73,8 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <StripeProvider publishableKey={publishableKey}>
             <AuthContext>
-              <AnalyticsProvider>
-                <NotificationProvider>
+              <NotificationProvider>
+                <AnalyticsProvider>
                   <MissionContext>
                     <PaymentContext>
                       <ChatProvider>
@@ -96,8 +96,8 @@ export default function RootLayout() {
                       </ChatProvider>
                     </PaymentContext>
                   </MissionContext>
-                </NotificationProvider>
-              </AnalyticsProvider>
+                </AnalyticsProvider>
+              </NotificationProvider>
             </AuthContext>
           </StripeProvider>
         </QueryClientProvider>
