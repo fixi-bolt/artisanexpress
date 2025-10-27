@@ -20,11 +20,10 @@ const app = new Hono();
 // Enable CORS for all routes
 app.use("*", cors());
 
-// Mount tRPC router at /trpc
+// Mount tRPC router at /api/trpc
 app.use(
-  "/trpc/*",
+  "/api/trpc/*",
   trpcServer({
-    endpoint: "/api/trpc",
     router: appRouter,
     createContext,
   })
