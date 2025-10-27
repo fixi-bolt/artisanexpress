@@ -45,9 +45,10 @@ export default function ArtisanDashboardScreen() {
     async (position: { latitude: number; longitude: number; accuracy: number | null }) => {
       if (!user?.id) return;
 
-      console.log('[Dashboard] Updating artisan location:', position);
+      console.log('[Dashboard] Location received:', position);
 
       try {
+        console.log('[Dashboard] Attempting to update location on backend...');
         await updateLocationMutation.mutateAsync({
           artisanId: user.id,
           latitude: position.latitude,
@@ -68,8 +69,12 @@ export default function ArtisanDashboardScreen() {
           console.log('[Dashboard] Found missions:', result.missions.length);
           setNearbyMissions(result.missions);
         }
-      } catch (error) {
-        console.error('[Dashboard] Error updating location or fetching missions:', error);
+      } catch (error: any) {
+        if (error?.message?.includes('Network request failed') || error?.message?.includes('fetch')) {
+          console.log('[Dashboard] Backend not available - location features disabled');
+        } else {
+          console.error('[Dashboard] Error updating location or fetching missions:', error);
+        }
       } finally {
         setIsLoadingMissions(false);
       }
