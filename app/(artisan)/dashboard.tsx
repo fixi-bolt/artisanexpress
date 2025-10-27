@@ -1,5 +1,4 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, MapPin, Clock, Euro, Navigation, Image as ImageIcon, Satellite } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -40,6 +39,7 @@ export default function ArtisanDashboardScreen() {
   const pendingMissions = getPendingMissionsForArtisan();
 
   const updateLocationMutation = trpc.location.updateLocation.useMutation();
+  const utils = trpc.useUtils();
 
   const handleLocationUpdate = useCallback(
     async (position: { latitude: number; longitude: number; accuracy: number | null }) => {
@@ -58,22 +58,15 @@ export default function ArtisanDashboardScreen() {
         console.log('[Dashboard] Fetching nearby missions...');
         setIsLoadingMissions(true);
 
-        const response = await fetch(
-          `${process.env.EXPO_PUBLIC_API_URL || ''}/api/trpc/location.getNearbyMissions?input=${encodeURIComponent(
-            JSON.stringify({
-              artisanId: user.id,
-              latitude: position.latitude,
-              longitude: position.longitude,
-            })
-          )}`
-        );
+        const result = await utils.location.getNearbyMissions.fetch({
+          artisanId: user.id,
+          latitude: position.latitude,
+          longitude: position.longitude,
+        });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.result?.data?.missions) {
-            console.log('[Dashboard] Found missions:', data.result.data.missions.length);
-            setNearbyMissions(data.result.data.missions);
-          }
+        if (result?.missions) {
+          console.log('[Dashboard] Found missions:', result.missions.length);
+          setNearbyMissions(result.missions);
         }
       } catch (error) {
         console.error('[Dashboard] Error updating location or fetching missions:', error);
@@ -81,7 +74,7 @@ export default function ArtisanDashboardScreen() {
         setIsLoadingMissions(false);
       }
     },
-    [user?.id]
+    [user?.id, updateLocationMutation, utils]
   );
 
   const handleLocationError = useCallback((error: Error) => {
@@ -93,7 +86,7 @@ export default function ArtisanDashboardScreen() {
     );
   }, []);
 
-  const { position, error: locationError, isLoading: isLoadingLocation, hasPermission } = useGeolocation({
+  const { position, hasPermission } = useGeolocation({
     enabled: true,
     updateInterval: 30000,
     onLocationUpdate: handleLocationUpdate,
