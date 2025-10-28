@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HelpCircle, LogOut, ChevronRight, Star, Briefcase } from 'lucide-react-native';
+import { HelpCircle, LogOut, ChevronRight, Star, Briefcase, MapPin, DollarSign, Settings } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -87,6 +87,9 @@ export default function ArtisanProfileScreen() {
       {
         items: [
           { icon: HelpCircle, label: 'Aide & Support', onPress: () => router.push('/support') },
+          { icon: MapPin, label: "Rayon d'intervention", onPress: () => router.push('/(artisan)/intervention-radius') },
+          { icon: DollarSign, label: 'Tarifs', onPress: () => router.push('/(artisan)/rates') },
+          { icon: Settings, label: 'Paramètres', onPress: () => router.push('/(artisan)/settings') },
         ],
       },
     ];
