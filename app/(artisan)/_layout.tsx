@@ -95,6 +95,24 @@ export default function ArtisanTabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="intervention-radius"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="rates"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
