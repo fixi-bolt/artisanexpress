@@ -15,13 +15,14 @@ const getBaseUrl = () => {
   );
 };
 
+let backendErrorLogged = false;
+
 export const trpcClient = trpc.createClient({
   links: [
     httpLink({
       url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
       fetch(url, options) {
-        console.log('[tRPC] Request:', url);
         return fetch(url, {
           ...options,
           headers: {
@@ -33,19 +34,45 @@ export const trpcClient = trpc.createClient({
           
           if (!contentType || !contentType.includes('application/json')) {
             const text = await response.text();
-            console.error('[tRPC] Non-JSON response:', {
-              status: response.status,
-              statusText: response.statusText,
-              contentType,
-              body: text.substring(0, 200),
-            });
+            
+            if (!backendErrorLogged) {
+              console.error('\n🚨 BACKEND CONNECTION ERROR 🚨');
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.error('The backend server is not responding properly.');
+              console.error(`Backend URL: ${getBaseUrl()}/api/trpc`);
+              console.error(`Status: ${response.status}`);
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.error('\nPossible solutions:');
+              console.error('1. The backend may need to be restarted');
+              console.error('2. Check if the backend deployment is active');
+              console.error('3. Verify the EXPO_PUBLIC_RORK_API_BASE_URL in .env');
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+              backendErrorLogged = true;
+            }
             
             throw new Error(
-              `Backend returned non-JSON response. This usually means the backend is not running or not accessible. Status: ${response.status}`
+              `Backend server error (Status ${response.status}). The backend may need to be restarted.`
             );
           }
           
           return response;
+        }).catch((error) => {
+          if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
+            if (!backendErrorLogged) {
+              console.error('\n🚨 NETWORK ERROR 🚨');
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.error('Cannot connect to backend server.');
+              console.error(`Backend URL: ${getBaseUrl()}/api/trpc`);
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.error('\nPossible causes:');
+              console.error('1. No internet connection');
+              console.error('2. Backend server is down');
+              console.error('3. Firewall blocking the connection');
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━���━━━━━━━━\n');
+              backendErrorLogged = true;
+            }
+          }
+          throw error;
         });
       },
     }),
