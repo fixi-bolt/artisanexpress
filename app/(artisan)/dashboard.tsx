@@ -70,7 +70,9 @@ export default function ArtisanDashboardScreen() {
           setNearbyMissions(result.missions);
         }
       } catch (error: any) {
-        if (error?.message?.includes('Network request failed') || error?.message?.includes('fetch')) {
+        if (error?.message?.includes('Network request failed') || 
+            error?.message?.includes('fetch') ||
+            error?.message?.includes('JSON Parse error')) {
           console.log('[Dashboard] Backend not available - location features disabled');
         } else {
           console.error('[Dashboard] Error updating location or fetching missions:', error);
