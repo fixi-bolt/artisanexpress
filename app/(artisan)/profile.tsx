@@ -90,18 +90,18 @@ export default function ArtisanProfileScreen() {
             icon: MapPin, 
             label: 'Rayon d\'intervention', 
             value: `${artisan.interventionRadius || 20} km`,
-            onPress: () => console.log('Intervention radius') 
+            onPress: () => router.push('/(artisan)/intervention-radius') 
           },
           { 
             icon: DollarSign, 
             label: 'Tarifs', 
             value: `${artisan.hourlyRate || 50}€/h`,
-            onPress: () => console.log('Rates') 
+            onPress: () => router.push('/(artisan)/rates') 
           },
           { 
             icon: Settings, 
             label: 'Paramètres', 
-            onPress: () => console.log('Settings') 
+            onPress: () => router.push('/(artisan)/settings') 
           },
         ],
       },
