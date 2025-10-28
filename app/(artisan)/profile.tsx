@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Settings, MapPin, DollarSign, HelpCircle, LogOut, ChevronRight, Star, Briefcase } from 'lucide-react-native';
+import { HelpCircle, LogOut, ChevronRight, Star, Briefcase } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -84,27 +84,6 @@ export default function ArtisanProfileScreen() {
     if (!artisan) return [];
     
     return [
-      {
-        items: [
-          { 
-            icon: MapPin, 
-            label: 'Rayon d\'intervention', 
-            value: `${artisan.interventionRadius || 20} km`,
-            onPress: () => router.push('/(artisan)/intervention-radius') 
-          },
-          { 
-            icon: DollarSign, 
-            label: 'Tarifs', 
-            value: `${artisan.hourlyRate || 50}€/h`,
-            onPress: () => router.push('/(artisan)/rates') 
-          },
-          { 
-            icon: Settings, 
-            label: 'Paramètres', 
-            onPress: () => router.push('/(artisan)/settings') 
-          },
-        ],
-      },
       {
         items: [
           { icon: HelpCircle, label: 'Aide & Support', onPress: () => router.push('/support') },
@@ -218,12 +197,7 @@ export default function ArtisanProfileScreen() {
                     </View>
                     <Text style={styles.menuLabel}>{item.label}</Text>
                   </View>
-                  <View style={styles.menuItemRight}>
-                    {'value' in item && item.value && (
-                      <Text style={styles.menuValue}>{item.value}</Text>
-                    )}
-                    <ChevronRight size={20} color={Colors.textLight} strokeWidth={2} />
-                  </View>
+                  <ChevronRight size={20} color={Colors.textLight} strokeWidth={2} />
                 </TouchableOpacity>
               );
             })}
