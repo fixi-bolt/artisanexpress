@@ -9,7 +9,7 @@ export const [MarketingContext, useMarketing] = createContextHook(() => {
 
   const campaignsQuery = trpc.marketing.getCampaigns.useQuery({
     status: campaignStatus,
-  });
+  }, { enabled: false });
 
   const createCampaignMutation = trpc.marketing.createCampaign.useMutation({
     onSuccess: () => {

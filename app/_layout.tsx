@@ -18,7 +18,20 @@ import { StripeProvider } from '@/components/StripeProvider';
 import { trpc, trpcClient } from '@/lib/trpc';
 import { useEffect } from 'react';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      retryDelay: 1000,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 function RootLayoutNav() {
   return (

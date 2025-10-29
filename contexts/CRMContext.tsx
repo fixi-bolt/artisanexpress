@@ -14,7 +14,7 @@ export const [CRMContext, useCRM] = createContextHook(() => {
     segment,
     limit: 50,
     offset: 0,
-  });
+  }, { enabled: false });
 
   const customerHistoryQuery = trpc.crm.getCustomerHistory.useQuery(
     { userId: selectedCustomerId! },

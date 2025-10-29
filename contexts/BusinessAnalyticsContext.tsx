@@ -7,9 +7,9 @@ export type AnalyticsPeriod = 'week' | 'month' | 'quarter' | 'year';
 export const [BusinessAnalyticsContext, useBusinessAnalytics] = createContextHook(() => {
   const [period, setPeriod] = useState<AnalyticsPeriod>('month');
 
-  const revenueQuery = trpc.business.getRevenueAnalytics.useQuery({ period });
-  const userMetricsQuery = trpc.business.getUserMetrics.useQuery({ period });
-  const conversionFunnelQuery = trpc.business.getConversionFunnel.useQuery({ period });
+  const revenueQuery = trpc.business.getRevenueAnalytics.useQuery({ period }, { enabled: false });
+  const userMetricsQuery = trpc.business.getUserMetrics.useQuery({ period }, { enabled: false });
+  const conversionFunnelQuery = trpc.business.getConversionFunnel.useQuery({ period }, { enabled: false });
 
   const changePeriod = useCallback((newPeriod: AnalyticsPeriod) => {
     console.log('[BusinessAnalytics] Changing period to:', newPeriod);
