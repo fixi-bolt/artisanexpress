@@ -22,18 +22,37 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: Platform.OS === 'web' ? true : false,
   },
   global: {
-    fetch: (url, options = {}) => {
-      return fetch(url, {
-        ...options,
-        headers: {
-          ...options.headers,
-        },
-      }).catch((error) => {
+    fetch: async (url, options = {}) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            ...options.headers,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error: any) {
         console.error('❌ Supabase fetch error:', error.message);
         console.error('  URL:', url);
-        console.error('  Please check your internet connection');
+        console.error('  Error type:', error.name);
+        
+        if (error.name === 'AbortError') {
+          throw new Error('La connexion a expiré. Vérifiez votre connexion Internet.');
+        }
+        
+        if (error.message?.includes('Network request failed')) {
+          throw new Error('Erreur de connexion. Vérifiez votre connexion Internet et réessayez.');
+        }
+        
         throw error;
-      });
+      }
     },
   },
 });
