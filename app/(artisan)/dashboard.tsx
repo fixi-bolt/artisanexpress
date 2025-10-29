@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Bell, MapPin, Clock, Euro, Navigation, Image as ImageIcon, Satellite } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +31,7 @@ interface NearbyMission {
 }
 
 export default function ArtisanDashboardScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { getPendingMissionsForArtisan, acceptMission, unreadNotificationsCount } = useMissions();
@@ -169,7 +171,11 @@ export default function ArtisanDashboardScreen() {
               <Text style={styles.statusText}>Disponible</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.settingsButton} activeOpacity={0.7}>
+          <TouchableOpacity 
+            style={styles.settingsButton} 
+            activeOpacity={0.7}
+            onPress={() => router.push('/(artisan)/profile')}
+          >
             <Text style={styles.settingsButtonText}>Gérer</Text>
           </TouchableOpacity>
         </View>
