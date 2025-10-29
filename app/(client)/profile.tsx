@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Settings, CreditCard, Bell, HelpCircle, LogOut, ChevronRight, Star, Clock } from 'lucide-react-native';
+import { Settings, CreditCard, Bell, HelpCircle, LogOut, ChevronRight, Star, Clock, ArrowLeft } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useLocalization } from '@/contexts/LocalizationContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,14 +38,20 @@ export default function ClientProfileScreen() {
   const menuSections = [
     {
       items: [
-        { icon: CreditCard, label: 'Moyens de paiement', onPress: () => console.log('Payment methods') },
-        { icon: Bell, label: 'Notifications', onPress: () => console.log('Notifications') },
+        { icon: CreditCard, label: 'Moyens de paiement', onPress: () => router.push('/payment' as any) },
+        { icon: Bell, label: 'Notifications', onPress: () => {
+          Alert.alert(
+            'Notifications',
+            'La gestion des notifications sera bientôt disponible.',
+            [{ text: 'OK' }]
+          );
+        }},
         { icon: Settings, label: t('settings'), onPress: () => router.push('/settings' as any) },
       ],
     },
     {
       items: [
-        { icon: HelpCircle, label: 'Aide & Support', onPress: () => console.log('Help') },
+        { icon: HelpCircle, label: 'Aide & Support', onPress: () => router.push('/support' as any) },
       ],
     },
   ];
@@ -53,6 +59,13 @@ export default function ClientProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <ArrowLeft size={24} color={Colors.text} strokeWidth={2} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('profile_title')}</Text>
       </View>
 
@@ -138,11 +151,23 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '800' as const,
     color: Colors.text,
+    flex: 1,
   },
   scrollView: {
     flex: 1,
