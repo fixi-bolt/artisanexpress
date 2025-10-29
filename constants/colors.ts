@@ -56,5 +56,6 @@ export default {
     pool_tech: '#0891B2',
     refrigeration: '#14B8A6',
     home_automation: '#6366F1',
+    pest_control: '#16A34A',
   },
 };
