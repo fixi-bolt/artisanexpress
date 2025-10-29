@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, Sparkles, ChevronDown, X } from 'lucide-react-native';
+import { Search, Sparkles, ChevronDown, ChevronUp, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { categories } from '@/mocks/artisans';
 import { useMissions } from '@/contexts/MissionContext';
@@ -21,6 +21,9 @@ export default function ClientHomeScreen() {
   const hasNavigated = useRef(false);
   const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
   const [query, setQuery] = useState<string>('');
+  const [customSpecialty, setCustomSpecialty] = useState<string>('');
+  const slideAnimation = useRef(new Animated.Value(0)).current;
+  const mapOpacity = useRef(new Animated.Value(1)).current;
   const [region] = useState({
     latitude: 48.8566,
     longitude: 2.3522,
@@ -52,6 +55,13 @@ export default function ClientHomeScreen() {
     [normalizedQuery, priorityCategories]
   );
 
+  const filteredOtherCategories = useMemo(
+    () => customSpecialty.trim().length > 0
+      ? otherCategories.filter(c => c.label.toLowerCase().includes(customSpecialty.trim().toLowerCase()))
+      : otherCategories,
+    [customSpecialty, otherCategories]
+  );
+
   const handleCategoryPress = useCallback((category: ArtisanCategory) => {
     console.log('Selected category:', category);
     router.push(`/request?category=${category}` as any);
@@ -72,9 +82,32 @@ export default function ClientHomeScreen() {
     navigateToTracking();
   }, [navigateToTracking]);
 
+  const toggleAllCategories = useCallback(() => {
+    const toValue = showAllCategories ? 0 : 1;
+    setShowAllCategories(!showAllCategories);
+
+    Animated.parallel([
+      Animated.spring(slideAnimation, {
+        toValue,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 8,
+      }),
+      Animated.timing(mapOpacity, {
+        toValue: showAllCategories ? 1 : 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    if (!showAllCategories) {
+      setCustomSpecialty('');
+    }
+  }, [showAllCategories, slideAnimation, mapOpacity]);
+
   return (
     <View style={styles.container}>
-      <View style={[styles.mapContainer, { paddingTop: insets.top }]}>
+      <Animated.View style={[styles.mapContainer, { paddingTop: insets.top, opacity: mapOpacity }]}>
         <MapView
           style={styles.map}
           provider={PROVIDER_GOOGLE}
@@ -93,9 +126,21 @@ export default function ClientHomeScreen() {
             description="Votre position"
           />
         </MapView>
-      </View>
+      </Animated.View>
 
-      <View style={styles.content}>
+      <Animated.View 
+        style={[
+          styles.content,
+          {
+            transform: [{
+              translateY: slideAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -250],
+              })
+            }]
+          }
+        ]}
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Bonjour</Text>
@@ -184,12 +229,92 @@ export default function ClientHomeScreen() {
 
           <TouchableOpacity 
             style={styles.moreButton}
-            onPress={() => router.push('/(client)/artisans' as any)}
+            onPress={toggleAllCategories}
             activeOpacity={0.7}
+            testID="toggleAllCategories"
           >
-            <Text style={styles.moreButtonText}>Voir tous les artisans</Text>
-            <ChevronDown size={20} color={Colors.primary} strokeWidth={2} />
+            <Text style={styles.moreButtonText}>
+              {showAllCategories ? 'Masquer les artisans' : 'Voir tous les artisans'}
+            </Text>
+            {showAllCategories ? (
+              <ChevronUp size={20} color={Colors.primary} strokeWidth={2} />
+            ) : (
+              <ChevronDown size={20} color={Colors.primary} strokeWidth={2} />
+            )}
           </TouchableOpacity>
+
+          {showAllCategories && (
+            <View style={styles.expandedSection}>
+              <View style={styles.customSearchContainer}>
+                <Search size={18} color={Colors.textLight} strokeWidth={2} />
+                <TextInput
+                  placeholder="Rechercher ou saisir une spécialité..."
+                  placeholderTextColor={Colors.textLight}
+                  value={customSpecialty}
+                  onChangeText={setCustomSpecialty}
+                  style={styles.customSearchInput}
+                  returnKeyType="done"
+                  testID="customSpecialtyInput"
+                />
+                {customSpecialty.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setCustomSpecialty('')}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <X size={18} color={Colors.textLight} strokeWidth={2} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.categoriesGrid}>
+                {filteredOtherCategories.map((category) => (
+                  <TouchableOpacity
+                    key={category.id}
+                    style={[
+                      styles.categoryCard,
+                      { backgroundColor: Colors.categories[category.id] + '15' }
+                    ]}
+                    onPress={() => {
+                      toggleAllCategories();
+                      handleCategoryPress(category.id);
+                    }}
+                    activeOpacity={0.7}
+                    testID={`expandedCategory-${category.id}`}
+                  >
+                    <View 
+                      style={[
+                        styles.categoryIconContainer,
+                        { backgroundColor: Colors.categories[category.id] }
+                      ]}
+                    >
+                      <Text style={styles.categoryEmoji}>
+                        {category.emoji}
+                      </Text>
+                    </View>
+                    <Text style={styles.categoryLabel}>{category.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {customSpecialty.length > 0 && filteredOtherCategories.length === 0 && (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>Aucune spécialité trouvée</Text>
+                  <TouchableOpacity
+                    style={styles.customRequestButton}
+                    onPress={() => {
+                      console.log('Custom specialty request:', customSpecialty);
+                      toggleAllCategories();
+                      router.push(`/request?customSpecialty=${encodeURIComponent(customSpecialty)}` as any);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.customRequestButtonText}>Faire une demande personnalisée</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
 
           <TouchableOpacity 
             style={styles.aiAssistantButton} 
@@ -207,9 +332,9 @@ export default function ClientHomeScreen() {
             </View>
           </TouchableOpacity>
         </ScrollView>
-      </View>
+      </Animated.View>
 
-      {showAllCategories && (
+      {false && (
         <View style={styles.modalOverlay} testID="allCategoriesOverlay">
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -467,6 +592,61 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  expandedSection: {
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  customSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.primary + '20',
+    shadowColor: Colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  customSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+    paddingVertical: 0,
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 16,
+  },
+  noResultsText: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  customRequestButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  customRequestButtonText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.surface,
   },
   moreButtonText: {
     fontSize: 16,
