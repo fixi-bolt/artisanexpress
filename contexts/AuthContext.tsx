@@ -543,13 +543,19 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
   const logout = useCallback(async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error && !error.message?.includes('session') && !error.message?.includes('refresh')) {
+      // Try to sign out from Supabase, but don't fail if network is down
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      // Only log non-network errors
+      if (error && !error.message?.includes('session') && !error.message?.includes('refresh') && !error.message?.includes('Network')) {
         logger.error('SignOut error:', error.message);
       }
     } catch (error: any) {
-      logger.warn('Error during logout:', error?.message);
+      // Silently handle network errors during logout
+      if (!error?.message?.includes('Network')) {
+        logger.warn('Error during logout:', error?.message);
+      }
     } finally {
+      // Always clear local state regardless of network errors
       await clearAuthState();
       setUser(null);
       setSession(null);
