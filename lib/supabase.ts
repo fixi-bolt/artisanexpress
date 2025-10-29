@@ -27,8 +27,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       'apikey': SUPABASE_ANON_KEY,
     },
     fetch: async (url, options = {}) => {
+      const urlString = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
       try {
-        const urlString = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
         console.log('🌐 Supabase request to:', urlString.replace(SUPABASE_URL, ''));
         
         const controller = new AbortController();
