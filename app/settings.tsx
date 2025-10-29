@@ -43,11 +43,13 @@ export default function SettingsScreen() {
       <Stack.Screen 
         options={{ 
           title: t('settings_title'),
+          headerShown: true,
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => router.back()}
               style={styles.backButton}
               activeOpacity={0.7}
+              testID="back-button"
             >
               <ArrowLeft size={24} color={Colors.primary} strokeWidth={2} />
             </TouchableOpacity>

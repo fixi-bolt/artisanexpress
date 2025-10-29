@@ -39,13 +39,7 @@ export default function ClientProfileScreen() {
     {
       items: [
         { icon: CreditCard, label: 'Moyens de paiement', onPress: () => router.push('/payment-methods' as any) },
-        { icon: Bell, label: 'Notifications', onPress: () => {
-          Alert.alert(
-            'Notifications',
-            'La gestion des notifications sera bientôt disponible.',
-            [{ text: 'OK' }]
-          );
-        }},
+        { icon: Bell, label: 'Notifications', onPress: () => router.push('/notifications' as any) },
         { icon: Settings, label: t('settings'), onPress: () => router.push('/settings' as any) },
       ],
     },

@@ -27,7 +27,8 @@ export type ArtisanCategory =
   | 'welder'
   | 'pool_tech'
   | 'refrigeration'
-  | 'home_automation';
+  | 'home_automation'
+  | 'pest_control';
 
 export interface Location {
   latitude: number;

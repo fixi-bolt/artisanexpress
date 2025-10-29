@@ -26,6 +26,7 @@ export const categories: { id: ArtisanCategory; label: string; emoji: string; is
   { id: 'pool_tech', label: 'Pisciniste', emoji: '🚰' },
   { id: 'refrigeration', label: 'Climaticien / Frigoriste', emoji: '🌬️' },
   { id: 'home_automation', label: 'Installateur domotique', emoji: '🧩' },
+  { id: 'pest_control', label: 'Dératisation / Nuisibles', emoji: '🦟' },
 ];
 
 export const mockArtisans: Artisan[] = [
