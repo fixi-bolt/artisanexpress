@@ -2,10 +2,15 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-const SUPABASE_URL = 'https://nkxucjhavjfsogzpitry.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5reHVjamhhdmpmc29nenBpdHJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNzMxMzAsImV4cCI6MjA3NjY0OTEzMH0.-JKjKW2_2ZQag1E7GzGEMvkuWxcWDzVSMB8mCoiNzig';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://mxlxwqhkodgixztnydzd.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14bHh3cWhrb2RnaXh6dG55ZHpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgyNDQyNDEsImV4cCI6MjA1MzgyMDI0MX0.IKvmfNLVXR5BtoCPkWNOyZXFczuUTPqLbNKiKQU4KPc';
 
-console.log('🔧 Supabase Config (hardcoded for Rork):');
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('❌ Supabase credentials missing!');
+  throw new Error('Supabase URL and key are required');
+}
+
+console.log('🔧 Supabase Config:');
 console.log('  URL:', SUPABASE_URL);
 console.log('  Key:', `${SUPABASE_ANON_KEY.substring(0, 10)}...${SUPABASE_ANON_KEY.substring(SUPABASE_ANON_KEY.length - 4)}`);
 
