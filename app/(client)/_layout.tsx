@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { MapPin, Clock, User } from "lucide-react-native";
+import { MapPin, Clock, User, Menu } from "lucide-react-native";
 import React from "react";
 import Colors from "@/constants/colors";
 import { useLocalization } from "@/contexts/LocalizationContext";
@@ -39,10 +39,41 @@ export default function ClientTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menu',
+          tabBarIcon: ({ color, size }) => <Menu size={size} color={color} strokeWidth={2} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: t('nav_profile'),
           tabBarIcon: ({ color, size }) => <User size={size} color={color} strokeWidth={2} />,
+        }}
+      />
+      <Tabs.Screen
+        name="artisans"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="super-hub"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="marketplace"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="transactions"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
