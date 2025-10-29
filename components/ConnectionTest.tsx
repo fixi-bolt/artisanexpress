@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { testSupabaseConnection, getNetworkInfo } from '@/utils/networkDiagnostics';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { runFullDiagnostic } from '@/utils/networkDiagnostics';
 import { supabase } from '@/lib/supabase';
-import { AlertCircle, CheckCircle, XCircle, RefreshCw } from 'lucide-react-native';
+import { AlertCircle, CheckCircle, XCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react-native';
+
+type DiagnosticResult = {
+  info: any;
+  basicConnectivity: { success: boolean; error?: string; details?: any };
+  supabaseConnection: { success: boolean; error?: string; details?: any };
+};
 
 export function ConnectionTest() {
   const [testing, setTesting] = useState(false);
-  const [connectionResult, setConnectionResult] = useState<{
-    success: boolean;
-    error?: string;
-    details?: any;
-  } | null>(null);
-  const [networkInfo, setNetworkInfo] = useState<any>(null);
+  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
   const [supabaseTest, setSupabaseTest] = useState<{
     success: boolean;
     error?: string;
@@ -19,24 +20,23 @@ export function ConnectionTest() {
 
   const runTests = async () => {
     setTesting(true);
-    setConnectionResult(null);
+    setDiagnosticResult(null);
     setSupabaseTest(null);
 
-    const info = await getNetworkInfo();
-    setNetworkInfo(info);
+    const result = await runFullDiagnostic();
+    setDiagnosticResult(result);
 
-    const result = await testSupabaseConnection();
-    setConnectionResult(result);
-
-    try {
-      const { error } = await supabase.from('users').select('id').limit(1);
-      if (error) {
+    if (result.supabaseConnection.success) {
+      try {
+        const { error } = await supabase.from('users').select('id').limit(1);
+        if (error) {
+          setSupabaseTest({ success: false, error: error.message });
+        } else {
+          setSupabaseTest({ success: true });
+        }
+      } catch (error: any) {
         setSupabaseTest({ success: false, error: error.message });
-      } else {
-        setSupabaseTest({ success: true });
       }
-    } catch (error: any) {
-      setSupabaseTest({ success: false, error: error.message });
     }
 
     setTesting(false);
@@ -47,10 +47,10 @@ export function ConnectionTest() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
         <AlertCircle size={32} color="#FF9500" />
-        <Text style={styles.title}>Test de connexion</Text>
+        <Text style={styles.title}>Diagnostic réseau</Text>
       </View>
 
       <TouchableOpacity
@@ -63,74 +63,110 @@ export function ConnectionTest() {
         ) : (
           <>
             <RefreshCw size={20} color="#007AFF" />
-            <Text style={styles.refreshText}>Tester à nouveau</Text>
+            <Text style={styles.refreshText}>Relancer le diagnostic</Text>
           </>
         )}
       </TouchableOpacity>
 
-      {networkInfo && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Informations réseau</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Plateforme:</Text>
-            <Text style={styles.value}>{networkInfo.platform}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Environnement:</Text>
-            <Text style={styles.value}>{networkInfo.environment}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>URL Supabase:</Text>
-            <Text style={styles.valueSmall} numberOfLines={1}>
-              {networkInfo.supabaseUrl || 'Non défini'}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Clé API:</Text>
-            <Text style={styles.value}>
-              {networkInfo.hasAnonKey ? '✓ Présente' : '✗ Manquante'}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {connectionResult && (
-        <View style={styles.section}>
-          <View style={styles.resultHeader}>
-            {connectionResult.success ? (
-              <CheckCircle size={24} color="#34C759" />
-            ) : (
-              <XCircle size={24} color="#FF3B30" />
-            )}
-            <Text style={[
-              styles.sectionTitle,
-              { color: connectionResult.success ? '#34C759' : '#FF3B30' }
-            ]}>
-              Test de connexion Supabase
-            </Text>
-          </View>
-          
-          {connectionResult.success ? (
-            <Text style={styles.successText}>
-              ✓ Connexion réussie au serveur Supabase
-            </Text>
-          ) : (
-            <View>
-              <Text style={styles.errorText}>{connectionResult.error}</Text>
-              {connectionResult.details && (
-                <View style={styles.details}>
-                  <Text style={styles.detailsLabel}>Détails de l&apos;erreur:</Text>
-                  <Text style={styles.detailsText}>
-                    Type: {connectionResult.details.name}
-                  </Text>
-                  <Text style={styles.detailsText}>
-                    Message: {connectionResult.details.message}
-                  </Text>
-                </View>
+      {diagnosticResult && (
+        <>
+          <View style={styles.section}>
+            <View style={styles.resultHeader}>
+              {diagnosticResult.basicConnectivity.success ? (
+                <Wifi size={24} color="#34C759" />
+              ) : (
+                <WifiOff size={24} color="#FF3B30" />
               )}
+              <Text style={[
+                styles.sectionTitle,
+                { color: diagnosticResult.basicConnectivity.success ? '#34C759' : '#FF3B30' }
+              ]}>
+                Connexion Internet
+              </Text>
             </View>
-          )}
-        </View>
+            
+            {diagnosticResult.basicConnectivity.success ? (
+              <Text style={styles.successText}>
+                ✓ Connexion Internet active
+              </Text>
+            ) : (
+              <Text style={styles.errorText}>
+                ✗ {diagnosticResult.basicConnectivity.error}
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Informations système</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Plateforme:</Text>
+              <Text style={styles.value}>{diagnosticResult.info.platform}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Environnement:</Text>
+              <Text style={styles.value}>{diagnosticResult.info.environment}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>URL Supabase:</Text>
+              <Text style={styles.valueSmall} numberOfLines={1}>
+                {diagnosticResult.info.supabaseUrl || 'Non défini'}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Clé API:</Text>
+              <Text style={styles.value}>
+                {diagnosticResult.info.hasAnonKey ? '✓ Présente' : '✗ Manquante'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.resultHeader}>
+              {diagnosticResult.supabaseConnection.success ? (
+                <CheckCircle size={24} color="#34C759" />
+              ) : (
+                <XCircle size={24} color="#FF3B30" />
+              )}
+              <Text style={[
+                styles.sectionTitle,
+                { color: diagnosticResult.supabaseConnection.success ? '#34C759' : '#FF3B30' }
+              ]}>
+                Connexion Supabase
+              </Text>
+            </View>
+            
+            {diagnosticResult.supabaseConnection.success ? (
+              <View>
+                <Text style={styles.successText}>
+                  ✓ Connexion au serveur Supabase réussie
+                </Text>
+                {diagnosticResult.supabaseConnection.details && (
+                  <View style={styles.successDetails}>
+                    <Text style={styles.detailsLabel}>Status HTTP:</Text>
+                    <Text style={styles.detailsText}>
+                      {diagnosticResult.supabaseConnection.details.status} - {diagnosticResult.supabaseConnection.details.statusText}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View>
+                <Text style={styles.errorText}>{diagnosticResult.supabaseConnection.error}</Text>
+                {diagnosticResult.supabaseConnection.details && (
+                  <View style={styles.details}>
+                    <Text style={styles.detailsLabel}>Détails de l&apos;erreur:</Text>
+                    <Text style={styles.detailsText}>
+                      Type: {diagnosticResult.supabaseConnection.details.name}
+                    </Text>
+                    <Text style={styles.detailsText}>
+                      Message: {diagnosticResult.supabaseConnection.details.message}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        </>
       )}
 
       {supabaseTest && (
@@ -168,7 +204,7 @@ export function ConnectionTest() {
           • Essayez de redémarrer l&apos;application
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -260,6 +296,12 @@ const styles = StyleSheet.create({
   },
   details: {
     backgroundColor: '#FFF5F5',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  successDetails: {
+    backgroundColor: '#F0FFF4',
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
