@@ -46,13 +46,23 @@ CREATE INDEX IF NOT EXISTS idx_missions_artisan_id ON missions(artisan_id);
 
 -- 4. Nettoyer les sessions invalides (si la table existe)
 -- Cette opération pourrait aider à résoudre les problèmes d'authentification
-DO $$
+DO $
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'sessions') THEN
-        DELETE FROM auth.sessions WHERE expires_at < NOW();
-        RAISE NOTICE '✓ Sessions expirées nettoyées';
+        -- Vérifier si la colonne expires_at existe
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'auth' AND table_name = 'sessions' AND column_name = 'expires_at'
+        ) THEN
+            DELETE FROM auth.sessions WHERE expires_at < NOW();
+            RAISE NOTICE '✓ Sessions expirées nettoyées';
+        ELSE
+            RAISE NOTICE '✓ Table sessions existe mais colonne expires_at introuvable';
+        END IF;
+    ELSE
+        RAISE NOTICE '✓ Table auth.sessions non disponible (normal sur certaines configurations)';
     END IF;
-END $$;
+END $;
 
 -- 5. Statistiques de la base de données
 SELECT 
