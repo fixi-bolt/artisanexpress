@@ -66,13 +66,14 @@ END $$;
 
 -- 5. Statistiques de la base de données
 SELECT 
-    tablename AS "Table",
+    schemaname AS "Schema",
+    relname AS "Table",
     n_live_tup AS "Lignes",
     n_dead_tup AS "Lignes mortes",
     last_autovacuum AS "Dernier vacuum"
 FROM pg_stat_user_tables
 WHERE schemaname = 'public'
-ORDER BY tablename;
+ORDER BY relname;
 
 -- 6. Vérifier les contraintes de clés étrangères
 SELECT
