@@ -4,10 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAnalytics } from '@/contexts/AnalyticsContext';
 import { useState, useRef, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Briefcase, ArrowLeft, Mail, Lock, UserCircle, Phone, Wrench, FileText, Search, X } from 'lucide-react-native';
+import { User, Briefcase, ArrowLeft, Mail, Lock, UserCircle, Phone, Wrench, FileText, Search, X, Wifi } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { UserType } from '@/types';
 import { categories } from '@/mocks/artisans';
+import { testSupabaseConnection, getNetworkInfo } from '@/utils/networkDiagnostics';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -141,9 +142,43 @@ export default function AuthScreen() {
         ? error.message 
         : (typeof error === 'string' ? error : 'Email ou mot de passe incorrect');
       
-      Alert.alert('Erreur', errorMessage);
+      if (errorMessage.includes('Internet') || errorMessage.includes('connexion') || errorMessage.includes('serveur')) {
+        Alert.alert(
+          'Erreur de connexion',
+          errorMessage + '\n\nVoulez-vous tester la connexion au serveur ?',
+          [
+            { text: 'Annuler', style: 'cancel' },
+            { 
+              text: 'Tester la connexion', 
+              onPress: handleTestConnection
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Erreur', errorMessage);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    console.log('\ud83d\udd0d Starting network diagnostics...');
+    
+    await getNetworkInfo();
+    
+    const result = await testSupabaseConnection();
+    
+    if (result.success) {
+      Alert.alert(
+        '✅ Connexion réussie',
+        'La connexion au serveur fonctionne correctement. Le problème vient peut-être de vos identifiants.'
+      );
+    } else {
+      Alert.alert(
+        '❌ Problème de connexion',
+        result.error || 'Impossible de se connecter au serveur.\n\nVérifiez que vous êtes connecté à Internet et réessayez.'
+      );
     }
   };
 
@@ -385,6 +420,19 @@ export default function AuthScreen() {
               }
             </Text>
           </TouchableOpacity>
+
+          {mode === 'login' && (
+            <TouchableOpacity
+              style={styles.diagnosticButton}
+              onPress={handleTestConnection}
+              activeOpacity={0.7}
+            >
+              <Wifi size={16} color={Colors.textSecondary} />
+              <Text style={styles.diagnosticButtonText}>
+                Tester la connexion
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.switchModeButton}
@@ -773,5 +821,17 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: Colors.text,
     textAlign: 'center',
+  },
+  diagnosticButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  diagnosticButtonText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
 });

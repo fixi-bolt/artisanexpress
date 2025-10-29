@@ -21,6 +21,21 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     detectSessionInUrl: Platform.OS === 'web' ? true : false,
   },
+  global: {
+    fetch: (url, options = {}) => {
+      return fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+        },
+      }).catch((error) => {
+        console.error('❌ Supabase fetch error:', error.message);
+        console.error('  URL:', url);
+        console.error('  Please check your internet connection');
+        throw error;
+      });
+    },
+  },
 });
 
 export type Database = {

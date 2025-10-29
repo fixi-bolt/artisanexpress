@@ -516,6 +516,8 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
+      logger.info('Attempting sign in for:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -527,6 +529,8 @@ export const [AuthContext, useAuth] = createContextHook(() => {
           errorMessage = 'Email ou mot de passe incorrect';
         } else if (error.message?.includes('Email not confirmed')) {
           errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
+        } else if (error.message?.includes('Network') || error.message?.includes('fetch')) {
+          errorMessage = 'Erreur de connexion. Vérifiez votre connexion Internet et réessayez.';
         }
         throw new Error(errorMessage);
       }
@@ -539,6 +543,11 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       return data.user;
     } catch (error: any) {
       logger.error('Error signing in:', error?.message);
+      
+      if (error?.message?.includes('Network') || error?.message?.includes('fetch') || error?.message?.includes('Failed to fetch')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion Internet.');
+      }
+      
       throw error;
     }
   }, []);
