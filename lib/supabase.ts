@@ -28,7 +28,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     },
     fetch: async (url, options = {}) => {
       try {
-        console.log('🌐 Supabase request to:', url.replace(SUPABASE_URL, ''));
+        const urlString = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+        console.log('🌐 Supabase request to:', urlString.replace(SUPABASE_URL, ''));
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -54,7 +55,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         return response;
       } catch (error: any) {
         console.error('❌ Supabase fetch error:', error.message);
-        console.error('  URL:', url);
+        console.error('  URL:', urlString);
         console.error('  Error type:', error.name);
         
         if (error.name === 'AbortError') {
