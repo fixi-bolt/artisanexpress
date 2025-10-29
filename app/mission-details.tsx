@@ -3,7 +3,7 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   Clock, CheckCircle, XCircle, Navigation, Euro, Star, 
-  Edit3, Trash2, Calendar, MapPin, Package 
+  Edit3, Trash2, Calendar, MapPin, Package, ArrowLeft 
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useMissions } from '@/contexts/MissionContext';
@@ -65,7 +65,19 @@ export default function MissionDetailsScreen() {
   if (!mission) {
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ headerTitle: 'Mission introuvable' }} />
+        <Stack.Screen options={{ 
+        headerShown: true,
+        headerTitle: 'Mission introuvable',
+        headerLeft: () => (
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerBackButton}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={24} color={Colors.primary} strokeWidth={2} />
+          </TouchableOpacity>
+        ),
+      }} />
         <View style={styles.errorContainer}>
           <Package size={48} color={Colors.textLight} strokeWidth={2} />
           <Text style={styles.errorText}>Mission introuvable</Text>
@@ -101,8 +113,18 @@ export default function MissionDetailsScreen() {
     <View style={styles.container}>
       <Stack.Screen 
         options={{ 
+          headerShown: true,
           headerTitle: 'Détails de la mission',
           headerBackTitle: 'Retour',
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.headerBackButton}
+              activeOpacity={0.7}
+            >
+              <ArrowLeft size={24} color={Colors.primary} strokeWidth={2} />
+            </TouchableOpacity>
+          ),
         }} 
       />
       
@@ -265,6 +287,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  headerBackButton: {
+    padding: 8,
+    marginLeft: -8,
   },
   scrollView: {
     flex: 1,

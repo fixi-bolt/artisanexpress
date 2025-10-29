@@ -130,6 +130,7 @@ export default function NotificationsScreen() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
+          headerShown: true,
           title: 'Notifications',
           headerLeft: () => (
             <TouchableOpacity
