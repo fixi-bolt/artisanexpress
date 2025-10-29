@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput, Animated, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,8 +22,8 @@ export default function ClientHomeScreen() {
   const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
   const [query, setQuery] = useState<string>('');
   const [customSpecialty, setCustomSpecialty] = useState<string>('');
-  const slideAnimation = useRef(new Animated.Value(0)).current;
-  const mapOpacity = useRef(new Animated.Value(1)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef<number>(0);
   const [region] = useState({
     latitude: 48.8566,
     longitude: 2.3522,
@@ -83,31 +83,47 @@ export default function ClientHomeScreen() {
   }, [navigateToTracking]);
 
   const toggleAllCategories = useCallback(() => {
-    const toValue = showAllCategories ? 0 : 1;
     setShowAllCategories(!showAllCategories);
-
-    Animated.parallel([
-      Animated.spring(slideAnimation, {
-        toValue,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 8,
-      }),
-      Animated.timing(mapOpacity, {
-        toValue: showAllCategories ? 1 : 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     if (!showAllCategories) {
       setCustomSpecialty('');
     }
-  }, [showAllCategories, slideAnimation, mapOpacity]);
+  }, [showAllCategories]);
+
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: false }
+  );
+
+  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    lastScrollY.current = currentScrollY;
+    handleScroll(event);
+  }, [handleScroll]);
+
+  const mapHeight = scrollY.interpolate({
+    inputRange: [0, 200],
+    outputRange: [320, 0],
+    extrapolate: 'clamp',
+  });
+
+  const mapOpacity = scrollY.interpolate({
+    inputRange: [0, 150, 200],
+    outputRange: [1, 0.5, 0],
+    extrapolate: 'clamp',
+  });
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.mapContainer, { paddingTop: insets.top, opacity: mapOpacity }]}>
+      <Animated.View 
+        style={[
+          styles.mapContainer, 
+          { 
+            paddingTop: insets.top,
+            height: mapHeight,
+            opacity: mapOpacity,
+          }
+        ]}
+      >
         <MapView
           style={styles.map}
           provider={PROVIDER_GOOGLE}
@@ -128,27 +144,22 @@ export default function ClientHomeScreen() {
         </MapView>
       </Animated.View>
 
-      <Animated.View 
-        style={[
-          styles.content,
-          {
-            transform: [{
-              translateY: slideAnimation.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -250],
-              })
-            }]
-          }
-        ]}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <View style={styles.content}>
+          <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Bonjour</Text>
             <Text style={styles.userName}>{user?.name || 'Client'}</Text>
           </View>
-        </View>
+          </View>
 
-        <View style={styles.searchContainer}>
+          <View style={styles.searchContainer}>
           <View style={styles.searchBox}>
             <Search size={20} color={Colors.textLight} strokeWidth={2} />
             <TextInput
@@ -171,13 +182,9 @@ export default function ClientHomeScreen() {
               testID="searchInput"
             />
           </View>
-        </View>
+          </View>
 
-        <ScrollView 
-          style={styles.categoriesScroll}
-          contentContainerStyle={styles.categoriesContent}
-          showsVerticalScrollIndicator={false}
-        >
+          <View style={styles.categoriesContainer}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <Text style={styles.sectionTitle}>Choisissez un artisan</Text>
@@ -331,8 +338,9 @@ export default function ClientHomeScreen() {
               </Text>
             </View>
           </TouchableOpacity>
-        </ScrollView>
-      </Animated.View>
+          </View>
+        </View>
+      </ScrollView>
 
       {false && (
         <View style={styles.modalOverlay} testID="allCategoriesOverlay">
@@ -401,18 +409,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   mapContainer: {
-    height: 320,
-    position: 'relative',
+    overflow: 'hidden',
   },
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    marginTop: -30,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  content: {
     backgroundColor: Colors.background,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
+    minHeight: '100%',
+    paddingBottom: 120,
   },
   header: {
     flexDirection: 'row',
@@ -456,12 +469,9 @@ const styles = StyleSheet.create({
     color: Colors.text,
     paddingVertical: 0,
   },
-  categoriesScroll: {
-    flex: 1,
-  },
-  categoriesContent: {
+  categoriesContainer: {
     paddingHorizontal: 24,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   sectionHeader: {
     marginBottom: 20,
