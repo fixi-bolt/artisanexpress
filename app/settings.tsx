@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useLocalization, SupportedLocale, CurrencyCode, DistanceUnit } from '@/contexts/LocalizationContext';
-import { Check, Globe, Map, BadgeDollarSign } from 'lucide-react-native';
+import { Check, Globe, Map, BadgeDollarSign, ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { locale, currency, distanceUnit, setLocale, setCurrency, setDistanceUnit, t } = useLocalization();
   const insets = useSafeAreaInsets();
   const [pendingLocale, setPendingLocale] = useState<SupportedLocale>(locale);
@@ -39,7 +40,20 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container} testID="settings-screen">
-      <Stack.Screen options={{ title: t('settings_title') }} />
+      <Stack.Screen 
+        options={{ 
+          title: t('settings_title'),
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+              activeOpacity={0.7}
+            >
+              <ArrowLeft size={24} color={Colors.primary} strokeWidth={2} />
+            </TouchableOpacity>
+          ),
+        }} 
+      />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}>
         <Text style={styles.sectionTitle}>{t('settings_language')}</Text>
         <View style={styles.card}>
@@ -110,6 +124,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
   },
   content: {
     padding: 20,

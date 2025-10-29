@@ -34,6 +34,8 @@ function RootLayoutNav() {
       <Stack.Screen name="request" />
       <Stack.Screen name="tracking" />
       <Stack.Screen name="payment" />
+      <Stack.Screen name="payment-methods" />
+      <Stack.Screen name="payment-stripe" />
       <Stack.Screen name="rate" />
       <Stack.Screen name="chat" />
       <Stack.Screen name="(client)" />

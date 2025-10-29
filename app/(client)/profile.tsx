@@ -38,7 +38,7 @@ export default function ClientProfileScreen() {
   const menuSections = [
     {
       items: [
-        { icon: CreditCard, label: 'Moyens de paiement', onPress: () => router.push('/payment' as any) },
+        { icon: CreditCard, label: 'Moyens de paiement', onPress: () => router.push('/payment-methods' as any) },
         { icon: Bell, label: 'Notifications', onPress: () => {
           Alert.alert(
             'Notifications',
