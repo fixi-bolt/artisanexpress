@@ -79,6 +79,7 @@ export interface Artisan extends User {
   specialties: string[];
   subscription?: Subscription;
   isSuspended?: boolean;
+  siret?: string;
 }
 
 export interface Client extends User {

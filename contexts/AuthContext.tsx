@@ -33,7 +33,7 @@ type DbUser = {
 
 type DbArtisan = {
   id: string;
-  category: string; // Database stores as string, will be cast to ArtisanCategory
+  category: string;
   hourly_rate: number;
   travel_fee: number;
   intervention_radius: number;
@@ -90,6 +90,7 @@ const createArtisanUser = (userData: DbUser, artisanData: DbArtisan): Artisan =>
     ? { latitude: artisanData.latitude, longitude: artisanData.longitude }
     : undefined,
   isSuspended: artisanData.is_suspended,
+  siret: artisanData.siret,
 });
 
 const createClientUser = (userData: DbUser, paymentMethods: any[]): Client => ({
@@ -435,6 +436,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
           travel_fee: (additionalData?.travelFee as number) || 25,
           intervention_radius: (additionalData?.interventionRadius as number) || 20,
           specialties: (additionalData?.specialties as string[]) || [],
+          siret: (additionalData?.siret as string) || null,
         });
 
         if (artisanError) {
@@ -593,6 +595,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         if (artisanUpdate.isAvailable !== undefined) artisanUpdates.is_available = artisanUpdate.isAvailable;
         if (artisanUpdate.specialties !== undefined) artisanUpdates.specialties = artisanUpdate.specialties;
         if (artisanUpdate.category !== undefined) artisanUpdates.category = artisanUpdate.category;
+        if (artisanUpdate.siret !== undefined) artisanUpdates.siret = artisanUpdate.siret;
 
         if (Object.keys(artisanUpdates).length > 0) {
           const { error: artisanError } = await supabase

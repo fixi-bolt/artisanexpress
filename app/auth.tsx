@@ -1,12 +1,13 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, TextInput, Alert, Modal, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnalytics } from '@/contexts/AnalyticsContext';
 import { useState, useRef, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Briefcase, ArrowLeft, Mail, Lock, UserCircle, Phone } from 'lucide-react-native';
+import { User, Briefcase, ArrowLeft, Mail, Lock, UserCircle, Phone, Wrench, FileText, Search, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { UserType } from '@/types';
+import { categories } from '@/mocks/artisans';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -19,6 +20,10 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [specialty, setSpecialty] = useState('');
+  const [siret, setSiret] = useState('');
+  const [showSpecialtyPicker, setShowSpecialtyPicker] = useState(false);
+  const [specialtySearch, setSpecialtySearch] = useState('');
 
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -62,9 +67,20 @@ export default function AuthScreen() {
       return;
     }
 
+    if (selectedType === 'artisan' && !specialty.trim()) {
+      Alert.alert('Erreur', 'Veuillez sélectionner ou saisir votre spécialité');
+      return;
+    }
+
     setLoading(true);
     try {
-      const additionalData: Record<string, unknown> = { phone };
+      const additionalData: Record<string, unknown> = { 
+        phone,
+        ...(selectedType === 'artisan' ? { 
+          category: specialty.trim(),
+          siret: siret.trim() || undefined,
+        } : {})
+      };
 
       await signUp(email, password, name, selectedType, additionalData);
       trackEvent('user_logged_in', { userType: selectedType });
@@ -138,6 +154,9 @@ export default function AuthScreen() {
     setPassword('');
     setName('');
     setPhone('');
+    setSpecialty('');
+    setSiret('');
+    setSpecialtySearch('');
 
   };
 
@@ -323,6 +342,34 @@ export default function AuthScreen() {
             </View>
           )}
 
+          {mode === 'signup' && selectedType === 'artisan' && (
+            <>
+              <TouchableOpacity
+                style={[styles.inputGroup, { paddingVertical: 16 }]}
+                onPress={() => setShowSpecialtyPicker(true)}
+                activeOpacity={0.7}
+              >
+                <Wrench size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+                <Text style={[styles.input, { paddingVertical: 0 }, !specialty && { color: Colors.textLight }]}>
+                  {specialty || 'Spécialité *'}
+                </Text>
+                <Search size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+
+              <View style={styles.inputGroup}>
+                <FileText size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Numéro SIRET (optionnel)"
+                  placeholderTextColor={Colors.textLight}
+                  value={siret}
+                  onChangeText={setSiret}
+                  keyboardType="number-pad"
+                />
+              </View>
+            </>
+          )}
+
 
 
           <TouchableOpacity
@@ -354,6 +401,94 @@ export default function AuthScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        <Modal
+          visible={showSpecialtyPicker}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowSpecialtyPicker(false)}
+        >
+          <SafeAreaView style={styles.modalContainer} edges={['top']}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choisir une spécialité</Text>
+              <TouchableOpacity
+                onPress={() => setShowSpecialtyPicker(false)}
+                style={styles.modalCloseButton}
+                activeOpacity={0.7}
+              >
+                <X size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchContainer}>
+              <Search size={20} color={Colors.textSecondary} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher ou saisir une spécialité..."
+                placeholderTextColor={Colors.textLight}
+                value={specialtySearch}
+                onChangeText={setSpecialtySearch}
+                autoFocus
+              />
+              {specialtySearch.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSpecialtySearch('')}
+                  style={styles.clearButton}
+                  activeOpacity={0.7}
+                >
+                  <X size={16} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {specialtySearch.length > 0 && 
+             !categories.some(cat => cat.label.toLowerCase() === specialtySearch.toLowerCase()) && (
+              <TouchableOpacity
+                style={styles.customSpecialtyButton}
+                onPress={() => {
+                  setSpecialty(specialtySearch);
+                  setShowSpecialtyPicker(false);
+                  setSpecialtySearch('');
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.customSpecialtyContent}>
+                  <Text style={styles.customSpecialtyEmoji}>✨</Text>
+                  <View style={styles.customSpecialtyTextContainer}>
+                    <Text style={styles.customSpecialtyText}>Utiliser &quot;{specialtySearch}&quot;</Text>
+                    <Text style={styles.customSpecialtySubtext}>Spécialité personnalisée</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <FlatList
+              data={categories.filter(cat => 
+                cat.label.toLowerCase().includes(specialtySearch.toLowerCase())
+              )}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              contentContainerStyle={styles.specialtyGrid}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.specialtyCard}
+                  onPress={() => {
+                    setSpecialty(item.label);
+                    setShowSpecialtyPicker(false);
+                    setSpecialtySearch('');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.specialtyEmoji}>{item.emoji}</Text>
+                  <Text style={styles.specialtyLabel} numberOfLines={2}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </SafeAreaView>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -527,5 +662,116 @@ const styles = StyleSheet.create({
   switchModeBold: {
     fontWeight: '700' as const,
     color: Colors.primary,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    marginHorizontal: 24,
+    marginTop: 16,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: Colors.borderLight,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.text,
+    paddingVertical: 16,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  customSpecialtyButton: {
+    marginHorizontal: 24,
+    marginVertical: 12,
+    backgroundColor: Colors.primary + '10',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    borderStyle: 'dashed' as const,
+  },
+  customSpecialtyContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  customSpecialtyEmoji: {
+    fontSize: 32,
+    marginRight: 16,
+  },
+  customSpecialtyTextContainer: {
+    flex: 1,
+  },
+  customSpecialtyText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.primary,
+    marginBottom: 4,
+  },
+  customSpecialtySubtext: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  specialtyGrid: {
+    padding: 16,
+  },
+  specialtyCard: {
+    flex: 1,
+    margin: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 120,
+    shadowColor: Colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 2,
+    borderColor: Colors.borderLight,
+  },
+  specialtyEmoji: {
+    fontSize: 36,
+    marginBottom: 12,
+  },
+  specialtyLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    textAlign: 'center',
   },
 });
