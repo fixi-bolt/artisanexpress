@@ -1,15 +1,14 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, TextInput, Alert, Modal, FlatList, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, TextInput, Alert, Modal, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnalytics } from '@/contexts/AnalyticsContext';
 import { useState, useRef, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Briefcase, ArrowLeft, Mail, Lock, UserCircle, Phone, Wrench, FileText, Search, X, Wifi, Smartphone } from 'lucide-react-native';
+import { User, Briefcase, ArrowLeft, Mail, Lock, UserCircle, Phone, Wrench, FileText, Search, X, Wifi } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { UserType } from '@/types';
 import { categories } from '@/mocks/artisans';
 import { testSupabaseConnection, getNetworkInfo } from '@/utils/networkDiagnostics';
-import { testSupabaseConnection as testDirectConnection } from '@/utils/testSupabaseConnection';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -26,18 +25,12 @@ export default function AuthScreen() {
   const [siret, setSiret] = useState('');
   const [showSpecialtyPicker, setShowSpecialtyPicker] = useState(false);
   const [specialtySearch, setSpecialtySearch] = useState('');
-  const [showPreviewNotice, setShowPreviewNotice] = useState(false);
+
 
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
-  const isPreviewEnvironment = Platform.OS === 'web' && (
-    typeof window !== 'undefined' && (
-      window.location.hostname.includes('rork') || 
-      window.location.hostname.includes('e2b') ||
-      window.location.hostname === 'localhost'
-    )
-  );
+
 
   useEffect(() => {
     Animated.parallel([
@@ -152,9 +145,7 @@ export default function AuthScreen() {
         ? error.message 
         : (typeof error === 'string' ? error : 'Email ou mot de passe incorrect');
       
-      if (errorMessage.includes('mobile') || errorMessage.includes('QR code') || errorMessage.includes('aperçu')) {
-        setShowPreviewNotice(true);
-      } else if (errorMessage.includes('Internet') || errorMessage.includes('connexion') || errorMessage.includes('serveur')) {
+      if (errorMessage.includes('Internet') || errorMessage.includes('connexion') || errorMessage.includes('serveur')) {
         Alert.alert(
           'Erreur de connexion',
           errorMessage + '\n\nVoulez-vous tester la connexion au serveur ?',
