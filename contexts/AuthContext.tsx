@@ -525,12 +525,14 @@ export const [AuthContext, useAuth] = createContextHook(() => {
 
       if (error) {
         let errorMessage = error.message;
-        if (error.message?.includes('Invalid login credentials')) {
+        if (error.status === 503 || error.message?.includes('preview_environment')) {
+          errorMessage = 'Cette fonctionnalité nécessite un appareil mobile. Scannez le QR code avec Expo Go.';
+        } else if (error.message?.includes('Invalid login credentials')) {
           errorMessage = 'Email ou mot de passe incorrect';
         } else if (error.message?.includes('Email not confirmed')) {
           errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
         } else if (error.message?.includes('Network') || error.message?.includes('fetch')) {
-          errorMessage = 'Erreur de connexion. Vérifiez votre connexion Internet et réessayez.';
+          errorMessage = 'Connexion impossible dans l\'aperçu web. Utilisez l\'application mobile.';
         }
         throw new Error(errorMessage);
       }
@@ -545,7 +547,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       logger.error('Error signing in:', error?.message);
       
       if (error?.message?.includes('Network') || error?.message?.includes('fetch') || error?.message?.includes('Failed to fetch')) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion Internet.');
+        throw new Error('Cette application nécessite un appareil mobile pour se connecter. Scannez le QR code avec Expo Go.');
       }
       
       throw error;
