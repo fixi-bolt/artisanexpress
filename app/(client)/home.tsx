@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextI
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { supabase } from '@/lib/supabase';
 import { Search, Sparkles, ChevronDown, ChevronUp, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { categories } from '@/mocks/artisans';
@@ -10,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { ArtisanCategory } from '@/types';
 import { MapView, Marker, PROVIDER_GOOGLE } from '@/components/MapView';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -24,12 +26,44 @@ export default function ClientHomeScreen() {
   const [customSpecialty, setCustomSpecialty] = useState<string>('');
   const scrollY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef<number>(0);
-  const [region] = useState({
+  
+  const { position, isLoading: isLoadingLocation } = useGeolocation({
+    enabled: true,
+    onLocationUpdate: async (pos) => {
+      console.log('📍 User location updated:', pos);
+      if (user?.id) {
+        try {
+          await supabase
+            .from('users')
+            .update({
+              latitude: pos.latitude,
+              longitude: pos.longitude,
+            })
+            .eq('id', user.id);
+          console.log('✅ Location saved to database');
+        } catch (error) {
+          console.error('❌ Failed to save location:', error);
+        }
+      }
+    },
+  });
+
+  const [region, setRegion] = useState({
     latitude: 48.8566,
     longitude: 2.3522,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
+
+  useEffect(() => {
+    if (position) {
+      setRegion(prev => ({
+        ...prev,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      }));
+    }
+  }, [position]);
   
   useScreenTracking('client_home');
 
