@@ -9,6 +9,7 @@ import Colors from '@/constants/colors';
 import { UserType } from '@/types';
 import { categories } from '@/mocks/artisans';
 import { testSupabaseConnection, getNetworkInfo } from '@/utils/networkDiagnostics';
+import { testSupabaseConnection as testDirectConnection } from '@/utils/testSupabaseConnection';
 
 export default function AuthScreen() {
   const router = useRouter();
