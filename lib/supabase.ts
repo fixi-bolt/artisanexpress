@@ -20,55 +20,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: Platform.OS === 'web' ? true : false,
-    flowType: 'pkce',
-  },
-  global: {
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-    },
-    fetch: async (url, options = {}) => {
-      const urlString = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
-      try {
-        console.log('🌐 Supabase request to:', urlString.replace(SUPABASE_URL, ''));
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-        
-        const headers = {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          ...(options.headers || {}),
-        };
-        
-        const response = await fetch(url, {
-          ...options,
-          signal: controller.signal,
-          headers,
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok && response.status !== 400) {
-          console.error('❌ Supabase response error:', response.status, response.statusText);
-        }
-        
-        return response;
-      } catch (error: any) {
-        console.error('❌ Supabase fetch error:', error.message);
-        console.error('  URL:', urlString);
-        console.error('  Error type:', error.name);
-        
-        if (error.name === 'AbortError') {
-          throw new Error('La connexion a expiré. Vérifiez votre connexion Internet.');
-        }
-        
-        if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
-          throw new Error('Impossible de se connecter à Supabase. Vérifiez votre connexion Internet.');
-        }
-        
-        throw error;
-      }
-    },
   },
 });
 
