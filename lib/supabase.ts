@@ -10,70 +10,14 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('Supabase URL and key are required');
 }
 
-console.log('🔧 Supabase Config:');
-console.log('  URL:', SUPABASE_URL);
-console.log('  Key:', `${SUPABASE_ANON_KEY.substring(0, 10)}...${SUPABASE_ANON_KEY.substring(SUPABASE_ANON_KEY.length - 4)}`);
-
-const isPreviewEnvironment = () => {
-  if (Platform.OS !== 'web') return false;
-  if (typeof window === 'undefined') return false;
-  return window.location.hostname.includes('rork') || 
-         window.location.hostname.includes('e2b') || 
-         window.location.hostname === 'localhost';
-};
-
-const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-  try {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
-    
-    if (!globalThis.fetch) {
-      throw new Error('Fetch API is not available in this environment');
-    }
-    
-    const response = await globalThis.fetch(input, {
-      ...init,
-      headers: {
-        ...init?.headers,
-      },
-    });
-    
-    return response;
-  } catch (error: any) {
-    if (error?.message?.includes('Network request failed') && isPreviewEnvironment()) {
-      console.warn('');
-      console.warn('⚠️  CONNEXION SUPABASE IMPOSSIBLE DANS L\'APERÇU WEB');
-      console.warn('📱 Cette application nécessite un téléphone:');
-      console.warn('   1. Scannez le QR code avec Expo Go');
-      console.warn('   2. L\'application fonctionnera parfaitement sur mobile');
-      console.warn('');
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'preview_environment',
-          message: 'Supabase unavailable in preview. Use mobile device.',
-          user: null,
-          session: null
-        }), 
-        { 
-          status: 503,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-    }
-    
-    throw error;
-  }
-};
+console.log('✅ Supabase configuré:', SUPABASE_URL);
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: Platform.OS === 'web' ? true : false,
-  },
-  global: {
-    fetch: customFetch,
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
 
