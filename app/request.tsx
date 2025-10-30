@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Modal, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Modal, Image, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Camera, MapPin, Euro, Shield, ChevronDown, X, Sparkles } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { categories } from '@/mocks/artisans';
@@ -9,6 +9,7 @@ import { ArtisanCategory } from '@/types';
 import SmartCategorySuggestion from '@/components/SmartCategorySuggestion';
 import VoiceAssistant from '@/components/VoiceAssistant';
 import * as ImagePicker from 'expo-image-picker';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 export default function RequestScreen() {
   const router = useRouter();
@@ -29,11 +30,62 @@ export default function RequestScreen() {
     confidence?: number;
   } | null>(null);
   const [dynamicPrice, setDynamicPrice] = useState<{ total: number; breakdownLabel: string } | null>(null);
-  const [address, setAddress] = useState('15 Rue de Rivoli, 75001 Paris');
+  const [address, setAddress] = useState('Chargement de votre position...');
+  const [currentLatitude, setCurrentLatitude] = useState<number>(48.8566);
+  const [currentLongitude, setCurrentLongitude] = useState<number>(2.3522);
   const [isAnalyzingPhotos, setIsAnalyzingPhotos] = useState(false);
 
   const [estimatedPrice, setEstimatedPrice] = useState<number>(80 + Math.floor(Math.random() * 70));
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+
+  const { position, isLoading: isLoadingLocation, error: locationError } = useGeolocation({
+    enabled: true,
+    onLocationUpdate: (pos) => {
+      console.log('📍 Location updated:', pos);
+      setCurrentLatitude(pos.latitude);
+      setCurrentLongitude(pos.longitude);
+      reverseGeocode(pos.latitude, pos.longitude);
+    },
+    onError: (error) => {
+      console.error('📍 Location error:', error);
+      setAddress('15 Rue de Rivoli, 75001 Paris');
+    },
+  });
+
+  useEffect(() => {
+    if (position) {
+      console.log('📍 Initial position received:', position);
+      setCurrentLatitude(position.latitude);
+      setCurrentLongitude(position.longitude);
+      reverseGeocode(position.latitude, position.longitude);
+    }
+  }, [position]);
+
+  const reverseGeocode = async (latitude: number, longitude: number) => {
+    try {
+      console.log('📍 Reverse geocoding:', { latitude, longitude });
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'ArtisanConnect/1.0',
+          },
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const formattedAddress = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        console.log('📍 Address found:', formattedAddress);
+        setAddress(formattedAddress);
+      } else {
+        setAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      }
+    } catch (error) {
+      console.error('📍 Reverse geocoding error:', error);
+      setAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!title.trim() || !description.trim()) {
@@ -48,8 +100,8 @@ export default function RequestScreen() {
         description: description.trim(),
         photos,
         location: {
-          latitude: 48.8566,
-          longitude: 2.3522,
+          latitude: currentLatitude,
+          longitude: currentLongitude,
           address,
         },
         estimatedPrice,
@@ -61,8 +113,8 @@ export default function RequestScreen() {
         description: description.trim(),
         photos,
         location: {
-          latitude: 48.8566,
-          longitude: 2.3522,
+          latitude: currentLatitude,
+          longitude: currentLongitude,
           address,
         },
         estimatedPrice,
@@ -354,16 +406,38 @@ Description: ${description || 'Pas de description'}`,
           )}
 
           <View style={styles.section}>
-            <Text style={styles.label}>Adresse</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={styles.label}>Adresse</Text>
+              {isLoadingLocation && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                  <Text style={{ fontSize: 12, color: Colors.textSecondary }}>Localisation...</Text>
+                </View>
+              )}
+            </View>
             <View style={styles.addressBox}>
               <MapPin size={20} color={Colors.primary} strokeWidth={2} />
               <TextInput
                 style={styles.addressInput}
                 value={address}
-                onChangeText={setAddress}
+                onChangeText={(text) => {
+                  setAddress(text);
+                  console.log('📍 Address manually changed:', text);
+                }}
                 placeholderTextColor={Colors.textLight}
+                placeholder="Votre adresse d'intervention"
               />
             </View>
+            {locationError && (
+              <Text style={{ fontSize: 12, color: Colors.error, marginTop: 8 }}>
+                ⚠️ Impossible d'obtenir votre position. Vous pouvez saisir votre adresse manuellement.
+              </Text>
+            )}
+            {position && (
+              <Text style={{ fontSize: 12, color: Colors.success, marginTop: 8 }}>
+                ✓ Localisation actuelle détectée
+              </Text>
+            )}
           </View>
 
           <View style={styles.section}>
