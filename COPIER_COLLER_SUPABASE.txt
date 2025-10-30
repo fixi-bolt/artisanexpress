@@ -1,0 +1,37 @@
+========================================
+🎯 SCRIPT À COPIER-COLLER DANS SUPABASE
+========================================
+
+📍 Où coller ce script ?
+1. Allez sur https://supabase.com
+2. Ouvrez votre projet : mxlxwqhkodgixztnydzd
+3. Menu de gauche > SQL Editor
+4. New Query
+5. Collez ce script ci-dessous
+6. Cliquez sur RUN
+
+⚠️ IMPORTANT : Copiez TOUT le contenu ci-dessous (de la ligne suivante jusqu'à la fin)
+
+========================================
+
+Voir le fichier : database/SCRIPT_SIMPLE_PRODUCTION.sql
+
+========================================
+
+✅ APRÈS L'EXÉCUTION
+
+Vous devriez voir :
+✅ Script exécuté avec succès!
+📊 Tables créées et configurées
+🔒 RLS activé sur toutes les tables
+🚀 Application prête à fonctionner
+
+========================================
+
+📱 ENSUITE
+
+1. Redémarrez Expo : bun start
+2. Scannez le QR code avec Expo Go
+3. Testez la connexion
+
+========================================
