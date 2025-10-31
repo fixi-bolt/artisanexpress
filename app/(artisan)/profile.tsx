@@ -3,16 +3,15 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HelpCircle, LogOut, ChevronRight, Star, Briefcase, MapPin, DollarSign, Settings } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMissions } from '@/contexts/MissionContext';
 import { Artisan } from '@/types';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 
 export default function ArtisanProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading, updateUser } = useAuth();
   const { missions } = useMissions();
   const [isAvailable, setIsAvailable] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,27 +39,25 @@ export default function ArtisanProfileScreen() {
     [artisanMissions]
   );
 
-  const handleAvailabilityChange = async (value: boolean) => {
-    if (!user?.id) return;
+  const handleAvailabilityChange = useCallback(async (value: boolean) => {
+    if (user?.type !== 'artisan') return;
+    
+    console.log('[Profile] Toggling availability to:', value);
+    setIsSaving(true);
+    const prev = isAvailable;
+    setIsAvailable(value);
     
     try {
-      setIsSaving(true);
-      setIsAvailable(value);
-      
-      const { error } = await supabase
-        .from('artisans')
-        .update({ is_available: value })
-        .eq('id', user.id);
-
-      if (error) throw error;
-    } catch (err) {
-      console.error('❌ Erreur disponibilité:', err);
-      setIsAvailable(!value);
-      Alert.alert('Erreur', 'Impossible de mettre à jour votre disponibilité.');
+      await updateUser({ isAvailable: value } as Partial<Artisan>);
+      console.log('[Profile] Availability updated successfully');
+    } catch (err: any) {
+      console.error('[Profile] Failed to update availability:', err?.message);
+      setIsAvailable(prev);
+      Alert.alert('Erreur', 'Impossible de mettre à jour votre disponibilité. Réessayez.');
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [user?.type, isAvailable, updateUser]);
 
   const handleLogout = () => {
     Alert.alert(
