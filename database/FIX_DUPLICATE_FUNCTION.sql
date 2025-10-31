@@ -1,24 +1,33 @@
 -- ============================================
--- FIX: Suppression des fonctions dupliquées
+-- FIX: Supprimer les fonctions en double
 -- ============================================
--- Ce script supprime toutes les versions de calculate_distance
--- et recrée une seule version propre
--- ============================================
-
--- ÉTAPE 1: Supprimer TOUTES les versions de calculate_distance
+-- À coller dans l'éditeur SQL de Supabase
 -- ============================================
 
--- Supprimer toutes les versions possibles (avec différentes signatures)
-DROP FUNCTION IF EXISTS public.calculate_distance(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION) CASCADE;
+-- ÉTAPE 1 : Supprimer toutes les versions de calculate_distance
+-- ============================================
 DROP FUNCTION IF EXISTS public.calculate_distance_km(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION) CASCADE;
-DROP FUNCTION IF EXISTS public.calculate_distance_km(DECIMAL, DECIMAL, DECIMAL, DECIMAL) CASCADE;
+DROP FUNCTION IF EXISTS public.calculate_distance(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION) CASCADE;
 DROP FUNCTION IF EXISTS public.calculate_distance(DECIMAL, DECIMAL, DECIMAL, DECIMAL) CASCADE;
 
+-- ÉTAPE 2 : Supprimer toutes les versions de find_nearby_missions
 -- ============================================
--- ÉTAPE 2: Créer UNE SEULE version propre
--- ============================================
+DROP FUNCTION IF EXISTS public.find_nearby_missions(UUID, DECIMAL, DECIMAL) CASCADE;
+DROP FUNCTION IF EXISTS public.find_nearby_missions(UUID, DOUBLE PRECISION, DOUBLE PRECISION) CASCADE;
 
-CREATE OR REPLACE FUNCTION public.calculate_distance_km(
+-- ÉTAPE 3 : Supprimer toutes les versions de update_artisan_location
+-- ============================================
+DROP FUNCTION IF EXISTS public.update_artisan_location(UUID, DECIMAL, DECIMAL) CASCADE;
+DROP FUNCTION IF EXISTS public.update_artisan_location(UUID, DOUBLE PRECISION, DOUBLE PRECISION) CASCADE;
+
+-- ÉTAPE 4 : Supprimer toutes les versions de get_nearby_artisans
+-- ============================================
+DROP FUNCTION IF EXISTS public.get_nearby_artisans(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT) CASCADE;
+
+-- ============================================
+-- ÉTAPE 5 : Recréer la fonction calculate_distance (une seule version)
+-- ============================================
+CREATE OR REPLACE FUNCTION public.calculate_distance(
   lat1 DOUBLE PRECISION,
   lon1 DOUBLE PRECISION,
   lat2 DOUBLE PRECISION,
@@ -26,46 +35,23 @@ CREATE OR REPLACE FUNCTION public.calculate_distance_km(
 )
 RETURNS DOUBLE PRECISION
 LANGUAGE plpgsql
-IMMUTABLE PARALLEL SAFE
+IMMUTABLE
 AS $$
-DECLARE
-  r CONSTANT DOUBLE PRECISION := 6371; -- Rayon de la Terre en km
-  dlat_rad DOUBLE PRECISION;
-  dlon_rad DOUBLE PRECISION;
-  a DOUBLE PRECISION;
-  c DOUBLE PRECISION;
 BEGIN
-  -- Vérifier valeurs nulles
-  IF lat1 IS NULL OR lon1 IS NULL OR lat2 IS NULL OR lon2 IS NULL THEN
-    RETURN NULL;
-  END IF;
-  
-  -- Formule de Haversine
-  dlat_rad := RADIANS(lat2 - lat1);
-  dlon_rad := RADIANS(lon2 - lon1);
-  
-  a := POWER(SIN(dlat_rad/2), 2) + 
-       COS(RADIANS(lat1)) * COS(RADIANS(lat2)) * 
-       POWER(SIN(dlon_rad/2), 2);
-       
-  c := 2 * ATAN2(SQRT(a), SQRT(1-a));
-  
-  RETURN r * c;
+  -- Formule de Haversine pour calculer la distance en km
+  RETURN 6371 * acos(
+    cos(radians(lat1)) *
+    cos(radians(lat2)) *
+    cos(radians(lon2) - radians(lon1)) +
+    sin(radians(lat1)) *
+    sin(radians(lat2))
+  );
 END;
 $$;
 
 -- ============================================
--- ÉTAPE 3: Donner les permissions
+-- ÉTAPE 6 : Recréer find_nearby_missions (une seule version)
 -- ============================================
-
-GRANT EXECUTE ON FUNCTION public.calculate_distance_km TO authenticated;
-GRANT EXECUTE ON FUNCTION public.calculate_distance_km TO anon;
-
--- ============================================
--- ÉTAPE 4: Re-créer les fonctions dépendantes
--- ============================================
-
--- Fonction: find_nearby_missions (mise à jour pour utiliser calculate_distance_km)
 CREATE OR REPLACE FUNCTION public.find_nearby_missions(
   p_artisan_id UUID,
   p_latitude DOUBLE PRECISION,
@@ -86,22 +72,25 @@ RETURNS TABLE(
   longitude DOUBLE PRECISION,
   photos TEXT[],
   created_at TIMESTAMPTZ
-) AS $$
+) 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+AS $$
 DECLARE
   v_category TEXT;
-  v_intervention_radius INTEGER;
+  v_intervention_radius DOUBLE PRECISION;
 BEGIN
-  -- Récupérer catégorie et rayon de l'artisan
+  -- Get artisan's category and intervention radius
   SELECT a.category, a.intervention_radius
   INTO v_category, v_intervention_radius
-  FROM artisans a
+  FROM public.artisans a
   WHERE a.id = p_artisan_id;
 
-  -- Retourner missions à proximité
+  -- Return nearby missions
   RETURN QUERY
   SELECT 
     m.id AS mission_id,
-    calculate_distance_km(
+    public.calculate_distance(
       p_latitude, p_longitude,
       m.latitude, m.longitude
     ) AS distance_km,
@@ -117,25 +106,47 @@ BEGIN
     m.longitude,
     m.photos,
     m.created_at
-  FROM missions m
-  JOIN clients c ON c.id = m.client_id
-  JOIN users u ON u.id = c.id
+  FROM public.missions m
+  JOIN public.users u ON u.id = m.client_id
   WHERE m.status = 'pending'
     AND m.category = v_category
     AND m.artisan_id IS NULL
-    AND calculate_distance_km(
+    AND public.calculate_distance(
       p_latitude, p_longitude,
       m.latitude, m.longitude
-    ) <= v_intervention_radius
+    ) <= COALESCE(v_intervention_radius, 10)
   ORDER BY distance_km ASC, m.created_at DESC
   LIMIT 50;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-GRANT EXECUTE ON FUNCTION public.find_nearby_missions TO authenticated;
+$$;
 
 -- ============================================
--- Fonction: get_nearby_artisans (mise à jour pour utiliser calculate_distance_km)
+-- ÉTAPE 7 : Recréer update_artisan_location (une seule version)
+-- ============================================
+CREATE OR REPLACE FUNCTION public.update_artisan_location(
+  p_artisan_id UUID,
+  p_latitude DOUBLE PRECISION,
+  p_longitude DOUBLE PRECISION
+)
+RETURNS BOOLEAN 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE public.artisans
+  SET 
+    latitude = p_latitude,
+    longitude = p_longitude,
+    updated_at = NOW()
+  WHERE id = p_artisan_id;
+
+  RETURN FOUND;
+END;
+$$;
+
+-- ============================================
+-- ÉTAPE 8 : Recréer get_nearby_artisans (une seule version)
+-- ============================================
 CREATE OR REPLACE FUNCTION public.get_nearby_artisans(
   client_latitude DOUBLE PRECISION,
   client_longitude DOUBLE PRECISION,
@@ -162,7 +173,7 @@ BEGIN
     u.id,
     u.name,
     a.category,
-    public.calculate_distance_km(client_latitude, client_longitude, u.latitude, u.longitude) AS distance_km,
+    public.calculate_distance(client_latitude, client_longitude, u.latitude, u.longitude) AS distance_km,
     a.hourly_rate,
     u.rating,
     a.is_available,
@@ -175,161 +186,43 @@ BEGIN
     AND a.is_suspended = false
     AND u.latitude IS NOT NULL 
     AND u.longitude IS NOT NULL
-    AND public.calculate_distance_km(client_latitude, client_longitude, u.latitude, u.longitude) <= radius_km
+    AND public.calculate_distance(client_latitude, client_longitude, u.latitude, u.longitude) <= radius_km
     AND (artisan_category IS NULL OR a.category = artisan_category)
   ORDER BY distance_km ASC;
 END;
 $$;
 
+-- ============================================
+-- ÉTAPE 9 : Ajouter les permissions d'exécution
+-- ============================================
+GRANT EXECUTE ON FUNCTION public.calculate_distance TO authenticated;
+GRANT EXECUTE ON FUNCTION public.find_nearby_missions TO authenticated;
+GRANT EXECUTE ON FUNCTION public.update_artisan_location TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_nearby_artisans TO authenticated;
 
 -- ============================================
--- Fonction: notify_nearby_artisans (mise à jour pour utiliser calculate_distance_km)
-CREATE OR REPLACE FUNCTION public.notify_nearby_artisans()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  artisan_record RECORD;
-  distance_km DOUBLE PRECISION;
-  client_name TEXT;
-  client_lat DOUBLE PRECISION;
-  client_lon DOUBLE PRECISION;
-  notified_count INTEGER := 0;
-BEGIN
-  -- Récupérer les infos du client qui a créé la mission
-  SELECT u.name, u.latitude, u.longitude
-  INTO client_name, client_lat, client_lon
-  FROM public.users u
-  WHERE u.id = NEW.client_id;
-
-  -- Si le client n'a pas de position GPS, utiliser la position de la mission
-  IF client_lat IS NULL OR client_lon IS NULL THEN
-    IF NEW.latitude IS NOT NULL AND NEW.longitude IS NOT NULL THEN
-      client_lat := NEW.latitude;
-      client_lon := NEW.longitude;
-    ELSE
-      -- Position par défaut : Paris centre
-      client_lat := 48.8566;
-      client_lon := 2.3522;
-    END IF;
-  END IF;
-
-  RAISE NOTICE 'Nouvelle mission créée: % à (%, %)', NEW.category, client_lat, client_lon;
-
-  -- Parcourir tous les artisans actifs de la même catégorie
-  FOR artisan_record IN
-    SELECT 
-      u.id, 
-      u.name, 
-      u.latitude, 
-      u.longitude,
-      a.intervention_radius,
-      a.category
-    FROM public.users u
-    INNER JOIN public.artisans a ON a.id = u.id
-    WHERE 
-      u.user_type = 'artisan'
-      AND a.is_available = true
-      AND a.is_suspended = false
-      AND (a.category = NEW.category OR NEW.category = 'Non spécifié')
-      AND u.latitude IS NOT NULL 
-      AND u.longitude IS NOT NULL
-  LOOP
-    -- Calculer la distance entre le client et l'artisan
-    distance_km := public.calculate_distance_km(
-      client_lat,
-      client_lon,
-      artisan_record.latitude,
-      artisan_record.longitude
-    );
-
-    RAISE NOTICE 'Artisan % à % km', artisan_record.name, distance_km;
-
-    -- Si l'artisan est dans le rayon d'intervention
-    IF distance_km <= COALESCE(artisan_record.intervention_radius, 10) THEN
-      -- Insérer une notification
-      INSERT INTO public.notifications (
-        user_id, 
-        title, 
-        message, 
-        type,
-        mission_id,
-        metadata
-      )
-      VALUES (
-        artisan_record.id,
-        '🔔 Nouvelle mission disponible',
-        format(
-          'Mission "%s" à %.1f km de vous. Client: %s',
-          NEW.category,
-          distance_km,
-          COALESCE(client_name, 'Client')
-        ),
-        'mission',
-        NEW.id,
-        jsonb_build_object(
-          'distance_km', distance_km,
-          'category', NEW.category,
-          'mission_id', NEW.id,
-          'client_name', client_name
-        )
-      );
-
-      notified_count := notified_count + 1;
-      RAISE NOTICE 'Notification envoyée à artisan %', artisan_record.name;
-    END IF;
-  END LOOP;
-
-  RAISE NOTICE 'Total artisans notifiés: %', notified_count;
-
-  RETURN NEW;
-END;
-$$;
-
--- Re-créer le trigger
-DROP TRIGGER IF EXISTS on_mission_created_notify_artisans ON public.missions;
-CREATE TRIGGER on_mission_created_notify_artisans
-AFTER INSERT ON public.missions
-FOR EACH ROW
-WHEN (NEW.status = 'pending')
-EXECUTE FUNCTION public.notify_nearby_artisans();
+-- VÉRIFICATION FINALE
+-- ============================================
+-- Vérifier que les fonctions existent et sont uniques
+SELECT 
+  routine_name,
+  routine_type,
+  data_type
+FROM information_schema.routines
+WHERE routine_schema = 'public'
+  AND routine_name IN (
+    'calculate_distance',
+    'find_nearby_missions', 
+    'update_artisan_location',
+    'get_nearby_artisans'
+  )
+ORDER BY routine_name;
 
 -- ============================================
--- VÉRIFICATIONS FINALES
+-- FIN DU SCRIPT
 -- ============================================
-
-DO $$
-DECLARE
-  func_count INTEGER;
-BEGIN
-  -- Compter les versions de la fonction
-  SELECT COUNT(*) INTO func_count
-  FROM pg_proc 
-  WHERE proname = 'calculate_distance_km'
-    AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
-
-  RAISE NOTICE '';
-  RAISE NOTICE '========================================';
-  RAISE NOTICE '✅ CORRECTION TERMINÉE';
-  RAISE NOTICE '========================================';
-  RAISE NOTICE '';
-  RAISE NOTICE 'Nombre de fonctions calculate_distance_km: %', func_count;
-  RAISE NOTICE '';
-  
-  IF func_count = 1 THEN
-    RAISE NOTICE '✅ Parfait ! Une seule version de la fonction existe.';
-  ELSE
-    RAISE NOTICE '⚠️  Attention: % versions trouvées (attendu: 1)', func_count;
-  END IF;
-  
-  RAISE NOTICE '';
-  RAISE NOTICE '📍 Fonctions mises à jour:';
-  RAISE NOTICE '  • calculate_distance_km()';
-  RAISE NOTICE '  • find_nearby_missions()';
-  RAISE NOTICE '  • get_nearby_artisans()';
-  RAISE NOTICE '  • notify_nearby_artisans()';
-  RAISE NOTICE '';
-  RAISE NOTICE '========================================';
-END$$;
+-- ✅ Toutes les versions en double ont été supprimées
+-- ✅ Chaque fonction n'existe plus qu'en une seule version
+-- ✅ Utilisation de DOUBLE PRECISION pour la cohérence
+-- ✅ Permissions ajoutées pour les utilisateurs authentifiés
+-- ============================================
