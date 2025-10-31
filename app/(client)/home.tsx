@@ -1,10 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, NativeScrollEvent, NativeSyntheticEvent, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Search, Sparkles, ChevronDown, ChevronUp, MapPin, X } from 'lucide-react-native';
-import Colors from '@/constants/colors';
+import { Search, Sparkles, ChevronDown, ChevronUp, MapPin } from 'lucide-react-native';
 import { DesignTokens, AppColors } from '@/constants/design-tokens';
 import { categories } from '@/mocks/artisans';
 import { useMissions } from '@/contexts/MissionContext';
@@ -242,9 +241,8 @@ export default function ClientHomeScreen() {
               activeOpacity={0.8}
               testID="openSuperHub"
             >
-              <Sparkles size={18} color={Colors.surface} strokeWidth={2} />
+              <Sparkles size={18} color={AppColors.text.inverse} strokeWidth={2} />
               <Text style={styles.superAppButtonText}>Ouvrir la Super App</Text>
-              <View style={styles.superAppBadge}><Text style={styles.superAppBadgeText}>Nouveau</Text></View>
             </TouchableOpacity>
           </View>
 
@@ -252,19 +250,11 @@ export default function ClientHomeScreen() {
             {filteredCategories.map((category) => (
               <TouchableOpacity
                 key={category.id}
-                style={[
-                  styles.categoryCard,
-                  { backgroundColor: Colors.categories[category.id] + '15' }
-                ]}
+                style={styles.categoryCard}
                 onPress={() => handleCategoryPress(category.id)}
                 activeOpacity={0.7}
               >
-                <View 
-                  style={[
-                    styles.categoryIconContainer,
-                    { backgroundColor: Colors.categories[category.id] }
-                  ]}
-                >
+                <View style={styles.categoryIconContainer}>
                   <Text style={styles.categoryEmoji}>
                     {category.emoji}
                   </Text>
@@ -284,44 +274,28 @@ export default function ClientHomeScreen() {
               {showAllCategories ? 'Masquer les artisans' : 'Voir tous les artisans'}
             </Text>
             {showAllCategories ? (
-              <ChevronUp size={20} color={Colors.primary} strokeWidth={2} />
+              <ChevronUp size={20} color={AppColors.primary} strokeWidth={2} />
             ) : (
-              <ChevronDown size={20} color={Colors.primary} strokeWidth={2} />
+              <ChevronDown size={20} color={AppColors.primary} strokeWidth={2} />
             )}
           </TouchableOpacity>
 
           {showAllCategories && (
             <View style={styles.expandedSection}>
-              <View style={styles.customSearchContainer}>
-                <Search size={18} color={Colors.textLight} strokeWidth={2} />
-                <TextInput
-                  placeholder="Rechercher ou saisir une spécialité..."
-                  placeholderTextColor={Colors.textLight}
-                  value={customSpecialty}
-                  onChangeText={setCustomSpecialty}
-                  style={styles.customSearchInput}
-                  returnKeyType="done"
-                  testID="customSpecialtyInput"
-                />
-                {customSpecialty.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => setCustomSpecialty('')}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <X size={18} color={Colors.textLight} strokeWidth={2} />
-                  </TouchableOpacity>
-                )}
-              </View>
+              <Input
+                placeholder="Rechercher ou saisir une spécialité..."
+                value={customSpecialty}
+                onChangeText={setCustomSpecialty}
+                leftIcon={Search}
+                returnKeyType="done"
+                testID="customSpecialtyInput"
+              />
 
               <View style={styles.categoriesGrid}>
                 {filteredOtherCategories.map((category) => (
                   <TouchableOpacity
                     key={category.id}
-                    style={[
-                      styles.categoryCard,
-                      { backgroundColor: Colors.categories[category.id] + '15' }
-                    ]}
+                    style={styles.categoryCard}
                     onPress={() => {
                       toggleAllCategories();
                       handleCategoryPress(category.id);
@@ -329,12 +303,7 @@ export default function ClientHomeScreen() {
                     activeOpacity={0.7}
                     testID={`expandedCategory-${category.id}`}
                   >
-                    <View 
-                      style={[
-                        styles.categoryIconContainer,
-                        { backgroundColor: Colors.categories[category.id] }
-                      ]}
-                    >
+                    <View style={styles.categoryIconContainer}>
                       <Text style={styles.categoryEmoji}>
                         {category.emoji}
                       </Text>
@@ -369,7 +338,7 @@ export default function ClientHomeScreen() {
             activeOpacity={0.8}
           >
             <View style={styles.aiAssistantIconContainer}>
-              <Sparkles size={24} color={Colors.surface} strokeWidth={2} fill={Colors.surface} />
+              <Sparkles size={24} color={AppColors.text.inverse} strokeWidth={2} fill={AppColors.text.inverse} />
             </View>
             <View style={styles.aiAssistantContent}>
               <Text style={styles.aiAssistantTitle}>✨ Assistant IA</Text>
@@ -393,7 +362,7 @@ export default function ClientHomeScreen() {
                 activeOpacity={0.7}
                 testID="closeAllCategories"
               >
-                <X size={24} color={Colors.text} strokeWidth={2} />
+                <Text>X</Text>
               </TouchableOpacity>
             </View>
 
@@ -410,7 +379,7 @@ export default function ClientHomeScreen() {
                     key={category.id}
                     style={[
                       styles.modalCategoryCard,
-                      { backgroundColor: Colors.categories[category.id] + '15' }
+                      { backgroundColor: AppColors.surface }
                     ]}
                     onPress={() => {
                       setShowAllCategories(false);
@@ -422,7 +391,7 @@ export default function ClientHomeScreen() {
                     <View 
                       style={[
                         styles.modalCategoryIconContainer,
-                        { backgroundColor: Colors.categories[category.id] }
+                        { backgroundColor: AppColors.primary }
                       ]}
                     >
                       <Text style={styles.modalCategoryEmoji}>
@@ -571,6 +540,7 @@ const styles = StyleSheet.create({
     borderRadius: DesignTokens.borderRadius.xl,
     padding: DesignTokens.spacing[5],
     alignItems: 'center',
+    backgroundColor: AppColors.surface,
     ...DesignTokens.shadows.md,
     borderWidth: 1,
     borderColor: AppColors.border.light,
@@ -579,6 +549,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: DesignTokens.borderRadius.xl,
+    backgroundColor: AppColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: DesignTokens.spacing[3],
@@ -596,21 +567,17 @@ const styles = StyleSheet.create({
   aiAssistantButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.secondary,
-    borderRadius: 20,
-    padding: 20,
-    gap: 16,
-    shadowColor: Colors.secondary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
+    backgroundColor: AppColors.accent,
+    borderRadius: DesignTokens.borderRadius.xl,
+    padding: DesignTokens.spacing[5],
+    gap: DesignTokens.spacing[4],
+    ...DesignTokens.shadows.lg,
   },
   aiAssistantIconContainer: {
     width: 56,
     height: 56,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
+    borderRadius: DesignTokens.borderRadius.lg,
+    backgroundColor: AppColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -618,160 +585,115 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   aiAssistantTitle: {
-    fontSize: 17,
-    fontWeight: '700' as const,
-    color: Colors.surface,
-    marginBottom: 4,
+    fontSize: DesignTokens.typography.fontSize.lg,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+    color: AppColors.text.inverse,
+    marginBottom: DesignTokens.spacing[1],
   },
   aiAssistantSubtitle: {
-    fontSize: 13,
-    color: Colors.surface,
+    fontSize: DesignTokens.typography.fontSize.sm,
+    color: AppColors.text.inverse,
     opacity: 0.9,
-    lineHeight: 18,
+    lineHeight: DesignTokens.typography.fontSize.sm * DesignTokens.typography.lineHeight.normal,
   },
   moreButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    gap: 8,
-    marginTop: 8,
-    marginBottom: 16,
+    backgroundColor: AppColors.surface,
+    borderRadius: DesignTokens.borderRadius.lg,
+    paddingVertical: DesignTokens.spacing[4],
+    paddingHorizontal: DesignTokens.spacing[5],
+    gap: DesignTokens.spacing[2],
+    marginTop: DesignTokens.spacing[2],
+    marginBottom: DesignTokens.spacing[4],
     borderWidth: 2,
-    borderColor: Colors.primary + '30',
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: AppColors.primary + '30',
+    ...DesignTokens.shadows.sm,
   },
   expandedSection: {
-    marginTop: 8,
-    paddingTop: 16,
+    marginTop: DesignTokens.spacing[2],
+    paddingTop: DesignTokens.spacing[4],
     borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-  },
-  customSearchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-    marginBottom: 20,
-    borderWidth: 1.5,
-    borderColor: Colors.primary + '20',
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  customSearchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.text,
-    paddingVertical: 0,
+    borderTopColor: AppColors.border.light,
   },
   noResultsContainer: {
     alignItems: 'center',
-    paddingVertical: 32,
-    gap: 16,
+    paddingVertical: DesignTokens.spacing[8],
+    gap: DesignTokens.spacing[4],
   },
   noResultsText: {
-    fontSize: 15,
-    color: Colors.textSecondary,
+    fontSize: DesignTokens.typography.fontSize.base,
+    color: AppColors.text.secondary,
     textAlign: 'center',
   },
   customRequestButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: AppColors.primary,
+    borderRadius: DesignTokens.borderRadius.lg,
+    paddingVertical: DesignTokens.spacing[3],
+    paddingHorizontal: DesignTokens.spacing[6],
+    ...DesignTokens.shadows.md,
   },
   customRequestButtonText: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: Colors.surface,
+    fontSize: DesignTokens.typography.fontSize.base,
+    fontWeight: DesignTokens.typography.fontWeight.semibold,
+    color: AppColors.text.inverse,
+    textAlign: 'center',
   },
   moreButtonText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: Colors.primary,
+    fontSize: DesignTokens.typography.fontSize.base,
+    fontWeight: DesignTokens.typography.fontWeight.semibold,
+    color: AppColors.primary,
   },
   superAppButton: {
-    marginTop: 12,
+    marginTop: DesignTokens.spacing[3],
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    gap: DesignTokens.spacing[2],
+    backgroundColor: AppColors.primary,
+    borderRadius: DesignTokens.borderRadius.lg,
+    paddingVertical: DesignTokens.spacing[3],
+    paddingHorizontal: DesignTokens.spacing[4],
     alignSelf: 'flex-start',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    ...DesignTokens.shadows.md,
   },
   superAppButtonText: {
-    color: Colors.surface,
-    fontWeight: '700' as const,
-  },
-  superAppBadge: {
-    marginLeft: 8,
-    backgroundColor: Colors.secondary,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  superAppBadgeText: {
-    color: Colors.surface,
-    fontWeight: '700' as const,
-    fontSize: 10,
+    color: AppColors.text.inverse,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+    fontSize: DesignTokens.typography.fontSize.base,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: Colors.overlay,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    backgroundColor: AppColors.background,
+    borderTopLeftRadius: DesignTokens.borderRadius['2xl'],
+    borderTopRightRadius: DesignTokens.borderRadius['2xl'],
     maxHeight: '90%',
-    paddingBottom: 40,
+    paddingBottom: DesignTokens.spacing[10],
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
+    paddingHorizontal: DesignTokens.spacing[6],
+    paddingTop: DesignTokens.spacing[6],
+    paddingBottom: DesignTokens.spacing[4],
     borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+    borderBottomColor: AppColors.border.light,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    color: Colors.text,
+    fontSize: DesignTokens.typography.fontSize.xl,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+    color: AppColors.text.primary,
   },
   modalCloseButton: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: Colors.surface,
+    borderRadius: DesignTokens.borderRadius.lg,
+    backgroundColor: AppColors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -779,45 +701,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalScrollContent: {
-    padding: 24,
+    padding: DesignTokens.spacing[6],
   },
   modalGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -6,
+    marginHorizontal: -DesignTokens.spacing[1],
   },
   modalCategoryCard: {
     width: (SCREEN_WIDTH - 72) / 2,
-    margin: 6,
-    borderRadius: 20,
-    padding: 20,
+    margin: DesignTokens.spacing[1],
+    borderRadius: DesignTokens.borderRadius.xl,
+    padding: DesignTokens.spacing[5],
     alignItems: 'center',
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: AppColors.surface,
+    ...DesignTokens.shadows.sm,
   },
   modalCategoryIconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 20,
+    borderRadius: DesignTokens.borderRadius.xl,
+    backgroundColor: AppColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    marginBottom: DesignTokens.spacing[3],
+    ...DesignTokens.shadows.sm,
   },
   modalCategoryEmoji: {
     fontSize: 32,
   },
   modalCategoryLabel: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: Colors.text,
+    fontSize: DesignTokens.typography.fontSize.base,
+    fontWeight: DesignTokens.typography.fontWeight.semibold,
+    color: AppColors.text.primary,
     textAlign: 'center',
   },
 });
