@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput, Animated, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, NativeScrollEvent, NativeSyntheticEvent, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Search, Sparkles, ChevronDown, ChevronUp, X } from 'lucide-react-native';
+import { Search, Sparkles, ChevronDown, ChevronUp, MapPin, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { DesignTokens, AppColors } from '@/constants/design-tokens';
 import { categories } from '@/mocks/artisans';
@@ -13,6 +13,7 @@ import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { ArtisanCategory } from '@/types';
 import { MapView, Marker, PROVIDER_GOOGLE } from '@/components/MapView';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { Input, Badge, IconButton } from '@/components/ui';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -28,7 +29,7 @@ export default function ClientHomeScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef<number>(0);
   
-  const { position, isLoading: isLoadingLocation } = useGeolocation({
+  const { position } = useGeolocation({
     enabled: true,
     onLocationUpdate: async (pos) => {
       console.log('📍 User location updated:', pos);
@@ -188,24 +189,31 @@ export default function ClientHomeScreen() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Bonjour</Text>
-            <Text style={styles.userName}>{user?.name || 'Client'}</Text>
-          </View>
+            <View style={styles.headerLeft}>
+              <View>
+                <Text style={styles.greeting}>Bonjour</Text>
+                <Text style={styles.userName}>{user?.name || 'Client'}</Text>
+              </View>
+            </View>
+            <View style={styles.headerRight}>
+              <IconButton
+                icon={MapPin}
+                onPress={() => console.log('Location')}
+                variant="default"
+                size="md"
+              />
+            </View>
           </View>
 
           <View style={styles.searchContainer}>
-          <View style={styles.searchBox}>
-            <Search size={20} color={Colors.textLight} strokeWidth={2} />
-            <TextInput
+            <Input
               placeholder="Rechercher un artisan..."
-              placeholderTextColor={Colors.textLight}
               value={query}
               onChangeText={(text) => {
                 console.log('Search query changed:', text);
                 setQuery(text);
               }}
-              style={styles.searchInput}
+              leftIcon={Search}
               returnKeyType="search"
               onSubmitEditing={() => {
                 if (filteredCategories.length === 1) {
@@ -214,18 +222,15 @@ export default function ClientHomeScreen() {
                   setShowAllCategories(true);
                 }
               }}
-              testID="searchInput"
+              containerStyle={styles.searchInputContainerStyle}
             />
-          </View>
           </View>
 
           <View style={styles.categoriesContainer}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <Text style={styles.sectionTitle}>Choisissez un artisan</Text>
-              <View style={styles.badge247}>
-                <Text style={styles.badge247Text}>24/7</Text>
-              </View>
+              <Badge label="24/7" variant="primary" size="sm" />
             </View>
             <Text style={styles.sectionSubtitle}>
               Sélectionnez le type d&apos;intervention dont vous avez besoin
@@ -470,6 +475,13 @@ const styles = StyleSheet.create({
     paddingTop: DesignTokens.spacing[6],
     paddingBottom: DesignTokens.spacing[4],
   },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: DesignTokens.spacing[2],
+  },
   greeting: {
     fontSize: DesignTokens.typography.fontSize.sm,
     color: AppColors.text.secondary,
@@ -487,6 +499,9 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: DesignTokens.spacing[6],
     marginBottom: DesignTokens.spacing[6],
+  },
+  searchInputContainerStyle: {
+    marginBottom: 0,
   },
   searchBox: {
     flexDirection: 'row',
