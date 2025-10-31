@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+
 import { Bell, MapPin, Clock, Euro, Navigation, Image as ImageIcon, Satellite } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,7 +8,7 @@ import { useMissions } from '@/contexts/MissionContext';
 import { Mission } from '@/types';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { trpc } from '@/lib/trpc';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface NearbyMission {
   id: string;
@@ -31,14 +31,21 @@ interface NearbyMission {
 }
 
 export default function ArtisanDashboardScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { getPendingMissionsForArtisan, acceptMission, unreadNotificationsCount } = useMissions();
   const [nearbyMissions, setNearbyMissions] = useState<NearbyMission[]>([]);
   const [isLoadingMissions, setIsLoadingMissions] = useState<boolean>(false);
+  const [isAvailable, setIsAvailable] = useState<boolean>(false);
+  const [isToggling, setIsToggling] = useState<boolean>(false);
   
   const pendingMissions = getPendingMissionsForArtisan();
+
+  useEffect(() => {
+    if (user?.type === 'artisan') {
+      setIsAvailable(Boolean((user as import('@/types').Artisan).isAvailable));
+    }
+  }, [user]);
 
   const updateLocationMutation = trpc.location.updateLocation.useMutation();
   const utils = trpc.useUtils();
@@ -114,6 +121,26 @@ export default function ArtisanDashboardScreen() {
     );
   };
 
+  const statusColor = useMemo(() => (isAvailable ? Colors.success : Colors.error), [isAvailable]);
+
+  const onToggleAvailability = useCallback(async (value: boolean) => {
+    if (user?.type !== 'artisan') return;
+    console.log('[Dashboard] Toggling availability to:', value);
+    setIsToggling(true);
+    const prev = isAvailable;
+    setIsAvailable(value);
+    try {
+      await updateUser({ isAvailable: value } as Partial<import('@/types').Artisan>);
+      console.log('[Dashboard] Availability updated successfully');
+    } catch (e: any) {
+      console.error('[Dashboard] Failed to update availability:', e?.message);
+      setIsAvailable(prev);
+      Alert.alert('Erreur', "Impossible de mettre à jour votre disponibilité. Réessayez.");
+    } finally {
+      setIsToggling(false);
+    }
+  }, [user?.type, isAvailable, updateUser]);
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
@@ -163,21 +190,24 @@ export default function ArtisanDashboardScreen() {
           </View>
         )}
 
-        <View style={styles.statusCard}>
+        <View style={styles.statusCard} testID="status-card">
           <View style={styles.statusContent}>
             <Text style={styles.statusLabel}>Statut</Text>
             <View style={styles.statusRow}>
-              <View style={styles.statusIndicator} />
-              <Text style={styles.statusText}>Disponible</Text>
+              <View style={[styles.statusIndicator, { backgroundColor: statusColor }]} />
+              <Text style={[styles.statusText, { color: statusColor }]} testID="availability-text">{isAvailable ? 'Disponible' : 'Indisponible'}</Text>
             </View>
           </View>
-          <TouchableOpacity 
-            style={styles.settingsButton} 
-            activeOpacity={0.7}
-            onPress={() => router.push('/(artisan)/profile')}
-          >
-            <Text style={styles.settingsButtonText}>Gérer</Text>
-          </TouchableOpacity>
+          <View style={styles.toggleContainer} testID="availability-toggle">
+            <Switch
+              value={isAvailable}
+              onValueChange={onToggleAvailability}
+              disabled={isToggling}
+              thumbColor={isAvailable ? Colors.surface : Colors.surface}
+              trackColor={{ false: Colors.borderLight, true: Colors.success + '70' }}
+            />
+            <Text style={styles.toggleLabel}>{isAvailable ? 'On' : 'Off'}</Text>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -455,13 +485,16 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.success,
   },
-  settingsButton: {
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: Colors.surface,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 12,
   },
-  settingsButtonText: {
+  toggleLabel: {
     fontSize: 14,
     fontWeight: '600' as const,
     color: Colors.text,
