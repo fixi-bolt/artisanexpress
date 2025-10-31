@@ -206,7 +206,6 @@ export default function ArtisanDashboardScreen() {
               thumbColor={isAvailable ? Colors.surface : Colors.surface}
               trackColor={{ false: Colors.borderLight, true: Colors.success + '70' }}
             />
-            <Text style={styles.toggleLabel}>{isAvailable ? 'On' : 'Off'}</Text>
           </View>
         </View>
 
@@ -486,18 +485,10 @@ const styles = StyleSheet.create({
     color: Colors.success,
   },
   toggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     backgroundColor: Colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-  },
-  toggleLabel: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
   },
   section: {
     marginBottom: 24,
