@@ -280,30 +280,6 @@ export default function ClientHomeScreen() {
           },
         ]}
       >
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.greeting}>Bonjour, {user?.name || 'Utilisateur'}</Text>
-              <Text style={styles.subtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
-            </View>
-            {overlayState === OverlayState.EXPANDED && (
-              <TouchableOpacity 
-                style={styles.closeButton}
-                onPress={() => animateToState(OverlayState.RETRACTED)}
-                activeOpacity={0.7}
-              >
-                <ChevronDown size={24} color={Colors.white} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.avatarButton}>
-              <Image
-                source={{ uri: user?.photo || 'https://i.pravatar.cc/150' }}
-                style={styles.avatar}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
         <View style={styles.content}>
           <View 
             style={styles.handleBarContainer}
@@ -320,18 +296,35 @@ export default function ClientHomeScreen() {
             showsVerticalScrollIndicator={false}
           >
             {overlayState === OverlayState.EXPANDED && (
-              <View style={styles.searchSection}>
-                <View style={styles.searchBar}>
-                  <Search size={20} color={Colors.textSecondary} />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Rechercher une spécialité..."
-                    placeholderTextColor={Colors.textSecondary}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                  />
+              <>
+                <View style={styles.greetingSection}>
+                  <View style={styles.greetingContent}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
+                      <Text style={styles.greetingSubtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
+                    </View>
+                    <TouchableOpacity style={styles.avatarButtonSmall}>
+                      <Image
+                        source={{ uri: user?.photo || 'https://i.pravatar.cc/150' }}
+                        style={styles.avatarSmall}
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
+
+                <View style={styles.searchSection}>
+                  <View style={styles.searchBar}>
+                    <Search size={20} color={Colors.textSecondary} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Rechercher une spécialité..."
+                      placeholderTextColor={Colors.textSecondary}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                  </View>
+                </View>
+              </>
             )}
 
             <View style={styles.listSection}>
@@ -439,33 +432,33 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     zIndex: 10,
   },
-  header: {
+  greetingSection: {
     paddingHorizontal: DesignTokens.spacing[6],
     paddingVertical: DesignTokens.spacing[4],
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.surface,
+    marginBottom: DesignTokens.spacing[4],
   },
-  headerContent: {
+  greetingContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  greeting: {
+  greetingTitle: {
     fontSize: DesignTokens.typography.fontSize['2xl'],
     fontWeight: DesignTokens.typography.fontWeight.bold,
-    color: Colors.white,
+    color: Colors.text,
     marginBottom: DesignTokens.spacing[1],
   },
-  subtitle: {
+  greetingSubtitle: {
     fontSize: DesignTokens.typography.fontSize.base,
-    color: Colors.white,
-    opacity: 0.9,
+    color: Colors.textSecondary,
   },
-  avatarButton: {
+  avatarButtonSmall: {
     borderRadius: DesignTokens.borderRadius.full,
     borderWidth: 2,
-    borderColor: Colors.white,
+    borderColor: Colors.primary,
   },
-  avatar: {
+  avatarSmall: {
     width: 48,
     height: 48,
     borderRadius: DesignTokens.borderRadius.full,
