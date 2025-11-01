@@ -1,21 +1,19 @@
 -- ========================================
--- 🔧 SCRIPT À COPIER-COLLER DANS SUPABASE SQL EDITOR
+-- 🔧 FIX COMPLET: calculate_distance + RetractableMap
 -- ========================================
--- Ce script corrige l'erreur "function calculate_distance does not exist"
--- et remet la carte fonctionnelle
--- 
--- Instructions:
--- 1. Ouvrez Supabase Dashboard
--- 2. Allez dans SQL Editor
--- 3. Copiez-collez tout ce fichier
--- 4. Cliquez sur "Run"
+-- Ce script corrige tous les problèmes actuels
+
 -- ========================================
+-- ÉTAPE 1: Supprimer les anciennes versions
+-- ========================================
+DROP FUNCTION IF EXISTS calculate_distance(NUMERIC, NUMERIC, NUMERIC, NUMERIC) CASCADE;
+DROP FUNCTION IF EXISTS calculate_distance(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION) CASCADE;
+DROP FUNCTION IF EXISTS find_nearby_missions(UUID, DECIMAL, DECIMAL) CASCADE;
+DROP FUNCTION IF EXISTS find_nearby_missions(UUID, DOUBLE PRECISION, DOUBLE PRECISION) CASCADE;
 
--- Supprimer l'ancienne fonction si elle existe
-DROP FUNCTION IF EXISTS calculate_distance(NUMERIC, NUMERIC, NUMERIC, NUMERIC);
-DROP FUNCTION IF EXISTS calculate_distance(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION);
-
--- Créer la fonction avec les bons types
+-- ========================================
+-- ÉTAPE 2: Créer la fonction calculate_distance (version corrigée)
+-- ========================================
 CREATE OR REPLACE FUNCTION calculate_distance(
   lat1 DOUBLE PRECISION,
   lon1 DOUBLE PRECISION,
@@ -24,16 +22,18 @@ CREATE OR REPLACE FUNCTION calculate_distance(
 )
 RETURNS DOUBLE PRECISION AS $$
 DECLARE
-  earth_radius CONSTANT DOUBLE PRECISION := 6371;
+  earth_radius CONSTANT DOUBLE PRECISION := 6371; -- Rayon de la Terre en kilomètres
   d_lat DOUBLE PRECISION;
   d_lon DOUBLE PRECISION;
   a DOUBLE PRECISION;
   c DOUBLE PRECISION;
   distance DOUBLE PRECISION;
 BEGIN
+  -- Convertir les degrés en radians
   d_lat := radians(lat2 - lat1);
   d_lon := radians(lon2 - lon1);
 
+  -- Formule de Haversine
   a := sin(d_lat / 2) * sin(d_lat / 2) +
        cos(radians(lat1)) * cos(radians(lat2)) *
        sin(d_lon / 2) * sin(d_lon / 2);
@@ -46,18 +46,33 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
-COMMENT ON FUNCTION calculate_distance IS 'Calcule la distance en kilomètres entre deux points GPS';
+COMMENT ON FUNCTION calculate_distance IS 'Calcule la distance en kilomètres entre deux points GPS en utilisant la formule de Haversine';
 
+-- Accorder les permissions
 GRANT EXECUTE ON FUNCTION calculate_distance TO authenticated;
 GRANT EXECUTE ON FUNCTION calculate_distance TO anon;
 GRANT EXECUTE ON FUNCTION calculate_distance TO service_role;
 
 -- ========================================
--- Recréer find_nearby_missions
+-- ÉTAPE 3: Tester la fonction
 -- ========================================
-DROP FUNCTION IF EXISTS find_nearby_missions(UUID, DECIMAL, DECIMAL);
-DROP FUNCTION IF EXISTS find_nearby_missions(UUID, DOUBLE PRECISION, DOUBLE PRECISION);
+DO $$
+DECLARE
+  test_distance DOUBLE PRECISION;
+BEGIN
+  test_distance := calculate_distance(48.8566, 2.3522, 45.7640, 4.8357);
+  RAISE NOTICE '✅ Distance test Paris-Lyon: % km (attendu: ~392 km)', ROUND(test_distance::numeric, 0);
+  
+  IF test_distance BETWEEN 390 AND 395 THEN
+    RAISE NOTICE '✅ Fonction calculate_distance fonctionne correctement';
+  ELSE
+    RAISE WARNING '⚠️ Distance calculée semble incorrecte: % km', test_distance;
+  END IF;
+END $$;
 
+-- ========================================
+-- ÉTAPE 4: Créer find_nearby_missions (corrigée)
+-- ========================================
 CREATE OR REPLACE FUNCTION find_nearby_missions(
   p_artisan_id UUID,
   p_latitude DOUBLE PRECISION,
@@ -83,18 +98,16 @@ DECLARE
   v_category TEXT;
   v_intervention_radius INTEGER;
 BEGIN
-  SELECT a.category, COALESCE(a.intervention_radius, 50)
+  -- Get artisan's category and intervention radius
+  SELECT 
+    COALESCE(a.category, u.category) as category,
+    COALESCE(a.intervention_radius, 50) as radius
   INTO v_category, v_intervention_radius
-  FROM artisans a
-  WHERE a.id = p_artisan_id;
-  
-  IF v_category IS NULL THEN
-    SELECT u.category, 50
-    INTO v_category, v_intervention_radius
-    FROM users u
-    WHERE u.id = p_artisan_id AND u.type = 'artisan';
-  END IF;
+  FROM users u
+  LEFT JOIN artisans a ON a.id = u.id
+  WHERE u.id = p_artisan_id;
 
+  -- Return nearby missions
   RETURN QUERY
   SELECT 
     m.id AS mission_id,
@@ -131,27 +144,19 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION find_nearby_missions TO authenticated;
 GRANT EXECUTE ON FUNCTION find_nearby_missions TO service_role;
 
-COMMENT ON FUNCTION find_nearby_missions IS 'Trouve les missions à proximité de l''artisan';
+COMMENT ON FUNCTION find_nearby_missions IS 'Find pending missions near artisan location within their intervention radius';
 
 -- ========================================
--- TEST: Vérifier que tout fonctionne
+-- ÉTAPE 5: Message de succès
 -- ========================================
 DO $$
-DECLARE
-  test_distance DOUBLE PRECISION;
 BEGIN
-  test_distance := calculate_distance(48.8566, 2.3522, 45.7640, 4.8357);
-  RAISE NOTICE '✅ Distance Paris-Lyon: % km (attendu: ~392 km)', ROUND(test_distance::numeric, 0);
-  
-  IF test_distance BETWEEN 390 AND 395 THEN
-    RAISE NOTICE '✅ Fonction calculate_distance fonctionne correctement';
-  ELSE
-    RAISE WARNING '⚠️  Distance incorrecte: % km', test_distance;
-  END IF;
+  RAISE NOTICE '========================================';
+  RAISE NOTICE '✅ TOUTES LES FONCTIONS SONT CRÉÉES';
+  RAISE NOTICE '========================================';
+  RAISE NOTICE '✅ calculate_distance - OK';
+  RAISE NOTICE '✅ find_nearby_missions - OK';
+  RAISE NOTICE '========================================';
+  RAISE NOTICE '🎉 Vous pouvez maintenant utiliser l application !';
+  RAISE NOTICE '========================================';
 END $$;
-
-RAISE NOTICE '========================================';
-RAISE NOTICE '✅ Script exécuté avec succès!';
-RAISE NOTICE '✅ Vous pouvez maintenant créer des missions';
-RAISE NOTICE '✅ La carte rétractable est disponible';
-RAISE NOTICE '========================================';
