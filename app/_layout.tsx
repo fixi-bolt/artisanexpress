@@ -17,6 +17,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { StripeProvider } from '@/components/StripeProvider';
 import { trpc, trpcClient } from '@/lib/trpc';
 import { useEffect } from 'react';
+import { cleanStorage } from '@/utils/cleanStorage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +81,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     console.log('[STRIPE] Publishable key loaded:', publishableKey ? 'Yes' : 'No');
+    
+    // Nettoie le storage au démarrage pour éviter les erreurs JSON Parse
+    cleanStorage().catch(err => {
+      console.error('[STORAGE] Failed to clean storage on startup:', err);
+    });
   }, [publishableKey]);
 
   return (
