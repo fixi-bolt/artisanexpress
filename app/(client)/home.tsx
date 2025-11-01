@@ -288,6 +288,36 @@ export default function ClientHomeScreen() {
             <View style={styles.handleBar} />
           </View>
 
+          {overlayState === OverlayState.EXPANDED && (
+            <View style={styles.greetingSection}>
+              <View style={styles.greetingContent}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
+                  <Text style={styles.greetingSubtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
+                </View>
+                <TouchableOpacity style={styles.avatarButtonSmall}>
+                  <Image
+                    source={{ uri: user?.photo || 'https://i.pravatar.cc/150' }}
+                    style={styles.avatarSmall}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.searchSection}>
+            <View style={styles.searchBar}>
+              <Search size={20} color={Colors.textSecondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher une spécialité..."
+                placeholderTextColor={Colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+          </View>
+
           <ScrollView
             ref={scrollViewRef}
             onScroll={handleScroll}
@@ -295,37 +325,6 @@ export default function ClientHomeScreen() {
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
             showsVerticalScrollIndicator={false}
           >
-            {overlayState === OverlayState.EXPANDED && (
-              <>
-                <View style={styles.greetingSection}>
-                  <View style={styles.greetingContent}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
-                      <Text style={styles.greetingSubtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
-                    </View>
-                    <TouchableOpacity style={styles.avatarButtonSmall}>
-                      <Image
-                        source={{ uri: user?.photo || 'https://i.pravatar.cc/150' }}
-                        style={styles.avatarSmall}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.searchSection}>
-                  <View style={styles.searchBar}>
-                    <Search size={20} color={Colors.textSecondary} />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Rechercher une spécialité..."
-                      placeholderTextColor={Colors.textSecondary}
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                    />
-                  </View>
-                </View>
-              </>
-            )}
 
             <View style={styles.listSection}>
               <Text style={styles.sectionTitle}>Artisans disponibles</Text>
