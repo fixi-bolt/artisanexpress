@@ -12,6 +12,7 @@ import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { ArtisanCategory } from '@/types';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Input, Badge } from '@/components/ui';
+import RetractableMap from '@/components/RetractableMap';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -129,10 +130,6 @@ export default function ClientHomeScreen() {
     <View style={styles.container}>
       <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>Bonjour, {user?.name || 'Jean'}</Text>
-            <Text style={styles.subGreeting}>Besoin d&apos;un artisan aujourd&apos;hui ?</Text>
-          </View>
           <TouchableOpacity
             style={styles.avatarButton}
             onPress={() => router.push('/(client)/profile' as any)}
@@ -153,6 +150,10 @@ export default function ClientHomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
+          <View style={styles.greetingSection}>
+            <Text style={styles.greeting}>Bonjour, {user?.name || 'Alexandre'}</Text>
+            <Text style={styles.subGreeting}>Besoin d&apos;un artisan aujourd&apos;hui ?</Text>
+          </View>
 
           <View style={styles.searchContainer}>
             <Input
@@ -174,6 +175,17 @@ export default function ClientHomeScreen() {
               containerStyle={styles.searchInputContainerStyle}
             />
           </View>
+
+          {position && (
+            <View style={styles.mapContainer}>
+              <RetractableMap
+                latitude={position.latitude}
+                longitude={position.longitude}
+                showUserLocation={true}
+                testID="home-map"
+              />
+            </View>
+          )}
 
           <View style={styles.categoriesContainer}>
           <View style={styles.sectionHeader}>
@@ -369,29 +381,30 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     backgroundColor: AppColors.primary,
-    paddingBottom: DesignTokens.spacing[6],
+    paddingBottom: DesignTokens.spacing[4],
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: DesignTokens.spacing[6],
     paddingTop: DesignTokens.spacing[4],
   },
-  headerLeft: {
-    flex: 1,
+  greetingSection: {
+    paddingHorizontal: DesignTokens.spacing[6],
+    paddingTop: DesignTokens.spacing[4],
+    marginBottom: DesignTokens.spacing[4],
   },
   greeting: {
     fontSize: DesignTokens.typography.fontSize['3xl'],
     fontWeight: DesignTokens.typography.fontWeight.extrabold,
-    color: AppColors.text.inverse,
+    color: AppColors.text.primary,
     marginBottom: DesignTokens.spacing[1],
     letterSpacing: -0.5,
   },
   subGreeting: {
     fontSize: DesignTokens.typography.fontSize.base,
-    color: AppColors.text.inverse,
-    opacity: 0.9,
+    color: AppColors.text.secondary,
     fontWeight: DesignTokens.typography.fontWeight.medium,
   },
   avatarButton: {
@@ -425,6 +438,10 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   searchContainer: {
+    paddingHorizontal: DesignTokens.spacing[6],
+    marginBottom: DesignTokens.spacing[4],
+  },
+  mapContainer: {
     paddingHorizontal: DesignTokens.spacing[6],
     marginBottom: DesignTokens.spacing[6],
   },
