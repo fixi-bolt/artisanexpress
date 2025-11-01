@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, Animated, Dimensions, PanResponder, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DesignTokens } from '@/constants/design-tokens';
 import { useMissions } from '@/contexts/MissionContext';
@@ -8,11 +8,32 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import Colors from '@/constants/colors';
 import { MapView, Marker } from '@/components/MapView';
-import { Search, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Search, ChevronDown, ChevronUp, Target, Star, MapPin } from 'lucide-react-native';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import { mockArtisans } from '@/mocks/artisans';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MAP_VISIBLE_HEIGHT = SCREEN_HEIGHT * 0.35;
-const OVERLAY_EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.88;
+
+enum OverlayState {
+  RETRACTED = 'retracted',
+  HALF = 'half',
+  EXPANDED = 'expanded',
+}
+
+const OVERLAY_HEIGHTS = {
+  [OverlayState.RETRACTED]: SCREEN_HEIGHT * 0.35,
+  [OverlayState.HALF]: SCREEN_HEIGHT * 0.50,
+  [OverlayState.EXPANDED]: SCREEN_HEIGHT * 0.92,
+};
+
+enum MapMode {
+  FOLLOW = 'follow',
+  FREE = 'free',
+}
+
+const VELOCITY_THRESHOLD = 500;
+const SCROLL_THRESHOLD = 20;
+const ANIMATION_DURATION = 280;
 
 const SPECIALTIES = [
   { id: 'plumber', label: 'Plombier', emoji: '🔧', visible: true },
@@ -51,9 +72,27 @@ export default function ClientHomeScreen() {
   const hasNavigated = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const overlayHeight = useRef(new Animated.Value(MAP_VISIBLE_HEIGHT)).current;
+  const [overlayState, setOverlayState] = useState<OverlayState>(OverlayState.RETRACTED);
+  const [mapMode, setMapMode] = useState<MapMode>(MapMode.FOLLOW);
+  const mapRef = useRef<any>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  
+  const overlayPosition = useRef(new Animated.Value(OVERLAY_HEIGHTS[OverlayState.RETRACTED])).current;
   const mapOpacity = useRef(new Animated.Value(1)).current;
+  const dimOpacity = useRef(new Animated.Value(0)).current;
+
+  const { position } = useGeolocation({
+    enabled: true,
+    updateInterval: 2000,
+    onLocationUpdate: (pos) => {
+      if (mapMode === MapMode.FOLLOW && mapRef.current) {
+        mapRef.current.animateCamera({
+          center: { latitude: pos.latitude, longitude: pos.longitude },
+          zoom: 14,
+        }, { duration: 300 });
+      }
+    },
+  });
 
   useScreenTracking('client_home');
 
@@ -68,42 +107,102 @@ export default function ClientHomeScreen() {
     }
   }, [activeMission, router]);
 
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    {
-      useNativeDriver: false,
-      listener: (event: any) => {
-        const offsetY = event.nativeEvent.contentOffset.y;
-        if (offsetY > 20) {
-          Animated.parallel([
-            Animated.timing(overlayHeight, {
-              toValue: OVERLAY_EXPANDED_HEIGHT,
-              duration: 220,
-              useNativeDriver: false,
-            }),
-            Animated.timing(mapOpacity, {
-              toValue: 0.2,
-              duration: 220,
-              useNativeDriver: false,
-            }),
-          ]).start();
-        } else if (offsetY <= 0) {
-          Animated.parallel([
-            Animated.timing(overlayHeight, {
-              toValue: MAP_VISIBLE_HEIGHT,
-              duration: 220,
-              useNativeDriver: false,
-            }),
-            Animated.timing(mapOpacity, {
-              toValue: 1,
-              duration: 220,
-              useNativeDriver: false,
-            }),
-          ]).start();
-        }
-      },
+  const animateToState = useCallback((targetState: OverlayState) => {
+    const targetHeight = OVERLAY_HEIGHTS[targetState];
+    const targetMapOpacity = targetState === OverlayState.EXPANDED ? 0.3 : 1.0;
+    const targetDimOpacity = targetState === OverlayState.EXPANDED ? 0.4 : 0;
+
+    Animated.parallel([
+      Animated.timing(overlayPosition, {
+        toValue: targetHeight,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: false,
+      }),
+      Animated.timing(mapOpacity, {
+        toValue: targetMapOpacity,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: false,
+      }),
+      Animated.timing(dimOpacity, {
+        toValue: targetDimOpacity,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: false,
+      }),
+    ]).start();
+
+    setOverlayState(targetState);
+  }, [overlayPosition, mapOpacity, dimOpacity]);
+
+  const determineSnapState = useCallback((translationY: number, velocityY: number): OverlayState => {
+    if (Math.abs(velocityY) > VELOCITY_THRESHOLD) {
+      return velocityY < 0 ? OverlayState.EXPANDED : OverlayState.RETRACTED;
     }
-  );
+
+    const currentHeight = OVERLAY_HEIGHTS[overlayState];
+    const newHeight = currentHeight - translationY;
+
+    const distances = {
+      [OverlayState.RETRACTED]: Math.abs(newHeight - OVERLAY_HEIGHTS[OverlayState.RETRACTED]),
+      [OverlayState.HALF]: Math.abs(newHeight - OVERLAY_HEIGHTS[OverlayState.HALF]),
+      [OverlayState.EXPANDED]: Math.abs(newHeight - OVERLAY_HEIGHTS[OverlayState.EXPANDED]),
+    };
+
+    return Object.keys(distances).reduce((closest, key) => 
+      distances[key as OverlayState] < distances[closest as OverlayState] ? key : closest
+    ) as OverlayState;
+  }, [overlayState]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const currentHeight = OVERLAY_HEIGHTS[overlayState];
+        const newHeight = Math.max(
+          OVERLAY_HEIGHTS[OverlayState.RETRACTED],
+          Math.min(OVERLAY_HEIGHTS[OverlayState.EXPANDED], currentHeight - gestureState.dy)
+        );
+        overlayPosition.setValue(newHeight);
+
+        const progress = (newHeight - OVERLAY_HEIGHTS[OverlayState.RETRACTED]) / 
+          (OVERLAY_HEIGHTS[OverlayState.EXPANDED] - OVERLAY_HEIGHTS[OverlayState.RETRACTED]);
+        mapOpacity.setValue(1.0 - (progress * 0.7));
+        dimOpacity.setValue(progress * 0.4);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const targetState = determineSnapState(gestureState.dy, gestureState.vy);
+        animateToState(targetState);
+      },
+    })
+  ).current;
+
+  const handleScroll = useCallback((event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    
+    if (offsetY > SCROLL_THRESHOLD && overlayState !== OverlayState.EXPANDED) {
+      animateToState(OverlayState.EXPANDED);
+    } else if (offsetY <= 0 && overlayState === OverlayState.EXPANDED) {
+      animateToState(OverlayState.HALF);
+    }
+  }, [overlayState, animateToState]);
+
+  const handleRecenter = useCallback(() => {
+    if (mapMode === MapMode.FREE && position && mapRef.current) {
+      mapRef.current.animateCamera({
+        center: { latitude: position.latitude, longitude: position.longitude },
+        zoom: 14,
+      }, { duration: 300 });
+      setMapMode(MapMode.FOLLOW);
+    }
+  }, [mapMode, position]);
+
+  const handleMapPan = useCallback(() => {
+    if (mapMode === MapMode.FOLLOW) {
+      setMapMode(MapMode.FREE);
+    }
+  }, [mapMode]);
 
   const filteredSpecialties = SPECIALTIES.filter(s => 
     s.label.toLowerCase().includes(searchQuery.toLowerCase())
@@ -113,43 +212,89 @@ export default function ClientHomeScreen() {
     ? filteredSpecialties 
     : filteredSpecialties.filter(s => s.visible);
 
+  const mapCenter = position ? 
+    { latitude: position.latitude, longitude: position.longitude } : 
+    { latitude: 49.0379, longitude: 2.0773 };
+
+  const availableArtisans = mockArtisans.filter(a => a.isAvailable);
+
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.mapContainer, { opacity: mapOpacity }]}>
         <MapView
+          ref={mapRef}
           style={styles.map}
           initialRegion={{
-            latitude: 49.0379,
-            longitude: 2.0773,
+            ...mapCenter,
             latitudeDelta: 0.05,
             longitudeDelta: 0.05,
           }}
-          zoomEnabled={true}
-          scrollEnabled={true}
+          zoomEnabled={overlayState !== OverlayState.EXPANDED}
+          scrollEnabled={overlayState !== OverlayState.EXPANDED}
           rotateEnabled={false}
+          onPanDrag={handleMapPan}
         >
-          <Marker
-            coordinate={{ latitude: 49.0379, longitude: 2.0773 }}
-            title="Votre position"
-          />
+          {position && (
+            <Marker
+              coordinate={{ latitude: position.latitude, longitude: position.longitude }}
+              title="Votre position"
+            >
+              <View style={styles.userMarker}>
+                <View style={styles.userMarkerInner} />
+              </View>
+            </Marker>
+          )}
+          {availableArtisans.map((artisan) => (
+            <Marker
+              key={artisan.id}
+              coordinate={artisan.location}
+              title={artisan.name}
+              description={artisan.category}
+            />
+          ))}
         </MapView>
+
+        {overlayState !== OverlayState.EXPANDED && (
+          <TouchableOpacity 
+            style={[styles.recenterButton, { bottom: SCREEN_HEIGHT - OVERLAY_HEIGHTS[overlayState] + 16 }]}
+            onPress={handleRecenter}
+            activeOpacity={0.7}
+          >
+            <Target 
+              size={24} 
+              color={mapMode === MapMode.FOLLOW ? Colors.primary : Colors.textSecondary} 
+              fill={mapMode === MapMode.FOLLOW ? Colors.primary : 'transparent'}
+            />
+          </TouchableOpacity>
+        )}
       </Animated.View>
+
+      <Animated.View style={[styles.dimOverlay, { opacity: dimOpacity }]} pointerEvents="none" />
 
       <Animated.View 
         style={[
           styles.overlayContainer,
           { 
-            height: overlayHeight,
+            height: overlayPosition,
             paddingTop: insets.top,
           },
         ]}
       >
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.greeting}>Bonjour, {user?.name || 'Utilisateur'}</Text>
-              <Text style={styles.subtitle}>Besoin d&apos;un artisan aujourd&apos;hui ?</Text>
+              <Text style={styles.subtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
             </View>
+            {overlayState === OverlayState.EXPANDED && (
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => animateToState(OverlayState.RETRACTED)}
+                activeOpacity={0.7}
+              >
+                <ChevronDown size={24} color={Colors.white} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.avatarButton}>
               <Image
                 source={{ uri: user?.photo || 'https://i.pravatar.cc/150' }}
@@ -160,29 +305,70 @@ export default function ClientHomeScreen() {
         </View>
 
         <View style={styles.content}>
-          <View style={styles.handleBar} />
+          <View 
+            style={styles.handleBarContainer}
+            {...panResponder.panHandlers}
+          >
+            <View style={styles.handleBar} />
+          </View>
 
-          <Animated.ScrollView
+          <ScrollView
+            ref={scrollViewRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.searchSection}>
-              <Text style={styles.sectionTitle}>Spécialités</Text>
-              <View style={styles.searchBar}>
-                <Search size={20} color={Colors.textSecondary} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Rechercher une spécialité..."
-                  placeholderTextColor={Colors.textSecondary}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
+            {overlayState === OverlayState.EXPANDED && (
+              <View style={styles.searchSection}>
+                <View style={styles.searchBar}>
+                  <Search size={20} color={Colors.textSecondary} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Rechercher une spécialité..."
+                    placeholderTextColor={Colors.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
               </View>
+            )}
+
+            <View style={styles.listSection}>
+              <Text style={styles.sectionTitle}>Artisans disponibles</Text>
+              {availableArtisans.map((artisan, index) => (
+                <TouchableOpacity
+                  key={artisan.id}
+                  style={[styles.artisanCard, index > 0 && styles.artisanCardWithBorder]}
+                  onPress={() => router.push(`/request?artisanId=${artisan.id}` as any)}
+                  activeOpacity={0.7}
+                >
+                  <Image source={{ uri: artisan.photo }} style={styles.artisanPhoto} />
+                  <View style={styles.artisanInfo}>
+                    <View style={styles.artisanHeader}>
+                      <Text style={styles.artisanName}>{artisan.name}</Text>
+                      <View style={styles.ratingContainer}>
+                        <Star size={14} color={Colors.warning} fill={Colors.warning} />
+                        <Text style={styles.ratingText}>{artisan.rating}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.artisanCategory}>{artisan.category}</Text>
+                    <View style={styles.artisanFooter}>
+                      <View style={styles.artisanDetail}>
+                        <MapPin size={12} color={Colors.textSecondary} />
+                        <Text style={styles.artisanDetailText}>{artisan.interventionRadius} km</Text>
+                      </View>
+                      <Text style={styles.artisanPrice}>{artisan.hourlyRate}€/h</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            <View style={styles.specialtiesGrid}>
+            {overlayState === OverlayState.EXPANDED && (
+              <View>
+                <Text style={[styles.sectionTitle, { marginTop: DesignTokens.spacing[6] }]}>Spécialités</Text>
+                <View style={styles.specialtiesGrid}>
               {visibleSpecialties.map((specialty) => (
                   <TouchableOpacity
                     key={specialty.id}
@@ -197,30 +383,32 @@ export default function ClientHomeScreen() {
                     <Text style={styles.specialtyLabel} numberOfLines={2}>{specialty.label}</Text>
                   </TouchableOpacity>
                 ))}
-            </View>
+                </View>
 
-            {!showAllSpecialties && filteredSpecialties.length > 10 && (
-              <TouchableOpacity
-                style={styles.showMoreButton}
-                onPress={() => setShowAllSpecialties(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.showMoreText}>Voir plus</Text>
-                <ChevronDown size={20} color={Colors.primary} />
-              </TouchableOpacity>
-            )}
+                {!showAllSpecialties && filteredSpecialties.length > 10 && (
+                  <TouchableOpacity
+                    style={styles.showMoreButton}
+                    onPress={() => setShowAllSpecialties(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.showMoreText}>Voir plus</Text>
+                    <ChevronDown size={20} color={Colors.primary} />
+                  </TouchableOpacity>
+                )}
 
-            {showAllSpecialties && (
-              <TouchableOpacity
-                style={styles.showMoreButton}
-                onPress={() => setShowAllSpecialties(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.showMoreText}>Voir moins</Text>
-                <ChevronUp size={20} color={Colors.primary} />
-              </TouchableOpacity>
+                {showAllSpecialties && (
+                  <TouchableOpacity
+                    style={styles.showMoreButton}
+                    onPress={() => setShowAllSpecialties(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.showMoreText}>Voir moins</Text>
+                    <ChevronUp size={20} color={Colors.primary} />
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
-          </Animated.ScrollView>
+          </ScrollView>
         </View>
       </Animated.View>
     </View>
@@ -380,5 +568,122 @@ const styles = StyleSheet.create({
     fontWeight: DesignTokens.typography.fontWeight.semibold,
     color: Colors.primary,
     marginRight: DesignTokens.spacing[2],
+  },
+  userMarker: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(14, 132, 199, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userMarkerInner: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    borderWidth: 3,
+    borderColor: Colors.white,
+  },
+  recenterButton: {
+    position: 'absolute',
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...DesignTokens.shadows.lg,
+  },
+  dimOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    zIndex: 5,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: DesignTokens.spacing[3],
+  },
+  handleBarContainer: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  listSection: {
+    paddingHorizontal: DesignTokens.spacing[6],
+    marginBottom: DesignTokens.spacing[6],
+  },
+  artisanCard: {
+    flexDirection: 'row',
+    paddingVertical: DesignTokens.spacing[4],
+  },
+  artisanCardWithBorder: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  artisanPhoto: {
+    width: 60,
+    height: 60,
+    borderRadius: DesignTokens.borderRadius.lg,
+    marginRight: DesignTokens.spacing[3],
+  },
+  artisanInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  artisanHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: DesignTokens.spacing[1],
+  },
+  artisanName: {
+    fontSize: DesignTokens.typography.fontSize.base,
+    fontWeight: DesignTokens.typography.fontWeight.semibold,
+    color: Colors.text,
+    flex: 1,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingText: {
+    fontSize: DesignTokens.typography.fontSize.sm,
+    fontWeight: DesignTokens.typography.fontWeight.semibold,
+    color: Colors.text,
+  },
+  artisanCategory: {
+    fontSize: DesignTokens.typography.fontSize.sm,
+    color: Colors.textSecondary,
+    marginBottom: DesignTokens.spacing[2],
+  },
+  artisanFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  artisanDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  artisanDetailText: {
+    fontSize: DesignTokens.typography.fontSize.sm,
+    color: Colors.textSecondary,
+  },
+  artisanPrice: {
+    fontSize: DesignTokens.typography.fontSize.base,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+    color: Colors.primary,
   },
 });
