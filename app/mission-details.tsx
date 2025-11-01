@@ -10,6 +10,7 @@ import { useMissions } from '@/contexts/MissionContext';
 import { categories } from '@/mocks/artisans';
 import { useCallback, useState } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import RetractableMap from '@/components/RetractableMap';
 
 export default function MissionDetailsScreen() {
   const router = useRouter();
@@ -155,6 +156,22 @@ export default function MissionDetailsScreen() {
         <Text style={styles.title}>{mission.title}</Text>
         <Text style={styles.description}>{mission.description}</Text>
 
+        <View style={styles.mapSection}>
+          <RetractableMap
+            latitude={mission.location.latitude}
+            longitude={mission.location.longitude}
+            address={mission.location.address}
+            markers={mission.artisanLocation ? [{
+              latitude: mission.artisanLocation.latitude,
+              longitude: mission.artisanLocation.longitude,
+              title: 'Artisan',
+              description: 'Position de l\'artisan',
+            }] : []}
+            showUserLocation={true}
+            testID="mission-details-map"
+          />
+        </View>
+
         <View style={styles.infoSection}>
           <View style={styles.infoRow}>
             <View style={styles.iconContainer}>
@@ -297,6 +314,9 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
+  },
+  mapSection: {
+    marginBottom: 24,
   },
   statusContainer: {
     alignItems: 'center',
