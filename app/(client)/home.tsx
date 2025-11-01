@@ -13,9 +13,10 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { MapView, Marker } from '@/components/MapView';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const SCROLL_THRESHOLD = 80;
+const MAP_VISIBLE_HEIGHT = SCREEN_HEIGHT * 0.35;
+const OVERLAY_MIN_HEIGHT = SCREEN_HEIGHT - MAP_VISIBLE_HEIGHT;
+const OVERLAY_MAX_HEIGHT = SCREEN_HEIGHT * 0.88;
 const ANIMATION_DURATION = 280;
-const COLLAPSED_LIST_HEIGHT = SCREEN_HEIGHT * 0.4;
 
 export default function ClientHomeScreen() {
   const router = useRouter();
@@ -23,12 +24,13 @@ export default function ClientHomeScreen() {
   const { user } = useAuth();
   const { activeMission } = useMissions();
   const hasNavigated = useRef(false);
-  const [listVisible, setListVisible] = useState<boolean>(false);
   const [nearbyArtisans, setNearbyArtisans] = useState<any[]>([]);
-  const listTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const overlayTranslateY = useRef(new Animated.Value(MAP_VISIBLE_HEIGHT)).current;
   const lastScrollY = useRef<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const mapOpacity = useRef(new Animated.Value(1)).current;
+  const isDragging = useRef(false);
+  const [overlayExpanded, setOverlayExpanded] = useState<boolean>(false);
   
   const loadNearbyArtisans = useCallback(async (lat: number, lng: number) => {
     try {
@@ -95,28 +97,28 @@ export default function ClientHomeScreen() {
     navigateToTracking();
   }, [navigateToTracking]);
 
-  const showArtisansList = useCallback(() => {
-    setListVisible(true);
+  const expandOverlay = useCallback(() => {
+    setOverlayExpanded(true);
     Animated.parallel([
-      Animated.spring(listTranslateY, {
-        toValue: SCREEN_HEIGHT - COLLAPSED_LIST_HEIGHT,
+      Animated.spring(overlayTranslateY, {
+        toValue: SCREEN_HEIGHT - OVERLAY_MAX_HEIGHT,
         useNativeDriver: true,
         tension: 50,
         friction: 10,
       }),
       Animated.timing(mapOpacity, {
-        toValue: 0.3,
+        toValue: 0.2,
         duration: ANIMATION_DURATION,
         useNativeDriver: true,
       }),
     ]).start();
-  }, [listTranslateY, mapOpacity]);
+  }, [overlayTranslateY, mapOpacity]);
 
-  const hideArtisansList = useCallback(() => {
-    setListVisible(false);
+  const collapseOverlay = useCallback(() => {
+    setOverlayExpanded(false);
     Animated.parallel([
-      Animated.spring(listTranslateY, {
-        toValue: SCREEN_HEIGHT,
+      Animated.spring(overlayTranslateY, {
+        toValue: MAP_VISIBLE_HEIGHT,
         useNativeDriver: true,
         tension: 50,
         friction: 10,
@@ -127,16 +129,20 @@ export default function ClientHomeScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [listTranslateY, mapOpacity]);
+  }, [overlayTranslateY, mapOpacity]);
 
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (isDragging.current) return;
     const currentScrollY = event.nativeEvent.contentOffset.y;
-    lastScrollY.current = currentScrollY;
-
-    if (currentScrollY > SCROLL_THRESHOLD && !listVisible) {
-      showArtisansList();
+    
+    if (currentScrollY > 20 && !overlayExpanded) {
+      expandOverlay();
+    } else if (currentScrollY <= 0 && overlayExpanded) {
+      collapseOverlay();
     }
-  }, [listVisible, showArtisansList]);
+    
+    lastScrollY.current = currentScrollY;
+  }, [overlayExpanded, expandOverlay, collapseOverlay]);
 
 
 
@@ -155,9 +161,9 @@ export default function ClientHomeScreen() {
             showsUserLocation={true}
             showsMyLocationButton={false}
             showsCompass={false}
-            scrollEnabled={!listVisible}
-            zoomEnabled={!listVisible}
-            rotateEnabled={!listVisible}
+            scrollEnabled={!overlayExpanded}
+            zoomEnabled={!overlayExpanded}
+            rotateEnabled={!overlayExpanded}
             testID="home-map-background"
           >
             <Marker
@@ -202,7 +208,7 @@ export default function ClientHomeScreen() {
         style={[
           styles.artisansListContainer,
           {
-            transform: [{ translateY: listTranslateY }],
+            transform: [{ translateY: overlayTranslateY }],
           },
         ]}
       >
@@ -214,8 +220,15 @@ export default function ClientHomeScreen() {
           <Text style={styles.listTitle}>
             {nearbyArtisans.length} artisans disponibles près de vous
           </Text>
-          <TouchableOpacity onPress={hideArtisansList} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <ChevronDown size={24} color={AppColors.text.secondary} strokeWidth={2} />
+          <TouchableOpacity 
+            onPress={overlayExpanded ? collapseOverlay : expandOverlay} 
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            {overlayExpanded ? (
+              <ChevronDown size={24} color={AppColors.text.secondary} strokeWidth={2} />
+            ) : (
+              <ChevronDown size={24} color={AppColors.text.secondary} strokeWidth={2} style={{ transform: [{ rotate: '180deg' }] }} />
+            )}
           </TouchableOpacity>
         </View>
 
