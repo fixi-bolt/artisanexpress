@@ -305,7 +305,7 @@ export default function ClientHomeScreen() {
             </View>
           )}
 
-          <View style={styles.searchSection}>
+          <View style={styles.searchSectionFixed}>
             <View style={styles.searchBar}>
               <Search size={20} color={Colors.textSecondary} />
               <TextInput
@@ -480,9 +480,12 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: DesignTokens.spacing[4],
   },
-  searchSection: {
+  searchSectionFixed: {
     paddingHorizontal: DesignTokens.spacing[6],
-    marginBottom: DesignTokens.spacing[4],
+    paddingVertical: DesignTokens.spacing[3],
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
   },
   sectionTitle: {
     fontSize: DesignTokens.typography.fontSize.xl,
