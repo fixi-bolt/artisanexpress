@@ -6,6 +6,7 @@ import { X, Phone, MessageCircle, Star, Navigation, Clock } from 'lucide-react-n
 import Colors from '@/constants/colors';
 import { useMissions } from '@/contexts/MissionContext';
 import { mockArtisans } from '@/mocks/artisans';
+import { MapView, Marker } from '@/components/MapView';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -101,7 +102,43 @@ export default function TrackingScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        <View style={[styles.mapPlaceholder, { paddingTop: insets.top }]}>
+        <View style={[styles.mapContainer, { paddingTop: insets.top }]}>
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: activeMission.artisanLocation?.latitude || activeMission.location.latitude,
+              longitude: activeMission.artisanLocation?.longitude || activeMission.location.longitude,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+            showsUserLocation={true}
+            showsMyLocationButton={false}
+            showsCompass={true}
+            testID="tracking-map"
+          >
+            {/* Marqueur de destination (client) */}
+            <Marker
+              coordinate={{
+                latitude: activeMission.location.latitude,
+                longitude: activeMission.location.longitude,
+              }}
+              title="Votre adresse"
+              description={activeMission.location.address}
+            />
+            
+            {/* Marqueur de l'artisan (si position disponible) */}
+            {activeMission.artisanLocation && (
+              <Marker
+                coordinate={{
+                  latitude: activeMission.artisanLocation.latitude,
+                  longitude: activeMission.artisanLocation.longitude,
+                }}
+                title="Artisan"
+                description={artisan?.name || 'En route'}
+              />
+            )}
+          </MapView>
+          
           <TouchableOpacity 
             style={styles.closeButton}
             onPress={() => router.back()}
@@ -109,18 +146,6 @@ export default function TrackingScreen() {
           >
             <X size={24} color={Colors.text} strokeWidth={2} />
           </TouchableOpacity>
-
-          <View style={styles.mapContent}>
-            <Animated.View 
-              style={[
-                styles.artisanMarker,
-                { transform: [{ scale: pulseAnim }] }
-              ]}
-            >
-              <Text style={styles.markerEmoji}>📍</Text>
-            </Animated.View>
-            <Text style={styles.mapLabel}>Position de l&apos;artisan</Text>
-          </View>
         </View>
 
         <Animated.View 
@@ -249,10 +274,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  mapPlaceholder: {
+  mapContainer: {
     flex: 1,
-    backgroundColor: Colors.primaryLight + '30',
     position: 'relative',
+  },
+  map: {
+    flex: 1,
   },
   closeButton: {
     position: 'absolute',
@@ -270,24 +297,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-  },
-  mapContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  artisanMarker: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markerEmoji: {
-    fontSize: 64,
-  },
-  mapLabel: {
-    marginTop: 16,
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: Colors.primary,
   },
   bottomSheet: {
     position: 'absolute',
