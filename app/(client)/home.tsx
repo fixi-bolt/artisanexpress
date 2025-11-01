@@ -288,22 +288,20 @@ export default function ClientHomeScreen() {
             <View style={styles.handleBar} />
           </View>
 
-          {overlayState === OverlayState.EXPANDED && (
-            <View style={styles.greetingSection}>
-              <View style={styles.greetingContent}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
-                  <Text style={styles.greetingSubtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
-                </View>
-                <TouchableOpacity style={styles.avatarButtonSmall}>
-                  <Image
-                    source={{ uri: user?.photo || 'https://i.pravatar.cc/150' }}
-                    style={styles.avatarSmall}
-                  />
-                </TouchableOpacity>
+          <View style={styles.greetingSection}>
+            <View style={styles.greetingContent}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
+                <Text style={styles.greetingSubtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
               </View>
+              <TouchableOpacity style={styles.avatarButtonSmall}>
+                <Image
+                  source={{ uri: user?.photo || 'https://i.pravatar.cc/150' }}
+                  style={styles.avatarSmall}
+                />
+              </TouchableOpacity>
             </View>
-          )}
+          </View>
 
           <View style={styles.searchSectionFixed}>
             <View style={styles.searchBar}>
