@@ -1,23 +1,21 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, NativeScrollEvent, NativeSyntheticEvent, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Search, Sparkles, ChevronDown, ChevronUp, MapPin } from 'lucide-react-native';
+import { Search, ChevronDown, MapPin, Star } from 'lucide-react-native';
 import { DesignTokens, AppColors } from '@/constants/design-tokens';
-import { categories } from '@/mocks/artisans';
+import { categories, mockArtisans } from '@/mocks/artisans';
 import { useMissions } from '@/contexts/MissionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
-import { ArtisanCategory } from '@/types';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { Input, Badge } from '@/components/ui';
 import { MapView, Marker } from '@/components/MapView';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const SCROLL_THRESHOLD = 120;
-const ANIMATION_DURATION = 220;
+const SCROLL_THRESHOLD = 80;
+const ANIMATION_DURATION = 280;
+const COLLAPSED_LIST_HEIGHT = SCREEN_HEIGHT * 0.4;
 
 export default function ClientHomeScreen() {
   const router = useRouter();
@@ -25,16 +23,31 @@ export default function ClientHomeScreen() {
   const { user } = useAuth();
   const { activeMission } = useMissions();
   const hasNavigated = useRef(false);
-  const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
-  const [query, setQuery] = useState<string>('');
-  const [customSpecialty, setCustomSpecialty] = useState<string>('');
-  const [overlayVisible, setOverlayVisible] = useState<boolean>(true);
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const overlayOpacity = useRef(new Animated.Value(1)).current;
-  const overlayTranslateY = useRef(new Animated.Value(0)).current;
+  const [listVisible, setListVisible] = useState<boolean>(false);
+  const [nearbyArtisans, setNearbyArtisans] = useState<any[]>([]);
+  const listTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const lastScrollY = useRef<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const mapOpacity = useRef(new Animated.Value(1)).current;
   
+  const loadNearbyArtisans = useCallback(async (lat: number, lng: number) => {
+    try {
+      const artisansWithDistance = mockArtisans
+        .filter(a => a.isAvailable)
+        .slice(0, 8)
+        .map((a, i) => ({
+          ...a,
+          distance: (Math.random() * 5 + 0.5).toFixed(1),
+          eta: `${Math.floor(Math.random() * 10 + 3)} min`,
+        }));
+      
+      setNearbyArtisans(artisansWithDistance);
+      console.log('📍 Loaded nearby artisans:', artisansWithDistance.length);
+    } catch (error) {
+      console.error('❌ Failed to load nearby artisans:', error);
+    }
+  }, []);
+
   const { position } = useGeolocation({
     enabled: true,
     onLocationUpdate: async (pos) => {
@@ -49,6 +62,8 @@ export default function ClientHomeScreen() {
             })
             .eq('id', user.id);
           console.log('✅ Location saved to database');
+          
+          loadNearbyArtisans(pos.latitude, pos.longitude);
         } catch (error) {
           console.error('❌ Failed to save location:', error);
         }
@@ -59,44 +74,11 @@ export default function ClientHomeScreen() {
   useEffect(() => {
     if (position) {
       console.log('Position updated:', position);
+      loadNearbyArtisans(position.latitude, position.longitude);
     }
-  }, [position]);
+  }, [position, loadNearbyArtisans]);
   
   useScreenTracking('client_home');
-
-  const priorityCategories = useMemo(
-    () => categories.filter(c => c.isPriority).slice(0, 10),
-    []
-  );
-  
-  const otherCategories = useMemo(
-    () => categories.filter(c => !c.isPriority),
-    []
-  );
-  
-  const normalizedQuery = useMemo(
-    () => query.trim().toLowerCase(),
-    [query]
-  );
-  
-  const filteredCategories = useMemo(
-    () => normalizedQuery.length > 0
-      ? categories.filter(c => c.label.toLowerCase().includes(normalizedQuery) || c.id.toLowerCase().includes(normalizedQuery))
-      : priorityCategories,
-    [normalizedQuery, priorityCategories]
-  );
-
-  const filteredOtherCategories = useMemo(
-    () => customSpecialty.trim().length > 0
-      ? otherCategories.filter(c => c.label.toLowerCase().includes(customSpecialty.trim().toLowerCase()))
-      : otherCategories,
-    [customSpecialty, otherCategories]
-  );
-
-  const handleCategoryPress = useCallback((category: ArtisanCategory) => {
-    console.log('Selected category:', category);
-    router.push(`/request?category=${category}` as any);
-  }, [router]);
 
   const navigateToTracking = useCallback(() => {
     if (activeMission && !hasNavigated.current) {
@@ -113,77 +95,69 @@ export default function ClientHomeScreen() {
     navigateToTracking();
   }, [navigateToTracking]);
 
-  const toggleAllCategories = useCallback(() => {
-    setShowAllCategories(!showAllCategories);
-    if (!showAllCategories) {
-      setCustomSpecialty('');
-    }
-  }, [showAllCategories]);
-
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false }
-  );
-
-  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const currentScrollY = event.nativeEvent.contentOffset.y;
-    lastScrollY.current = currentScrollY;
-    handleScroll(event);
-
-    if (currentScrollY > SCROLL_THRESHOLD && overlayVisible) {
-      setOverlayVisible(false);
-      Animated.parallel([
-        Animated.timing(overlayOpacity, {
-          toValue: 0,
-          duration: ANIMATION_DURATION,
-          useNativeDriver: true,
-        }),
-        Animated.timing(overlayTranslateY, {
-          toValue: -20,
-          duration: ANIMATION_DURATION,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [handleScroll, overlayVisible, overlayOpacity, overlayTranslateY]);
-
-  const showOverlay = useCallback(() => {
-    setOverlayVisible(true);
+  const showArtisansList = useCallback(() => {
+    setListVisible(true);
     Animated.parallel([
-      Animated.timing(overlayOpacity, {
-        toValue: 1,
-        duration: ANIMATION_DURATION,
+      Animated.spring(listTranslateY, {
+        toValue: SCREEN_HEIGHT - COLLAPSED_LIST_HEIGHT,
         useNativeDriver: true,
+        tension: 50,
+        friction: 10,
       }),
-      Animated.timing(overlayTranslateY, {
-        toValue: 0,
+      Animated.timing(mapOpacity, {
+        toValue: 0.3,
         duration: ANIMATION_DURATION,
         useNativeDriver: true,
       }),
     ]).start();
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  }, [overlayOpacity, overlayTranslateY]);
+  }, [listTranslateY, mapOpacity]);
+
+  const hideArtisansList = useCallback(() => {
+    setListVisible(false);
+    Animated.parallel([
+      Animated.spring(listTranslateY, {
+        toValue: SCREEN_HEIGHT,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 10,
+      }),
+      Animated.timing(mapOpacity, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [listTranslateY, mapOpacity]);
+
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    lastScrollY.current = currentScrollY;
+
+    if (currentScrollY > SCROLL_THRESHOLD && !listVisible) {
+      showArtisansList();
+    }
+  }, [listVisible, showArtisansList]);
 
 
 
   return (
     <View style={styles.container}>
       {position && (
-        <View style={styles.mapBackground}>
+        <Animated.View style={[styles.mapBackground, { opacity: mapOpacity }]}>
           <MapView
             style={styles.mapView}
             initialRegion={{
               latitude: position.latitude,
               longitude: position.longitude,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
             }}
             showsUserLocation={true}
-            showsMyLocationButton={true}
-            showsCompass={true}
-            scrollEnabled={!overlayVisible}
-            zoomEnabled={!overlayVisible}
-            rotateEnabled={!overlayVisible}
+            showsMyLocationButton={false}
+            showsCompass={false}
+            scrollEnabled={!listVisible}
+            zoomEnabled={!listVisible}
+            rotateEnabled={!listVisible}
             testID="home-map-background"
           >
             <Marker
@@ -193,272 +167,116 @@ export default function ClientHomeScreen() {
               }}
               title="Votre position"
             />
+            {nearbyArtisans.slice(0, 5).map((artisan, index) => (
+              <Marker
+                key={artisan.id}
+                coordinate={{
+                  latitude: position.latitude + (Math.random() - 0.5) * 0.01,
+                  longitude: position.longitude + (Math.random() - 0.5) * 0.01,
+                }}
+                title={artisan.name}
+              />
+            ))}
           </MapView>
-          {!overlayVisible && (
-            <View style={styles.mapHUD}>
-              <View style={styles.hudCard}>
-                <MapPin size={16} color={AppColors.primary} strokeWidth={2} />
-                <Text style={styles.hudText}>Cergy, France</Text>
-              </View>
-            </View>
-          )}
-        </View>
+        </Animated.View>
       )}
 
-      {!overlayVisible && (
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
-          style={styles.chevronToggle}
-          onPress={showOverlay}
+          style={styles.avatarButton}
+          onPress={() => router.push('/(client)/profile' as any)}
           activeOpacity={0.7}
-          testID="show-overlay-button"
         >
-          <View style={styles.chevronButton}>
-            <ChevronDown size={24} color={AppColors.text.inverse} strokeWidth={2.5} />
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{(user?.name || 'J')[0].toUpperCase()}</Text>
           </View>
         </TouchableOpacity>
-      )}
 
-      <Animated.View
-        style={[
-          styles.overlayContainer,
-          {
-            opacity: overlayOpacity,
-            transform: [{ translateY: overlayTranslateY }],
-            pointerEvents: overlayVisible ? 'auto' : 'none',
-          },
-        ]}
-      >
-      <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.avatarButton}
-            onPress={() => router.push('/(client)/profile' as any)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{(user?.name || 'J')[0].toUpperCase()}</Text>
-            </View>
-          </TouchableOpacity>
+        <View style={styles.searchBarCompact}>
+          <Search size={20} color={AppColors.text.secondary} strokeWidth={2} />
+          <Text style={styles.searchPlaceholder}>Où allez-vous ?</Text>
         </View>
       </View>
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={false}
+      <Animated.View
+        style={[
+          styles.artisansListContainer,
+          {
+            transform: [{ translateY: listTranslateY }],
+          },
+        ]}
       >
-        <View style={styles.content}>
-          <View style={styles.greetingSection}>
-            <Text style={styles.greeting}>Bonjour, {user?.name || 'Alexandre'}</Text>
-            <Text style={styles.subGreeting}>Besoin d&apos;un artisan aujourd&apos;hui ?</Text>
-          </View>
+        <View style={styles.listHandle}>
+          <View style={styles.handleBar} />
+        </View>
 
-          <View style={styles.searchContainer}>
-            <Input
-              placeholder="Rechercher un artisan..."
-              value={query}
-              onChangeText={(text) => {
-                console.log('Search query changed:', text);
-                setQuery(text);
-              }}
-              leftIcon={Search}
-              returnKeyType="search"
-              onSubmitEditing={() => {
-                if (filteredCategories.length === 1) {
-                  handleCategoryPress(filteredCategories[0].id);
-                } else if (filteredCategories.length > 1) {
-                  setShowAllCategories(true);
-                }
-              }}
-              containerStyle={styles.searchInputContainerStyle}
-            />
-          </View>
-
-          <View style={styles.categoriesContainer}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Text style={styles.sectionTitle}>Choisissez un artisan</Text>
-              <Badge label="24/7" variant="primary" size="sm" />
-            </View>
-            <Text style={styles.sectionSubtitle}>
-              Sélectionnez le type d&apos;intervention dont vous avez besoin
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => router.push('/(client)/super-hub' as any)}
-              style={styles.superAppButton}
-              activeOpacity={0.8}
-              testID="openSuperHub"
-            >
-              <Sparkles size={18} color={AppColors.text.inverse} strokeWidth={2} />
-              <Text style={styles.superAppButtonText}>Ouvrir la Super App</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.categoriesGrid}>
-            {filteredCategories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={styles.categoryCard}
-                onPress={() => handleCategoryPress(category.id)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.categoryIconContainer}>
-                  <Text style={styles.categoryEmoji}>
-                    {category.emoji}
-                  </Text>
-                </View>
-                <Text style={styles.categoryLabel}>{category.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TouchableOpacity 
-            style={styles.moreButton}
-            onPress={toggleAllCategories}
-            activeOpacity={0.7}
-            testID="toggleAllCategories"
-          >
-            <Text style={styles.moreButtonText}>
-              {showAllCategories ? 'Masquer les artisans' : 'Voir tous les artisans'}
-            </Text>
-            {showAllCategories ? (
-              <ChevronUp size={20} color={AppColors.primary} strokeWidth={2} />
-            ) : (
-              <ChevronDown size={20} color={AppColors.primary} strokeWidth={2} />
-            )}
+        <View style={styles.listHeader}>
+          <Text style={styles.listTitle}>
+            {nearbyArtisans.length} artisans disponibles près de vous
+          </Text>
+          <TouchableOpacity onPress={hideArtisansList} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <ChevronDown size={24} color={AppColors.text.secondary} strokeWidth={2} />
           </TouchableOpacity>
+        </View>
 
-          {showAllCategories && (
-            <View style={styles.expandedSection}>
-              <Input
-                placeholder="Rechercher ou saisir une spécialité..."
-                value={customSpecialty}
-                onChangeText={setCustomSpecialty}
-                leftIcon={Search}
-                returnKeyType="done"
-                testID="customSpecialtyInput"
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.listScrollView}
+          contentContainerStyle={styles.listContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+        >
+          {nearbyArtisans.map((artisan) => (
+            <TouchableOpacity
+              key={artisan.id}
+              style={styles.artisanCard}
+              onPress={() => router.push(`/request?category=${artisan.category}` as any)}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={{ uri: artisan.photo || 'https://i.pravatar.cc/150' }}
+                style={styles.artisanPhoto}
               />
-
-              <View style={styles.categoriesGrid}>
-                {filteredOtherCategories.map((category) => (
-                  <TouchableOpacity
-                    key={category.id}
-                    style={styles.categoryCard}
-                    onPress={() => {
-                      toggleAllCategories();
-                      handleCategoryPress(category.id);
-                    }}
-                    activeOpacity={0.7}
-                    testID={`expandedCategory-${category.id}`}
-                  >
-                    <View style={styles.categoryIconContainer}>
-                      <Text style={styles.categoryEmoji}>
-                        {category.emoji}
-                      </Text>
-                    </View>
-                    <Text style={styles.categoryLabel}>{category.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {customSpecialty.length > 0 && filteredOtherCategories.length === 0 && (
-                <View style={styles.noResultsContainer}>
-                  <Text style={styles.noResultsText}>Aucune spécialité trouvée</Text>
-                  <TouchableOpacity
-                    style={styles.customRequestButton}
-                    onPress={() => {
-                      console.log('Custom specialty request:', customSpecialty);
-                      toggleAllCategories();
-                      router.push(`/request?customSpecialty=${encodeURIComponent(customSpecialty)}` as any);
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.customRequestButtonText}>Faire une demande personnalisée</Text>
-                  </TouchableOpacity>
+              <View style={styles.artisanInfo}>
+                <View style={styles.artisanRow}>
+                  <Text style={styles.artisanName}>{artisan.name}</Text>
+                  <View style={styles.artisanRating}>
+                    <Star size={14} color={AppColors.warning} fill={AppColors.warning} strokeWidth={2} />
+                    <Text style={styles.ratingText}>{artisan.rating?.toFixed(1) || '5.0'}</Text>
+                  </View>
                 </View>
-              )}
-            </View>
-          )}
+                <Text style={styles.artisanCategory}>
+                  {categories.find(c => c.id === artisan.category)?.label || artisan.category}
+                </Text>
+                <View style={styles.artisanMeta}>
+                  <View style={styles.metaItem}>
+                    <MapPin size={14} color={AppColors.text.secondary} strokeWidth={2} />
+                    <Text style={styles.metaText}>{artisan.distance} km</Text>
+                  </View>
+                  <View style={styles.metaDivider} />
+                  <Text style={styles.etaText}>{artisan.eta}</Text>
+                </View>
+              </View>
+              <View style={styles.artisanPrice}>
+                <Text style={styles.priceText}>{artisan.hourlyRate}€</Text>
+                <Text style={styles.priceLabel}>/h</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
 
-          <TouchableOpacity 
-            style={styles.aiAssistantButton} 
-            onPress={() => router.push('/ai-assistant' as any)}
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={() => router.push('/(client)/artisans' as any)}
             activeOpacity={0.8}
           >
-            <View style={styles.aiAssistantIconContainer}>
-              <Sparkles size={24} color={AppColors.text.inverse} strokeWidth={2} fill={AppColors.text.inverse} />
-            </View>
-            <View style={styles.aiAssistantContent}>
-              <Text style={styles.aiAssistantTitle}>✨ Assistant IA</Text>
-              <Text style={styles.aiAssistantSubtitle}>
-                Décrivez votre problème et obtenez une estimation
-              </Text>
-            </View>
+            <Text style={styles.viewAllText}>Voir tous les artisans</Text>
+            <ChevronDown size={20} color={AppColors.primary} strokeWidth={2} />
           </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
       </Animated.View>
 
-      {false && (
-        <View style={styles.modalOverlay} testID="allCategoriesOverlay">
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Tous les artisans</Text>
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => setShowAllCategories(false)}
-                activeOpacity={0.7}
-                testID="closeAllCategories"
-              >
-                <Text>X</Text>
-              </TouchableOpacity>
-            </View>
 
-            <View style={{ height: 0 }} />
-
-            <ScrollView 
-              style={styles.modalScroll}
-              contentContainerStyle={styles.modalScrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.modalGrid}>
-                {otherCategories.map((category) => (
-                  <TouchableOpacity
-                    key={category.id}
-                    style={[
-                      styles.modalCategoryCard,
-                      { backgroundColor: AppColors.surface }
-                    ]}
-                    onPress={() => {
-                      setShowAllCategories(false);
-                      handleCategoryPress(category.id);
-                    }}
-                    activeOpacity={0.7}
-                    testID={`modalCategory-${category.id}`}
-                  >
-                    <View 
-                      style={[
-                        styles.modalCategoryIconContainer,
-                        { backgroundColor: AppColors.primary }
-                      ]}
-                    >
-                      <Text style={styles.modalCategoryEmoji}>
-                        {category.emoji}
-                      </Text>
-                    </View>
-                    <Text style={styles.modalCategoryLabel}>{category.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
@@ -477,379 +295,205 @@ const styles = StyleSheet.create({
   mapView: {
     ...StyleSheet.absoluteFillObject,
   },
-  mapHUD: {
+  topBar: {
     position: 'absolute',
-    top: 60,
+    top: 0,
     left: 0,
     right: 0,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  hudCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: DesignTokens.spacing[2],
-    backgroundColor: AppColors.surface,
     paddingHorizontal: DesignTokens.spacing[4],
-    paddingVertical: DesignTokens.spacing[3],
-    borderRadius: DesignTokens.borderRadius.full,
-    ...DesignTokens.shadows.lg,
-  },
-  hudText: {
-    fontSize: DesignTokens.typography.fontSize.sm,
-    fontWeight: DesignTokens.typography.fontWeight.semibold,
-    color: AppColors.text.primary,
-  },
-  chevronToggle: {
-    position: 'absolute',
-    top: 60,
-    right: DesignTokens.spacing[6],
+    paddingBottom: DesignTokens.spacing[3],
+    gap: DesignTokens.spacing[3],
     zIndex: 100,
   },
-  chevronButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: AppColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...DesignTokens.shadows.xl,
-  },
-  overlayContainer: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    zIndex: 10,
-  },
-  headerContainer: {
-    backgroundColor: AppColors.primary,
-    paddingBottom: DesignTokens.spacing[4],
-    borderBottomLeftRadius: DesignTokens.borderRadius['2xl'],
-    borderBottomRightRadius: DesignTokens.borderRadius['2xl'],
-    ...DesignTokens.shadows.md,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingHorizontal: DesignTokens.spacing[6],
-    paddingTop: DesignTokens.spacing[4],
-  },
-  greetingSection: {
-    paddingHorizontal: DesignTokens.spacing[6],
-    paddingTop: DesignTokens.spacing[4],
-    marginBottom: DesignTokens.spacing[4],
-  },
-  greeting: {
-    fontSize: DesignTokens.typography.fontSize['3xl'],
-    fontWeight: DesignTokens.typography.fontWeight.extrabold,
-    color: AppColors.text.primary,
-    marginBottom: DesignTokens.spacing[1],
-    letterSpacing: -0.5,
-  },
-  subGreeting: {
-    fontSize: DesignTokens.typography.fontSize.base,
-    color: AppColors.text.secondary,
-    fontWeight: DesignTokens.typography.fontWeight.medium,
-  },
   avatarButton: {
-    marginLeft: DesignTokens.spacing[2],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppColors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: AppColors.primary,
   },
   avatarText: {
-    fontSize: DesignTokens.typography.fontSize.xl,
+    fontSize: DesignTokens.typography.fontSize.lg,
     fontWeight: DesignTokens.typography.fontWeight.bold,
-    color: AppColors.text.inverse,
+    color: AppColors.primary,
   },
-  scrollView: {
+  searchBarCompact: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  content: {
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    borderTopLeftRadius: DesignTokens.borderRadius['2xl'],
-    borderTopRightRadius: DesignTokens.borderRadius['2xl'],
-    minHeight: SCREEN_HEIGHT * 1.2,
-    paddingTop: DesignTokens.spacing[6],
-    paddingBottom: 120,
-    ...DesignTokens.shadows.xl,
-  },
-  searchContainer: {
-    paddingHorizontal: DesignTokens.spacing[6],
-    marginBottom: DesignTokens.spacing[4],
-  },
-  searchInputContainerStyle: {
-    marginBottom: 0,
-  },
-  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AppColors.surface,
     borderRadius: DesignTokens.borderRadius.lg,
     paddingHorizontal: DesignTokens.spacing[4],
     paddingVertical: DesignTokens.spacing[3],
-    gap: DesignTokens.spacing[3],
-    ...DesignTokens.shadows.md,
+    gap: DesignTokens.spacing[2],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  searchPlaceholder: {
+    fontSize: DesignTokens.typography.fontSize.base,
+    color: AppColors.text.secondary,
+    fontWeight: DesignTokens.typography.fontWeight.medium,
+  },
+  artisansListContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: SCREEN_HEIGHT,
+    backgroundColor: AppColors.surface,
+    borderTopLeftRadius: DesignTokens.borderRadius['2xl'],
+    borderTopRightRadius: DesignTokens.borderRadius['2xl'],
+    ...DesignTokens.shadows.xl,
+    zIndex: 50,
+  },
+  listHandle: {
+    alignItems: 'center',
+    paddingVertical: DesignTokens.spacing[3],
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: AppColors.border.default,
+    borderRadius: 2,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: DesignTokens.spacing[6],
+    paddingBottom: DesignTokens.spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border.light,
+  },
+  listTitle: {
+    fontSize: DesignTokens.typography.fontSize.lg,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+    color: AppColors.text.primary,
+    flex: 1,
+  },
+  listScrollView: {
+    flex: 1,
+  },
+  listContent: {
+    padding: DesignTokens.spacing[4],
+    paddingBottom: 120,
+  },
+  artisanCard: {
+    flexDirection: 'row',
+    backgroundColor: AppColors.surface,
+    borderRadius: DesignTokens.borderRadius.xl,
+    padding: DesignTokens.spacing[4],
+    marginBottom: DesignTokens.spacing[3],
+    alignItems: 'center',
+    ...DesignTokens.shadows.sm,
     borderWidth: 1,
     borderColor: AppColors.border.light,
   },
-  searchInput: {
+  artisanPhoto: {
+    width: 64,
+    height: 64,
+    borderRadius: DesignTokens.borderRadius.lg,
+    backgroundColor: AppColors.background,
+  },
+  artisanInfo: {
     flex: 1,
+    marginLeft: DesignTokens.spacing[3],
+  },
+  artisanRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: DesignTokens.spacing[1],
+  },
+  artisanName: {
     fontSize: DesignTokens.typography.fontSize.base,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
     color: AppColors.text.primary,
-    paddingVertical: 0,
-    fontWeight: DesignTokens.typography.fontWeight.medium,
+    flex: 1,
   },
-  categoriesContainer: {
-    paddingHorizontal: DesignTokens.spacing[6],
-    paddingBottom: DesignTokens.spacing[10],
+  artisanRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DesignTokens.spacing[1],
   },
-  sectionHeader: {
-    marginBottom: DesignTokens.spacing[5],
+  ratingText: {
+    fontSize: DesignTokens.typography.fontSize.sm,
+    fontWeight: DesignTokens.typography.fontWeight.semibold,
+    color: AppColors.text.primary,
   },
-  sectionTitleRow: {
+  artisanCategory: {
+    fontSize: DesignTokens.typography.fontSize.sm,
+    color: AppColors.text.secondary,
+    marginBottom: DesignTokens.spacing[2],
+  },
+  artisanMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: DesignTokens.spacing[2],
-    marginBottom: DesignTokens.spacing[1],
   },
-  sectionTitle: {
-    fontSize: DesignTokens.typography.fontSize['2xl'],
-    fontWeight: DesignTokens.typography.fontWeight.extrabold,
-    color: AppColors.text.primary,
-    letterSpacing: -0.5,
-  },
-  badge247: {
-    backgroundColor: AppColors.accent,
-    paddingHorizontal: DesignTokens.spacing[2],
-    paddingVertical: DesignTokens.spacing[1],
-    borderRadius: DesignTokens.borderRadius.md,
-    ...DesignTokens.shadows.sm,
-  },
-  badge247Text: {
-    fontSize: DesignTokens.typography.fontSize.xs,
-    fontWeight: DesignTokens.typography.fontWeight.extrabold,
-    color: AppColors.text.inverse,
-    letterSpacing: 0.5,
-  },
-  sectionSubtitle: {
-    fontSize: DesignTokens.typography.fontSize.base,
-    color: AppColors.text.secondary,
-    lineHeight: DesignTokens.typography.fontSize.base * DesignTokens.typography.lineHeight.relaxed,
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -DesignTokens.spacing[1],
-    marginBottom: DesignTokens.spacing[4],
-  },
-  categoryCard: {
-    width: (SCREEN_WIDTH - 72) / 2,
-    margin: DesignTokens.spacing[1],
-    borderRadius: DesignTokens.borderRadius.xl,
-    padding: DesignTokens.spacing[5],
-    alignItems: 'center',
-    backgroundColor: AppColors.surface,
-    ...DesignTokens.shadows.md,
-    borderWidth: 1,
-    borderColor: AppColors.border.light,
-  },
-  categoryIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: DesignTokens.borderRadius.xl,
-    backgroundColor: AppColors.pastel.beige,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: DesignTokens.spacing[3],
-  },
-  categoryEmoji: {
-    fontSize: 36,
-  },
-  categoryLabel: {
-    fontSize: DesignTokens.typography.fontSize.base,
-    fontWeight: DesignTokens.typography.fontWeight.semibold,
-    color: AppColors.text.primary,
-    textAlign: 'center',
-  },
-  aiAssistantButton: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppColors.accent,
-    borderRadius: DesignTokens.borderRadius.xl,
-    padding: DesignTokens.spacing[5],
-    gap: DesignTokens.spacing[4],
-    ...DesignTokens.shadows.lg,
+    gap: DesignTokens.spacing[1],
   },
-  aiAssistantIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: DesignTokens.borderRadius.lg,
-    backgroundColor: AppColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  aiAssistantContent: {
-    flex: 1,
-  },
-  aiAssistantTitle: {
-    fontSize: DesignTokens.typography.fontSize.lg,
-    fontWeight: DesignTokens.typography.fontWeight.bold,
-    color: AppColors.text.inverse,
-    marginBottom: DesignTokens.spacing[1],
-  },
-  aiAssistantSubtitle: {
+  metaText: {
     fontSize: DesignTokens.typography.fontSize.sm,
-    color: AppColors.text.inverse,
-    opacity: 0.9,
-    lineHeight: DesignTokens.typography.fontSize.sm * DesignTokens.typography.lineHeight.normal,
+    color: AppColors.text.secondary,
+    fontWeight: DesignTokens.typography.fontWeight.medium,
   },
-  moreButton: {
+  metaDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: AppColors.border.light,
+  },
+  etaText: {
+    fontSize: DesignTokens.typography.fontSize.sm,
+    color: AppColors.primary,
+    fontWeight: DesignTokens.typography.fontWeight.semibold,
+  },
+  artisanPrice: {
+    alignItems: 'flex-end',
+    marginLeft: DesignTokens.spacing[2],
+  },
+  priceText: {
+    fontSize: DesignTokens.typography.fontSize.lg,
+    fontWeight: DesignTokens.typography.fontWeight.extrabold,
+    color: AppColors.text.primary,
+  },
+  priceLabel: {
+    fontSize: DesignTokens.typography.fontSize.xs,
+    color: AppColors.text.secondary,
+  },
+  viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: AppColors.surface,
     borderRadius: DesignTokens.borderRadius.lg,
     paddingVertical: DesignTokens.spacing[4],
-    paddingHorizontal: DesignTokens.spacing[5],
     gap: DesignTokens.spacing[2],
     marginTop: DesignTokens.spacing[2],
-    marginBottom: DesignTokens.spacing[4],
     borderWidth: 2,
     borderColor: AppColors.primary + '30',
-    ...DesignTokens.shadows.sm,
   },
-  expandedSection: {
-    marginTop: DesignTokens.spacing[2],
-    paddingTop: DesignTokens.spacing[4],
-    borderTopWidth: 1,
-    borderTopColor: AppColors.border.light,
-  },
-  noResultsContainer: {
-    alignItems: 'center',
-    paddingVertical: DesignTokens.spacing[8],
-    gap: DesignTokens.spacing[4],
-  },
-  noResultsText: {
-    fontSize: DesignTokens.typography.fontSize.base,
-    color: AppColors.text.secondary,
-    textAlign: 'center',
-  },
-  customRequestButton: {
-    backgroundColor: AppColors.primary,
-    borderRadius: DesignTokens.borderRadius.lg,
-    paddingVertical: DesignTokens.spacing[3],
-    paddingHorizontal: DesignTokens.spacing[6],
-    ...DesignTokens.shadows.md,
-  },
-  customRequestButtonText: {
-    fontSize: DesignTokens.typography.fontSize.base,
-    fontWeight: DesignTokens.typography.fontWeight.semibold,
-    color: AppColors.text.inverse,
-    textAlign: 'center',
-  },
-  moreButtonText: {
+  viewAllText: {
     fontSize: DesignTokens.typography.fontSize.base,
     fontWeight: DesignTokens.typography.fontWeight.semibold,
     color: AppColors.primary,
-  },
-  superAppButton: {
-    marginTop: DesignTokens.spacing[3],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: DesignTokens.spacing[2],
-    backgroundColor: AppColors.primary,
-    borderRadius: DesignTokens.borderRadius.lg,
-    paddingVertical: DesignTokens.spacing[3],
-    paddingHorizontal: DesignTokens.spacing[4],
-    alignSelf: 'flex-start',
-    ...DesignTokens.shadows.md,
-  },
-  superAppButtonText: {
-    color: AppColors.text.inverse,
-    fontWeight: DesignTokens.typography.fontWeight.bold,
-    fontSize: DesignTokens.typography.fontSize.base,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: AppColors.background,
-    borderTopLeftRadius: DesignTokens.borderRadius['2xl'],
-    borderTopRightRadius: DesignTokens.borderRadius['2xl'],
-    maxHeight: '90%',
-    paddingBottom: DesignTokens.spacing[10],
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: DesignTokens.spacing[6],
-    paddingTop: DesignTokens.spacing[6],
-    paddingBottom: DesignTokens.spacing[4],
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border.light,
-  },
-  modalTitle: {
-    fontSize: DesignTokens.typography.fontSize.xl,
-    fontWeight: DesignTokens.typography.fontWeight.bold,
-    color: AppColors.text.primary,
-  },
-  modalCloseButton: {
-    width: 44,
-    height: 44,
-    borderRadius: DesignTokens.borderRadius.lg,
-    backgroundColor: AppColors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalScroll: {
-    flex: 1,
-  },
-  modalScrollContent: {
-    padding: DesignTokens.spacing[6],
-  },
-  modalGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -DesignTokens.spacing[1],
-  },
-  modalCategoryCard: {
-    width: (SCREEN_WIDTH - 72) / 2,
-    margin: DesignTokens.spacing[1],
-    borderRadius: DesignTokens.borderRadius.xl,
-    padding: DesignTokens.spacing[5],
-    alignItems: 'center',
-    backgroundColor: AppColors.surface,
-    ...DesignTokens.shadows.sm,
-  },
-  modalCategoryIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: DesignTokens.borderRadius.xl,
-    backgroundColor: AppColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: DesignTokens.spacing[3],
-    ...DesignTokens.shadows.sm,
-  },
-  modalCategoryEmoji: {
-    fontSize: 32,
-  },
-  modalCategoryLabel: {
-    fontSize: DesignTokens.typography.fontSize.base,
-    fontWeight: DesignTokens.typography.fontWeight.semibold,
-    color: AppColors.text.primary,
-    textAlign: 'center',
   },
 });
