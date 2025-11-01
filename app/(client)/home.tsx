@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Search, Sparkles, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Search, Sparkles, ChevronDown, ChevronUp, MapPin } from 'lucide-react-native';
 import { DesignTokens, AppColors } from '@/constants/design-tokens';
 import { categories } from '@/mocks/artisans';
 import { useMissions } from '@/contexts/MissionContext';
@@ -12,9 +12,12 @@ import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { ArtisanCategory } from '@/types';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Input, Badge } from '@/components/ui';
-import RetractableMap from '@/components/RetractableMap';
+import { MapView, Marker } from '@/components/MapView';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const SCROLL_THRESHOLD = 120;
+const ANIMATION_DURATION = 220;
 
 export default function ClientHomeScreen() {
   const router = useRouter();
@@ -25,8 +28,12 @@ export default function ClientHomeScreen() {
   const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
   const [query, setQuery] = useState<string>('');
   const [customSpecialty, setCustomSpecialty] = useState<string>('');
+  const [overlayVisible, setOverlayVisible] = useState<boolean>(true);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const overlayOpacity = useRef(new Animated.Value(1)).current;
+  const overlayTranslateY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef<number>(0);
+  const scrollViewRef = useRef<ScrollView>(null);
   
   const { position } = useGeolocation({
     enabled: true,
@@ -122,12 +129,105 @@ export default function ClientHomeScreen() {
     const currentScrollY = event.nativeEvent.contentOffset.y;
     lastScrollY.current = currentScrollY;
     handleScroll(event);
-  }, [handleScroll]);
+
+    if (currentScrollY > SCROLL_THRESHOLD && overlayVisible) {
+      setOverlayVisible(false);
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: ANIMATION_DURATION,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayTranslateY, {
+          toValue: -20,
+          duration: ANIMATION_DURATION,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [handleScroll, overlayVisible, overlayOpacity, overlayTranslateY]);
+
+  const showOverlay = useCallback(() => {
+    setOverlayVisible(true);
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayTranslateY, {
+        toValue: 0,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  }, [overlayOpacity, overlayTranslateY]);
 
 
 
   return (
     <View style={styles.container}>
+      {position && (
+        <View style={styles.mapBackground}>
+          <MapView
+            style={styles.mapView}
+            initialRegion={{
+              latitude: position.latitude,
+              longitude: position.longitude,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            showsCompass={true}
+            scrollEnabled={!overlayVisible}
+            zoomEnabled={!overlayVisible}
+            rotateEnabled={!overlayVisible}
+            testID="home-map-background"
+          >
+            <Marker
+              coordinate={{
+                latitude: position.latitude,
+                longitude: position.longitude,
+              }}
+              title="Votre position"
+            />
+          </MapView>
+          {!overlayVisible && (
+            <View style={styles.mapHUD}>
+              <View style={styles.hudCard}>
+                <MapPin size={16} color={AppColors.primary} strokeWidth={2} />
+                <Text style={styles.hudText}>Cergy, France</Text>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
+      {!overlayVisible && (
+        <TouchableOpacity
+          style={styles.chevronToggle}
+          onPress={showOverlay}
+          activeOpacity={0.7}
+          testID="show-overlay-button"
+        >
+          <View style={styles.chevronButton}>
+            <ChevronDown size={24} color={AppColors.text.inverse} strokeWidth={2.5} />
+          </View>
+        </TouchableOpacity>
+      )}
+
+      <Animated.View
+        style={[
+          styles.overlayContainer,
+          {
+            opacity: overlayOpacity,
+            transform: [{ translateY: overlayTranslateY }],
+            pointerEvents: overlayVisible ? 'auto' : 'none',
+          },
+        ]}
+      >
       <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity
@@ -143,6 +243,7 @@ export default function ClientHomeScreen() {
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         onScroll={onScroll}
@@ -175,17 +276,6 @@ export default function ClientHomeScreen() {
               containerStyle={styles.searchInputContainerStyle}
             />
           </View>
-
-          {position && (
-            <View style={styles.mapContainer}>
-              <RetractableMap
-                latitude={position.latitude}
-                longitude={position.longitude}
-                showUserLocation={true}
-                testID="home-map"
-              />
-            </View>
-          )}
 
           <View style={styles.categoriesContainer}>
           <View style={styles.sectionHeader}>
@@ -312,6 +402,7 @@ export default function ClientHomeScreen() {
           </View>
         </View>
       </ScrollView>
+      </Animated.View>
 
       {false && (
         <View style={styles.modalOverlay} testID="allCategoriesOverlay">
@@ -377,11 +468,64 @@ export default function ClientHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: AppColors.background,
+  },
+  mapBackground: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  mapView: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  mapHUD: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  hudCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DesignTokens.spacing[2],
+    backgroundColor: AppColors.surface,
+    paddingHorizontal: DesignTokens.spacing[4],
+    paddingVertical: DesignTokens.spacing[3],
+    borderRadius: DesignTokens.borderRadius.full,
+    ...DesignTokens.shadows.lg,
+  },
+  hudText: {
+    fontSize: DesignTokens.typography.fontSize.sm,
+    fontWeight: DesignTokens.typography.fontWeight.semibold,
+    color: AppColors.text.primary,
+  },
+  chevronToggle: {
+    position: 'absolute',
+    top: 60,
+    right: DesignTokens.spacing[6],
+    zIndex: 100,
+  },
+  chevronButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: AppColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...DesignTokens.shadows.xl,
+  },
+  overlayContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    zIndex: 10,
   },
   headerContainer: {
     backgroundColor: AppColors.primary,
     paddingBottom: DesignTokens.spacing[4],
+    borderBottomLeftRadius: DesignTokens.borderRadius['2xl'],
+    borderBottomRightRadius: DesignTokens.borderRadius['2xl'],
+    ...DesignTokens.shadows.md,
   },
   header: {
     flexDirection: 'row',
@@ -430,20 +574,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   content: {
-    backgroundColor: AppColors.background,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
     borderTopLeftRadius: DesignTokens.borderRadius['2xl'],
     borderTopRightRadius: DesignTokens.borderRadius['2xl'],
-    minHeight: '100%',
+    minHeight: SCREEN_HEIGHT * 1.2,
     paddingTop: DesignTokens.spacing[6],
     paddingBottom: 120,
+    ...DesignTokens.shadows.xl,
   },
   searchContainer: {
     paddingHorizontal: DesignTokens.spacing[6],
     marginBottom: DesignTokens.spacing[4],
-  },
-  mapContainer: {
-    paddingHorizontal: DesignTokens.spacing[6],
-    marginBottom: DesignTokens.spacing[6],
   },
   searchInputContainerStyle: {
     marginBottom: 0,
