@@ -23,7 +23,7 @@ const SPECIALTIES = [
   { id: 'roofer', label: 'Couvreur', emoji: '🔨', visible: true },
   { id: 'locksmith', label: 'Serrurier', emoji: '🚪', visible: true },
   { id: 'hvac', label: 'Chauffagiste', emoji: '❄️', visible: true },
-  { id: 'glazier', label: 'Vitrier', emoji: '🪟', visible: true },
+  { id: 'glazier', label: 'Vitrier', emoji: '🪠', visible: true },
   { id: 'cleaner', label: 'Agent de nettoyage', emoji: '🧹', visible: true },
   { id: 'mechanic', label: 'Mécanicien à domicile', emoji: '🧰', visible: false },
   { id: 'appliance_repair', label: 'Dépanneur électroménager', emoji: '🧼', visible: false },
