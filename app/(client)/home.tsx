@@ -1,12 +1,24 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DesignTokens, AppColors } from '@/constants/design-tokens';
-import { categories } from '@/mocks/artisans';
+import { categories, mockArtisans } from '@/mocks/artisans';
+import { Artisan } from '@/types';
 import { useMissions } from '@/contexts/MissionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
+import { MapView, Marker } from '@/components/MapView';
+import { Star, MapPin, Clock, ChevronDown } from 'lucide-react-native';
+import Colors from '@/constants/colors';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const OVERLAY_MIN_HEIGHT = SCREEN_HEIGHT * 0.4;
+
+function getCategoryLabel(id: Artisan['category']): string {
+  const found = categories.find(c => c.id === id);
+  return found?.label ?? id;
+}
 
 export default function ClientHomeScreen() {
   const router = useRouter();
@@ -14,8 +26,12 @@ export default function ClientHomeScreen() {
   const { user } = useAuth();
   const { activeMission } = useMissions();
   const hasNavigated = useRef(false);
+  const [overlayHeight] = useState(new Animated.Value(OVERLAY_MIN_HEIGHT));
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   useScreenTracking('client_home');
+
+  const artisans = useMemo<Artisan[]>(() => mockArtisans.slice(0, 5), []);
 
   useEffect(() => {
     if (activeMission && !hasNavigated.current) {
@@ -28,37 +44,124 @@ export default function ClientHomeScreen() {
     }
   }, [activeMission, router]);
 
+  const defaultRegion = {
+    latitude: 49.0379,
+    longitude: 2.0773,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  };
+
+  const renderArtisanCard = useCallback(({ item }: { item: Artisan }) => {
+    const color = (Colors as any).categories[item.category as keyof (typeof Colors)['categories']];
+    return (
+      <TouchableOpacity
+        style={styles.artisanCard}
+        activeOpacity={0.8}
+        onPress={() => {
+          router.push(`/request?category=${item.category}` as any);
+        }}
+        testID={`artisan-${item.id}`}
+      >
+        <Image source={{ uri: item.photo ?? 'https://i.pravatar.cc/150' }} style={styles.artisanAvatar} />
+        <View style={styles.artisanBody}>
+          <View style={styles.artisanHeader}>
+            <Text style={styles.artisanName}>{item.name}</Text>
+            <View style={[styles.categoryBadge, { backgroundColor: (color ?? Colors.primary) + '20' }]}>
+              <Text style={[styles.categoryBadgeText, { color: color ?? Colors.primary }]}>{getCategoryLabel(item.category)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.artisanMeta}>
+            <Star size={14} color={Colors.warning} fill={Colors.warning} />
+            <Text style={styles.artisanMetaText}>{item.rating?.toFixed(1) ?? '—'} ({item.reviewCount ?? 0})</Text>
+            <Clock size={14} color={Colors.textLight} />
+            <Text style={styles.artisanMetaText}>{item.hourlyRate}€/h</Text>
+          </View>
+
+          <View style={styles.artisanMeta}>
+            <MapPin size={14} color={Colors.textLight} />
+            <Text style={styles.artisanMetaText}>Rayon {item.interventionRadius} km</Text>
+            <View style={[styles.availabilityDot, { backgroundColor: item.isAvailable ? Colors.success : Colors.error }]} />
+            <Text style={[styles.artisanMetaText, { color: item.isAvailable ? Colors.success : Colors.error }]}>
+              {item.isAvailable ? 'Disponible' : 'Indisponible'}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }, [router]);
+
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <View style={styles.greetingContainer}>
-          <Text style={styles.greeting}>Bonjour, {user?.name || 'Utilisateur'}</Text>
-          <Text style={styles.subtitle}>Besoin d&apos;un artisan aujourd&apos;hui ?</Text>
-        </View>
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
-        showsVerticalScrollIndicator={false}
+      <MapView
+        style={styles.backgroundMap}
+        initialRegion={defaultRegion}
+        showsUserLocation={true}
+        scrollEnabled={true}
+        zoomEnabled={true}
+        rotateEnabled={false}
+        testID="background-map"
       >
-        <View style={styles.categoriesGrid}>
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              style={styles.categoryCard}
-              onPress={() => router.push(`/request?category=${category.id}` as any)}
-              activeOpacity={0.8}
-              testID={`category-${category.id}`}
-            >
-              <View style={styles.iconContainer}>
-                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-              </View>
-              <Text style={styles.categoryLabel}>{category.label}</Text>
-            </TouchableOpacity>
-          ))}
+        {artisans.map((artisan, index) => (
+          <Marker
+            key={artisan.id}
+            coordinate={{
+              latitude: defaultRegion.latitude + (Math.random() - 0.5) * 0.02,
+              longitude: defaultRegion.longitude + (Math.random() - 0.5) * 0.02,
+            }}
+            title={artisan.name}
+            description={getCategoryLabel(artisan.category)}
+          />
+        ))}
+      </MapView>
+
+      <Animated.View
+        style={[
+          styles.overlayContainer,
+          {
+            height: overlayHeight,
+            paddingTop: insets.top,
+          },
+        ]}
+      >
+        <View style={styles.overlayHandle}>
+          <View style={styles.handleBar} />
         </View>
-      </ScrollView>
+
+        <View style={styles.overlayHeader}>
+          <Text style={styles.greeting}>Bonjour, {user?.name || 'Utilisateur'}</Text>
+          <Text style={styles.subtitle}>Artisans disponibles près de vous</Text>
+        </View>
+
+        <Animated.ScrollView
+          style={styles.overlayScroll}
+          contentContainerStyle={[styles.overlayScrollContent, { paddingBottom: insets.bottom + 100 }]}
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          scrollEventThrottle={16}
+        >
+          <View style={styles.artisansList}>
+            {artisans.map((item, index) => (
+              <View key={item.id}>
+                {renderArtisanCard({ item })}
+                {index < artisans.length - 1 && <View style={styles.artisanSeparator} />}
+              </View>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={() => router.push('/artisans' as any)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.viewAllButtonText}>Voir tous les artisans</Text>
+            <ChevronDown size={20} color={AppColors.primary} />
+          </TouchableOpacity>
+        </Animated.ScrollView>
+      </Animated.View>
     </View>
   );
 }
@@ -68,66 +171,126 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: AppColors.background,
   },
-  header: {
-    paddingHorizontal: DesignTokens.spacing[6],
-    paddingBottom: DesignTokens.spacing[6],
-    backgroundColor: AppColors.primary,
-    borderBottomLeftRadius: DesignTokens.borderRadius['2xl'],
-    borderBottomRightRadius: DesignTokens.borderRadius['2xl'],
+  backgroundMap: {
+    ...StyleSheet.absoluteFillObject,
   },
-  greetingContainer: {
-    gap: DesignTokens.spacing[1],
+  overlayContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: AppColors.surface,
+    borderTopLeftRadius: DesignTokens.borderRadius['2xl'],
+    borderTopRightRadius: DesignTokens.borderRadius['2xl'],
+    ...DesignTokens.shadows.xl,
+    overflow: 'hidden',
+  },
+  overlayHandle: {
+    alignItems: 'center',
+    paddingVertical: DesignTokens.spacing[3],
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: AppColors.border.default,
+    borderRadius: 2,
+  },
+  overlayHeader: {
+    paddingHorizontal: DesignTokens.spacing[6],
+    paddingBottom: DesignTokens.spacing[4],
   },
   greeting: {
     fontSize: DesignTokens.typography.fontSize['2xl'],
     fontWeight: DesignTokens.typography.fontWeight.bold,
-    color: AppColors.surface,
+    color: AppColors.text.primary,
+    marginBottom: DesignTokens.spacing[1],
   },
   subtitle: {
     fontSize: DesignTokens.typography.fontSize.base,
-    color: AppColors.surface,
-    opacity: 0.9,
+    color: AppColors.text.secondary,
   },
-  scrollView: {
+  overlayScroll: {
     flex: 1,
   },
-  content: {
-    padding: DesignTokens.spacing[6],
+  overlayScrollContent: {
+    paddingHorizontal: DesignTokens.spacing[6],
   },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: DesignTokens.spacing[4],
-    justifyContent: 'space-between',
+  artisansList: {
+    marginBottom: DesignTokens.spacing[4],
   },
-  categoryCard: {
-    width: '47%',
-    aspectRatio: 1,
+  artisanCard: {
     backgroundColor: AppColors.surface,
-    borderRadius: DesignTokens.borderRadius['2xl'],
-    padding: DesignTokens.spacing[5],
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: DesignTokens.spacing[3],
-    ...DesignTokens.shadows.md,
+    borderRadius: DesignTokens.borderRadius.xl,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    padding: DesignTokens.spacing[3],
+    ...DesignTokens.shadows.sm,
     borderWidth: 1,
     borderColor: AppColors.border.light,
   },
-  iconContainer: {
-    width: 72,
-    height: 72,
-    backgroundColor: AppColors.primary,
-    borderRadius: DesignTokens.borderRadius['2xl'],
-    alignItems: 'center',
+  artisanAvatar: {
+    width: 68,
+    height: 68,
+    borderRadius: DesignTokens.borderRadius.lg,
+    backgroundColor: AppColors.background,
+  },
+  artisanBody: {
+    flex: 1,
+    marginLeft: DesignTokens.spacing[3],
     justifyContent: 'center',
   },
-  categoryEmoji: {
-    fontSize: 36,
+  artisanHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: DesignTokens.spacing[2],
   },
-  categoryLabel: {
+  artisanName: {
+    fontSize: DesignTokens.typography.fontSize.base,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+    color: AppColors.text.primary,
+    flex: 1,
+  },
+  categoryBadge: {
+    paddingHorizontal: DesignTokens.spacing[2],
+    paddingVertical: DesignTokens.spacing[1],
+    borderRadius: DesignTokens.borderRadius.md,
+  },
+  categoryBadgeText: {
+    fontSize: DesignTokens.typography.fontSize.xs,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+  },
+  artisanMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DesignTokens.spacing[2],
+    marginTop: DesignTokens.spacing[1],
+  },
+  artisanMetaText: {
+    fontSize: DesignTokens.typography.fontSize.xs,
+    color: AppColors.text.secondary,
+  },
+  availabilityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  artisanSeparator: {
+    height: DesignTokens.spacing[3],
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: DesignTokens.spacing[4],
+    backgroundColor: AppColors.background,
+    borderRadius: DesignTokens.borderRadius.xl,
+    gap: DesignTokens.spacing[2],
+    ...DesignTokens.shadows.sm,
+  },
+  viewAllButtonText: {
     fontSize: DesignTokens.typography.fontSize.base,
     fontWeight: DesignTokens.typography.fontWeight.semibold,
-    color: AppColors.text.primary,
-    textAlign: 'center',
+    color: AppColors.primary,
   },
 });
