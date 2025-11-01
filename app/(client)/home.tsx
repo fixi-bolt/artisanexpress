@@ -3,16 +3,15 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { Search, Sparkles, ChevronDown, ChevronUp, MapPin } from 'lucide-react-native';
+import { Search, Sparkles, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { DesignTokens, AppColors } from '@/constants/design-tokens';
 import { categories } from '@/mocks/artisans';
 import { useMissions } from '@/contexts/MissionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import { ArtisanCategory } from '@/types';
-import { MapView, Marker, PROVIDER_GOOGLE } from '@/components/MapView';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { Input, Badge, IconButton } from '@/components/ui';
+import { Input, Badge } from '@/components/ui';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -49,20 +48,9 @@ export default function ClientHomeScreen() {
     },
   });
 
-  const [region, setRegion] = useState({
-    latitude: 48.8566,
-    longitude: 2.3522,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  });
-
   useEffect(() => {
     if (position) {
-      setRegion(prev => ({
-        ...prev,
-        latitude: position.latitude,
-        longitude: position.longitude,
-      }));
+      console.log('Position updated:', position);
     }
   }, [position]);
   
@@ -135,49 +123,27 @@ export default function ClientHomeScreen() {
     handleScroll(event);
   }, [handleScroll]);
 
-  const mapHeight = scrollY.interpolate({
-    inputRange: [0, 200],
-    outputRange: [320, 0],
-    extrapolate: 'clamp',
-  });
 
-  const mapOpacity = scrollY.interpolate({
-    inputRange: [0, 150, 200],
-    outputRange: [1, 0.5, 0],
-    extrapolate: 'clamp',
-  });
 
   return (
     <View style={styles.container}>
-      <Animated.View 
-        style={[
-          styles.mapContainer, 
-          { 
-            paddingTop: insets.top,
-            height: mapHeight,
-            opacity: mapOpacity,
-          }
-        ]}
-      >
-        <MapView
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={region}
-          showsUserLocation={true}
-          showsMyLocationButton={true}
-          showsCompass={true}
-          testID="map-view"
-        >
-          <Marker
-            coordinate={{
-              latitude: region.latitude,
-              longitude: region.longitude,
-            }}
-            title="Paris"
-            description="Votre position"
-          />
-        </MapView>
-      </Animated.View>
+      <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Bonjour, {user?.name || 'Jean'}</Text>
+            <Text style={styles.subGreeting}>Besoin d&apos;un artisan aujourd&apos;hui ?</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.avatarButton}
+            onPress={() => router.push('/(client)/profile' as any)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{(user?.name || 'J')[0].toUpperCase()}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -187,22 +153,6 @@ export default function ClientHomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View>
-                <Text style={styles.greeting}>Bonjour</Text>
-                <Text style={styles.userName}>{user?.name || 'Client'}</Text>
-              </View>
-            </View>
-            <View style={styles.headerRight}>
-              <IconButton
-                icon={MapPin}
-                onPress={() => console.log('Location')}
-                variant="default"
-                size="md"
-              />
-            </View>
-          </View>
 
           <View style={styles.searchContainer}>
             <Input
@@ -415,13 +365,50 @@ export default function ClientHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: AppColors.primary,
   },
-  mapContainer: {
-    overflow: 'hidden',
+  headerContainer: {
+    backgroundColor: AppColors.primary,
+    paddingBottom: DesignTokens.spacing[6],
   },
-  map: {
-    ...StyleSheet.absoluteFillObject,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: DesignTokens.spacing[6],
+    paddingTop: DesignTokens.spacing[4],
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: DesignTokens.typography.fontSize['3xl'],
+    fontWeight: DesignTokens.typography.fontWeight.extrabold,
+    color: AppColors.text.inverse,
+    marginBottom: DesignTokens.spacing[1],
+    letterSpacing: -0.5,
+  },
+  subGreeting: {
+    fontSize: DesignTokens.typography.fontSize.base,
+    color: AppColors.text.inverse,
+    opacity: 0.9,
+    fontWeight: DesignTokens.typography.fontWeight.medium,
+  },
+  avatarButton: {
+    marginLeft: DesignTokens.spacing[2],
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: DesignTokens.typography.fontSize.xl,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+    color: AppColors.text.inverse,
   },
   scrollView: {
     flex: 1,
@@ -434,36 +421,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: DesignTokens.borderRadius['2xl'],
     borderTopRightRadius: DesignTokens.borderRadius['2xl'],
     minHeight: '100%',
-    paddingBottom: 120,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: DesignTokens.spacing[6],
     paddingTop: DesignTokens.spacing[6],
-    paddingBottom: DesignTokens.spacing[4],
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    gap: DesignTokens.spacing[2],
-  },
-  greeting: {
-    fontSize: DesignTokens.typography.fontSize.sm,
-    color: AppColors.text.secondary,
-    marginBottom: DesignTokens.spacing[1],
-    fontWeight: DesignTokens.typography.fontWeight.medium,
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  userName: {
-    fontSize: DesignTokens.typography.fontSize['3xl'],
-    fontWeight: DesignTokens.typography.fontWeight.extrabold,
-    color: AppColors.text.primary,
-    letterSpacing: -0.5,
+    paddingBottom: 120,
   },
   searchContainer: {
     paddingHorizontal: DesignTokens.spacing[6],
@@ -549,11 +508,10 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: DesignTokens.borderRadius.xl,
-    backgroundColor: AppColors.primary,
+    backgroundColor: AppColors.pastel.beige,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: DesignTokens.spacing[3],
-    ...DesignTokens.shadows.sm,
   },
   categoryEmoji: {
     fontSize: 36,

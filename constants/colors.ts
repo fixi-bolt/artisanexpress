@@ -1,17 +1,17 @@
 export default {
-  primary: '#0284C7',
-  primaryLight: '#0EA5E9',
-  primaryDark: '#0369A1',
-  secondary: '#EA580C',
-  secondaryLight: '#F97316',
-  secondaryDark: '#C2410C',
+  primary: '#2B4AAE',
+  primaryLight: '#3454E8',
+  primaryDark: '#23388C',
+  secondary: '#00D9A3',
+  secondaryLight: '#00FFCF',
+  secondaryDark: '#00B386',
   
   background: '#FAFAFA',
   surface: '#FFFFFF',
   surfaceElevated: '#FFFFFF',
   
-  text: '#171717',
-  textSecondary: '#525252',
+  text: '#1F2937',
+  textSecondary: '#6B7280',
   textTertiary: '#A3A3A3',
   textLight: '#737373',
   textInverse: '#FFFFFF',
@@ -20,8 +20,8 @@ export default {
   borderLight: '#F5F5F5',
   borderDark: '#D4D4D4',
   
-  success: '#10B981',
-  successDark: '#059669',
+  success: '#00D9A3',
+  successDark: '#00B386',
   warning: '#F59E0B',
   warningDark: '#D97706',
   error: '#EF4444',
@@ -37,8 +37,16 @@ export default {
   shadowColor: '#000000',
   
   gradient: {
-    primary: ['#0284C7', '#0EA5E9'],
-    secondary: ['#EA580C', '#F97316'],
+    primary: ['#2B4AAE', '#3454E8'],
+    secondary: ['#00D9A3', '#00FFCF'],
+  },
+  
+  pastel: {
+    beige: '#F5F0E8',
+    yellow: '#FFF4E0',
+    pink: '#FFE8E8',
+    blue: '#E6F0FF',
+    green: '#E6FFF9',
   },
   
   categories: {
