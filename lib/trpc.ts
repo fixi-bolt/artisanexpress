@@ -14,7 +14,7 @@ const getBaseUrl = () => {
 };
 
 let backendErrorLogged = false;
-const BACKEND_AVAILABLE = true;
+const BACKEND_AVAILABLE = false;
 
 export const trpcClient = trpc.createClient({
   links: [
