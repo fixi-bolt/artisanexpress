@@ -1,37 +1,48 @@
 export default {
-  primary: '#1E3A8A',
-  primaryLight: '#3B82F6',
-  secondary: '#F97316',
-  secondaryLight: '#FB923C',
+  primary: '#0284C7',
+  primaryLight: '#0EA5E9',
+  primaryDark: '#0369A1',
+  secondary: '#EA580C',
+  secondaryLight: '#F97316',
+  secondaryDark: '#C2410C',
   
-  background: '#F9FAFB',
+  background: '#FAFAFA',
   surface: '#FFFFFF',
+  surfaceElevated: '#FFFFFF',
   
-  text: '#111827',
-  textSecondary: '#6B7280',
-  textLight: '#9CA3AF',
+  text: '#171717',
+  textSecondary: '#525252',
+  textTertiary: '#A3A3A3',
+  textLight: '#737373',
+  textInverse: '#FFFFFF',
   
-  border: '#E5E7EB',
-  borderLight: '#F3F4F6',
+  border: '#E5E5E5',
+  borderLight: '#F5F5F5',
+  borderDark: '#D4D4D4',
   
   success: '#10B981',
+  successDark: '#059669',
   warning: '#F59E0B',
+  warningDark: '#D97706',
   error: '#EF4444',
+  errorDark: '#DC2626',
   info: '#3B82F6',
+  infoDark: '#2563EB',
   
   white: '#FFFFFF',
   disabled: '#D1D5DB',
   
-  overlay: 'rgba(0, 0, 0, 0.5)',
+  overlay: 'rgba(0, 0, 0, 0.6)',
+  overlayLight: 'rgba(0, 0, 0, 0.3)',
   shadowColor: '#000000',
   
   gradient: {
-    primary: ['#1E3A8A', '#3B82F6'],
-    secondary: ['#F97316', '#FB923C'],
+    primary: ['#0284C7', '#0EA5E9'],
+    secondary: ['#EA580C', '#F97316'],
   },
   
   categories: {
-    plumber: '#3B82F6',
+    plumber: '#0EA5E9',
     electrician: '#F59E0B',
     carpenter: '#92400E',
     mason: '#78716C',
