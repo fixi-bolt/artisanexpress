@@ -14,9 +14,7 @@ const getBaseUrl = () => {
 };
 
 let backendErrorLogged = false;
-let backendAvailable: boolean | null = null;
-const MAX_SILENT_ERRORS = 3;
-let errorCount = 0;
+const BACKEND_AVAILABLE = false;
 
 export const trpcClient = trpc.createClient({
   links: [
@@ -24,13 +22,13 @@ export const trpcClient = trpc.createClient({
       url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
       fetch(url, options) {
-        if (backendAvailable === false) {
+        if (!BACKEND_AVAILABLE) {
           if (!backendErrorLogged) {
-            console.warn('⚠️ Backend non accessible - Mode hors ligne activé');
-            console.warn('Les fonctionnalités nécessitant le backend ne seront pas disponibles');
+            console.log('ℹ️ Mode hors ligne - Backend désactivé');
+            console.log('📱 L\'application fonctionne avec Supabase uniquement');
             backendErrorLogged = true;
           }
-          return Promise.reject(new Error('Backend unavailable'));
+          return Promise.reject(new Error('Backend désactivé - Mode Supabase uniquement'));
         }
 
         const controller = new AbortController();
@@ -46,59 +44,9 @@ export const trpcClient = trpc.createClient({
           },
         }).then(async (response) => {
           clearTimeout(timeoutId);
-          
-          if (backendAvailable === null) {
-            backendAvailable = true;
-            console.log('✅ Backend connecté');
-          }
-          
-          if (response.status === 404) {
-            errorCount++;
-            if (errorCount <= MAX_SILENT_ERRORS) {
-              const text = await response.text().catch(() => '');
-              console.error('[trpc] 404 Not Found:', url, text);
-            }
-            if (errorCount === MAX_SILENT_ERRORS) {
-              console.warn('⚠️ Trop d\'erreurs backend - Mode silencieux activé');
-              backendAvailable = false;
-            }
-            throw new Error(`Backend unavailable (Status ${response.status})`);
-          }
-
-          if (!response.ok) {
-            errorCount++;
-            if (errorCount <= MAX_SILENT_ERRORS) {
-              const text = await response.text().catch(() => '');
-              console.error('[trpc] HTTP error', response.status, url, text);
-            }
-            throw new Error(`Backend error (Status ${response.status})`);
-          }
-          
-          errorCount = 0;
-          
-          const contentType = response.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            if (errorCount <= MAX_SILENT_ERRORS) {
-              console.warn('[trpc] Non-JSON response:', contentType, 'for', url);
-            }
-          }
-          
           return response;
         }).catch((error) => {
           clearTimeout(timeoutId);
-          
-          if (error.name === 'AbortError') {
-            errorCount++;
-            if (errorCount <= MAX_SILENT_ERRORS) {
-              console.warn('[trpc] Requête annulée (timeout ou abort manuel) pour', url);
-            }
-            if (errorCount === MAX_SILENT_ERRORS) {
-              console.warn('⚠️ Trop de timeouts - Mode hors ligne activé');
-              backendAvailable = false;
-            }
-            throw new Error('Request timeout');
-          }
-          
           throw error;
         });
       },
