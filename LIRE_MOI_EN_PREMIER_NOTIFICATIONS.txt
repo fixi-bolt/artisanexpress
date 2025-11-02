@@ -1,0 +1,99 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║   🔔 CORRECTION : Notifications d'acceptation de mission         ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+📋 PROBLÈME
+───────────
+Les clients ne reçoivent PAS de notification quand un artisan accepte 
+leur mission, bien que l'interface dise "Le client a été notifié".
+
+
+⏱️  TEMPS DE CORRECTION : 5 minutes
+
+
+🚀 ACTIONS À FAIRE MAINTENANT
+──────────────────────────────
+
+1. Ouvrir Supabase SQL Editor
+   → https://supabase.com
+   → Sélectionner votre projet
+   → Cliquer "SQL Editor" → "New query"
+
+2. Copier-coller le script
+   → Ouvrir : COPIER_COLLER_SUPABASE_NOTIFICATIONS.sql
+   → Sélectionner TOUT (Ctrl+A)
+   → Copier (Ctrl+C)
+   → Coller dans Supabase (Ctrl+V)
+
+3. Exécuter
+   → Cliquer "Run" (ou Ctrl+Enter)
+   → Attendre 2 secondes
+   → Voir : ✅ CORRECTION APPLIQUÉE AVEC SUCCÈS !
+
+4. Tester
+   → App : Accepter une mission en tant qu'artisan
+   → Supabase : Exécuter cette requête
+   
+     SELECT * FROM notifications 
+     WHERE type = 'mission_accepted' 
+     ORDER BY created_at DESC LIMIT 5;
+   
+   → ✅ Notification doit apparaître
+
+
+✅ RÉSULTAT
+────────────
+Après cette correction, 100% des missions acceptées génèrent 
+automatiquement une notification pour le client.
+
+Garanti par le database. Plus d'erreurs silencieuses.
+
+
+📚 FICHIERS IMPORTANTS
+──────────────────────
+
+1️⃣  COPIER_COLLER_SUPABASE_NOTIFICATIONS.sql
+    → Script prêt à coller dans Supabase (COMMENCEZ ICI)
+
+2️⃣  ACTION_IMMEDIATE_NOTIFICATIONS.md
+    → Guide étape par étape avec captures
+
+3️⃣  VERIFICATION_NOTIFICATIONS.sql
+    → 10 requêtes pour vérifier que tout marche
+
+4️⃣  RESUME_CORRECTION_NOTIFICATIONS.md
+    → Explication technique complète
+
+5️⃣  FIX_NOTIFICATIONS_ACCEPTATION_MISSION.md
+    → Diagnostic et plan de tests
+
+
+🔍 VÉRIFICATIONS RAPIDES
+─────────────────────────
+
+• Trigger actif ?
+  SELECT tgname FROM pg_trigger 
+  WHERE tgname = 'notify_client_on_mission_accepted';
+  → Doit retourner 1 ligne
+
+• Dernières notifications ?
+  SELECT * FROM notifications 
+  ORDER BY created_at DESC LIMIT 10;
+  → Doit inclure type='mission_accepted'
+
+
+🐛 EN CAS DE PROBLÈME
+─────────────────────
+
+1. Relancer le script (il est idempotent)
+2. Vérifier les logs Supabase (onglet Database > Logs)
+3. Consulter ACTION_IMMEDIATE_NOTIFICATIONS.md section "En cas de problème"
+
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║  ⚡ COMMENCEZ PAR : COPIER_COLLER_SUPABASE_NOTIFICATIONS.sql    ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
