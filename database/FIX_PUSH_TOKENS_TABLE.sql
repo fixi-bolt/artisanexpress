@@ -1,172 +1,166 @@
--- ========================================
--- 🔔 FIX: CRÉER LA TABLE PUSH_TOKENS
--- ========================================
--- Cette table stocke les tokens push pour les notifications
--- À coller dans l'éditeur SQL de Supabase
+-- ================================================================
+-- CRÉATION DE LA TABLE push_tokens POUR LES NOTIFICATIONS PUSH
+-- ================================================================
+-- À copier-coller dans l'éditeur SQL de Supabase
+-- ================================================================
 
--- Créer la table push_tokens
+-- 1. Créer la table push_tokens si elle n'existe pas
 CREATE TABLE IF NOT EXISTS public.push_tokens (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token TEXT NOT NULL,
-  platform TEXT NOT NULL CHECK (platform IN ('ios', 'android', 'web')),
-  is_active BOOLEAN DEFAULT true NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  UNIQUE(user_id, token)
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  token text NOT NULL,
+  platform text NOT NULL CHECK (platform IN ('ios', 'android', 'web')),
+  device_info jsonb DEFAULT '{}'::jsonb,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  
+  -- Un utilisateur peut avoir plusieurs tokens (plusieurs appareils)
+  -- mais chaque token doit être unique
+  UNIQUE(token)
 );
 
--- Index pour recherche rapide
-CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id);
-CREATE INDEX IF NOT EXISTS idx_push_tokens_active ON push_tokens(is_active) WHERE is_active = true;
-CREATE INDEX IF NOT EXISTS idx_push_tokens_token ON push_tokens(token);
+-- 2. Index pour améliorer les performances
+CREATE INDEX IF NOT EXISTS idx_push_tokens_user_id ON public.push_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_token ON public.push_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_active ON public.push_tokens(is_active) WHERE is_active = true;
 
--- Trigger pour updated_at
-DROP TRIGGER IF EXISTS update_push_tokens_updated_at ON push_tokens;
-CREATE TRIGGER update_push_tokens_updated_at 
-  BEFORE UPDATE ON push_tokens 
-  FOR EACH ROW 
-  EXECUTE FUNCTION update_updated_at_column();
+-- 3. Activer RLS
+ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
 
--- RLS pour sécuriser la table
-ALTER TABLE push_tokens ENABLE ROW LEVEL SECURITY;
-
--- Supprimer les anciennes politiques si elles existent
-DROP POLICY IF EXISTS push_tokens_select_own ON push_tokens;
-DROP POLICY IF EXISTS push_tokens_insert_own ON push_tokens;
-DROP POLICY IF EXISTS push_tokens_update_own ON push_tokens;
-DROP POLICY IF EXISTS push_tokens_delete_own ON push_tokens;
-
--- Politiques RLS : les utilisateurs peuvent gérer leurs propres tokens
-CREATE POLICY push_tokens_select_own ON push_tokens 
+-- 4. Politiques RLS
+-- Les utilisateurs peuvent lire uniquement leurs propres tokens
+DROP POLICY IF EXISTS "Users can view their own push tokens" ON public.push_tokens;
+CREATE POLICY "Users can view their own push tokens" 
+  ON public.push_tokens 
   FOR SELECT 
   USING (auth.uid() = user_id);
 
-CREATE POLICY push_tokens_insert_own ON push_tokens 
+-- Les utilisateurs peuvent insérer leurs propres tokens
+DROP POLICY IF EXISTS "Users can insert their own push tokens" ON public.push_tokens;
+CREATE POLICY "Users can insert their own push tokens" 
+  ON public.push_tokens 
   FOR INSERT 
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY push_tokens_update_own ON push_tokens 
+-- Les utilisateurs peuvent mettre à jour leurs propres tokens
+DROP POLICY IF EXISTS "Users can update their own push tokens" ON public.push_tokens;
+CREATE POLICY "Users can update their own push tokens" 
+  ON public.push_tokens 
   FOR UPDATE 
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY push_tokens_delete_own ON push_tokens 
+-- Les utilisateurs peuvent supprimer leurs propres tokens
+DROP POLICY IF EXISTS "Users can delete their own push tokens" ON public.push_tokens;
+CREATE POLICY "Users can delete their own push tokens" 
+  ON public.push_tokens 
   FOR DELETE 
   USING (auth.uid() = user_id);
 
--- ========================================
--- 🔔 FONCTION POUR NOTIFIER LE CLIENT QUAND MISSION ACCEPTÉE
--- ========================================
+-- Service role peut tout faire (pour les triggers et fonctions backend)
+DROP POLICY IF EXISTS "Service role can manage all push tokens" ON public.push_tokens;
+CREATE POLICY "Service role can manage all push tokens" 
+  ON public.push_tokens 
+  FOR ALL 
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
 
--- Fonction pour créer une notification et envoyer le push
-CREATE OR REPLACE FUNCTION notify_mission_accepted()
+-- 5. Fonction pour mettre à jour updated_at automatiquement
+CREATE OR REPLACE FUNCTION public.update_push_tokens_updated_at()
 RETURNS TRIGGER AS $$
-DECLARE
-  v_client_id UUID;
-  v_artisan_name TEXT;
-  v_push_token TEXT;
 BEGIN
-  -- Vérifier si le statut change à 'accepted'
-  IF NEW.status = 'accepted' AND (OLD.status IS NULL OR OLD.status != 'accepted') THEN
-    
-    -- Récupérer l'ID du client
-    SELECT client_id INTO v_client_id FROM missions WHERE id = NEW.id;
-    
-    -- Récupérer le nom de l'artisan
-    SELECT name INTO v_artisan_name FROM users WHERE id = NEW.artisan_id;
-    
-    -- Créer la notification dans la table notifications
-    INSERT INTO notifications (
-      user_id,
-      type,
-      title,
-      message,
-      mission_id,
-      read
-    ) VALUES (
-      v_client_id,
-      'mission_accepted',
-      'Mission acceptée',
-      v_artisan_name || ' a accepté votre demande',
-      NEW.id,
-      false
-    );
-    
-    -- Log pour debugging
-    RAISE NOTICE 'Notification créée pour client % - mission %', v_client_id, NEW.id;
-    
-    -- Note: L'envoi du push réel est géré par le backend via expo-server-sdk
-    -- La table push_tokens est utilisée par le backend pour récupérer le token
-  END IF;
-  
+  NEW.updated_at = now();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Supprimer le trigger existant s'il existe
-DROP TRIGGER IF EXISTS trigger_notify_mission_accepted ON missions;
-
--- Créer le trigger
-CREATE TRIGGER trigger_notify_mission_accepted
-  AFTER UPDATE ON missions
+-- 6. Trigger pour updated_at
+DROP TRIGGER IF EXISTS update_push_tokens_updated_at ON public.push_tokens;
+CREATE TRIGGER update_push_tokens_updated_at
+  BEFORE UPDATE ON public.push_tokens
   FOR EACH ROW
-  EXECUTE FUNCTION notify_mission_accepted();
+  EXECUTE FUNCTION public.update_push_tokens_updated_at();
 
--- ========================================
--- 🧪 VÉRIFICATIONS
--- ========================================
+-- 7. Fonction utilitaire pour enregistrer/mettre à jour un token
+CREATE OR REPLACE FUNCTION public.upsert_push_token(
+  p_user_id uuid,
+  p_token text,
+  p_platform text,
+  p_device_info jsonb DEFAULT '{}'::jsonb
+)
+RETURNS uuid AS $$
+DECLARE
+  v_token_id uuid;
+BEGIN
+  -- Désactiver les anciens tokens de cet utilisateur sur cette plateforme
+  UPDATE public.push_tokens
+  SET is_active = false
+  WHERE user_id = p_user_id 
+    AND platform = p_platform 
+    AND token != p_token;
+
+  -- Insérer ou mettre à jour le token
+  INSERT INTO public.push_tokens (user_id, token, platform, device_info, is_active)
+  VALUES (p_user_id, p_token, p_platform, p_device_info, true)
+  ON CONFLICT (token) 
+  DO UPDATE SET
+    is_active = true,
+    device_info = EXCLUDED.device_info,
+    updated_at = now()
+  RETURNING id INTO v_token_id;
+
+  RETURN v_token_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 8. Fonction pour récupérer les tokens actifs d'un utilisateur
+CREATE OR REPLACE FUNCTION public.get_active_push_tokens(p_user_id uuid)
+RETURNS TABLE (
+  token text,
+  platform text,
+  device_info jsonb
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT pt.token, pt.platform, pt.device_info
+  FROM public.push_tokens pt
+  WHERE pt.user_id = p_user_id
+    AND pt.is_active = true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 9. Fonction pour désactiver un token (lors de la déconnexion)
+CREATE OR REPLACE FUNCTION public.deactivate_push_token(p_token text)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.push_tokens
+  SET is_active = false
+  WHERE token = p_token;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ================================================================
+-- VÉRIFICATION
+-- ================================================================
 
 -- Vérifier que la table existe
 SELECT 'Table push_tokens créée avec succès' as status
 WHERE EXISTS (
   SELECT 1 FROM information_schema.tables 
-  WHERE table_schema = 'public' AND table_name = 'push_tokens'
+  WHERE table_schema = 'public' 
+  AND table_name = 'push_tokens'
 );
 
--- Vérifier les politiques RLS
-SELECT 
-  schemaname, 
-  tablename, 
-  policyname, 
-  permissive, 
-  cmd
-FROM pg_policies 
+-- Afficher les colonnes
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public' 
+  AND table_name = 'push_tokens'
+ORDER BY ordinal_position;
+
+-- Afficher les politiques RLS
+SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual
+FROM pg_policies
 WHERE tablename = 'push_tokens';
-
--- Vérifier le trigger
-SELECT 
-  trigger_name, 
-  event_manipulation, 
-  event_object_table
-FROM information_schema.triggers
-WHERE trigger_name = 'trigger_notify_mission_accepted';
-
--- ========================================
--- 📝 INSTRUCTIONS
--- ========================================
-
-/*
-✅ CE SCRIPT VA :
-1. Créer la table push_tokens pour stocker les tokens de notification
-2. Ajouter les index nécessaires pour les performances
-3. Configurer les politiques RLS pour la sécurité
-4. Créer une fonction qui notifie automatiquement le client quand une mission est acceptée
-5. Créer un trigger qui s'exécute automatiquement quand le statut d'une mission change
-
-🔄 APRÈS AVOIR COLLÉ CE SCRIPT :
-1. Les tokens push seront stockés correctement
-2. Quand un artisan accepte une mission, une notification sera automatiquement créée
-3. Le backend pourra récupérer le token push et envoyer la notification
-
-🧪 POUR TESTER :
-1. Connectez-vous en tant que client dans l'app
-2. Vérifiez que le token est enregistré : SELECT * FROM push_tokens WHERE user_id = 'VOTRE_USER_ID';
-3. Demandez à un artisan d'accepter une mission
-4. Vérifiez la notification : SELECT * FROM notifications WHERE mission_id = 'MISSION_ID' ORDER BY created_at DESC;
-5. Vous devriez recevoir une notification push sur votre téléphone
-
-❌ SI LES NOTIFICATIONS NE FONCTIONNENT TOUJOURS PAS :
-- Vérifiez que le token est bien enregistré dans push_tokens
-- Vérifiez les logs backend pour voir les erreurs d'envoi push
-- Vérifiez que vous avez autorisé les notifications dans les réglages de l'app
-*/
