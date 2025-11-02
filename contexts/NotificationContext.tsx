@@ -104,6 +104,7 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
         await registerTokenMutation.mutateAsync({
           userId,
           token: expoPushToken,
+          platform: Platform.OS as 'ios' | 'android' | 'web',
         });
         console.log('[Notifications] Token registered for user:', userId);
       }
