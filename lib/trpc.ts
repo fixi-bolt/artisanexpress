@@ -32,11 +32,8 @@ export const trpcClient = trpc.createClient({
         }
 
         const controller = new AbortController();
-        const timeoutMs = 30000;
-        const timeoutId = setTimeout(() => {
-          console.warn('[trpc] Request timeout après', timeoutMs, 'ms pour', url);
-          controller.abort();
-        }, timeoutMs);
+        const timeoutMs = 10000;
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         return fetch(url, {
           ...options,
@@ -47,19 +44,22 @@ export const trpcClient = trpc.createClient({
           },
         }).then(async (response) => {
           clearTimeout(timeoutId);
-          const contentType = response.headers.get('content-type');
           
+          if (response.status === 404) {
+            const text = await response.text().catch(() => '');
+            console.error('[trpc] 404 Not Found:', url, text);
+            throw new Error(`Backend unavailable (Status ${response.status})`);
+          }
+
+          if (!response.ok) {
+            const text = await response.text().catch(() => '');
+            console.error('[trpc] HTTP error', response.status, url, text);
+            throw new Error(`Backend error (Status ${response.status})`);
+          }
+          
+          const contentType = response.headers.get('content-type');
           if (!contentType || !contentType.includes('application/json')) {
-            if (!backendErrorLogged) {
-              console.warn('⚠️ Backend non disponible - Mode hors ligne activé');
-              console.warn(`URL tentée: ${getBaseUrl()}/api/trpc`);
-              console.warn(`Status: ${response.status}`);
-              backendErrorLogged = true;
-            }
-            
-            throw new Error(
-              `Backend unavailable (Status ${response.status})`
-            );
+            console.warn('[trpc] Non-JSON response:', contentType, 'for', url);
           }
           
           return response;
@@ -67,15 +67,13 @@ export const trpcClient = trpc.createClient({
           clearTimeout(timeoutId);
           
           if (error.name === 'AbortError') {
-            console.error('[trpc] Requête annulée (timeout ou abort manuel) pour', url);
-            throw new Error(`Request timeout - Backend trop lent ou injoignable`);
+            console.warn('[trpc] Timeout après', timeoutMs, 'ms pour', url);
+            return Promise.resolve(new Response(JSON.stringify({ error: { message: 'Timeout' } }), {
+              status: 408,
+              headers: { 'Content-Type': 'application/json' },
+            }));
           }
           
-          if (!backendErrorLogged) {
-            console.warn('⚠️ Connexion backend impossible - Mode hors ligne');
-            console.warn('Erreur:', error.message);
-            backendErrorLogged = true;
-          }
           throw error;
         });
       },
