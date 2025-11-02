@@ -1,0 +1,61 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║           🔔 FIX NOTIFICATIONS PUSH - COMMENCER ICI           ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+
+📋 PROBLÈME
+───────────────────────────────────────────────────────────────
+Le client ne reçoit pas de notification push quand l'artisan 
+accepte une mission.
+
+
+✅ SOLUTION (2 minutes)
+───────────────────────────────────────────────────────────────
+
+1️⃣  Ouvrir Supabase
+    → https://supabase.com/dashboard
+    → Sélectionner votre projet
+    → Aller dans "SQL Editor"
+
+2️⃣  Copier-coller le script
+    → Ouvrir le fichier : COPIER_COLLER_SUPABASE_PUSH.sql
+    → Copier TOUT le contenu
+    → Coller dans l'éditeur SQL de Supabase
+    → Cliquer sur "Run" (ou Ctrl+Enter)
+
+3️⃣  C'est tout ! ✨
+    → Le backend a déjà été corrigé
+    → Les notifications push fonctionnent maintenant
+
+
+🧪 TESTER
+───────────────────────────────────────────────────────────────
+
+1. Client ouvre l'app et se connecte
+2. Artisan accepte une mission
+3. Client reçoit notification push 🎉
+
+
+📚 DOCUMENTATION
+───────────────────────────────────────────────────────────────
+
+Guide complet         → FIX_PUSH_NOTIFICATIONS.md
+Action immédiate      → ACTION_IMMEDIATE_PUSH.md
+Résumé                → RESUME_FIX_PUSH_NOTIFICATIONS.md
+Diagnostic SQL        → DIAGNOSTIC_PUSH_NOTIFICATIONS.sql
+
+
+🆘 AIDE
+───────────────────────────────────────────────────────────────
+
+Si problème :
+1. Vérifier que le script SQL a été exécuté
+2. Ouvrir DIAGNOSTIC_PUSH_NOTIFICATIONS.sql
+3. Exécuter les requêtes pour identifier le problème
+
+
+╔═══════════════════════════════════════════════════════════════╗
+║  ⚡ ACTION : Ouvrir COPIER_COLLER_SUPABASE_PUSH.sql          ║
+╚═══════════════════════════════════════════════════════════════╝
