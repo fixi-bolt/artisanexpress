@@ -19,8 +19,8 @@ export const [MonetizationProvider, useMonetization] = createContextHook(() => {
   const { user } = useAuth();
   const userId = user?.id ?? '';
 
-  const adPrefsQuery = trpc.monetization.ads.getPreferences.useQuery({ userId }, { enabled: !!userId });
-  const subQuery = trpc.monetization.premium.getClientSubscription.useQuery({ userId }, { enabled: !!userId });
+  const adPrefsQuery = trpc.monetization.ads.getPreferences.useQuery({ userId }, { enabled: false });
+  const subQuery = trpc.monetization.premium.getClientSubscription.useQuery({ userId }, { enabled: false });
 
   const updatePrefsMutation = trpc.monetization.ads.updatePreferences.useMutation();
   const subscribeMutation = trpc.monetization.premium.subscribeClient.useMutation();
