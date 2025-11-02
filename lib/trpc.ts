@@ -14,7 +14,7 @@ const getBaseUrl = () => {
 };
 
 let backendErrorLogged = false;
-const BACKEND_AVAILABLE = false;
+const BACKEND_AVAILABLE = true;
 
 export const trpcClient = trpc.createClient({
   links: [
@@ -35,6 +35,8 @@ export const trpcClient = trpc.createClient({
         const timeoutMs = 5000;
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+        console.debug('[trpc] Fetching', url);
+
         return fetch(url, {
           ...options,
           signal: controller.signal,
@@ -42,11 +44,38 @@ export const trpcClient = trpc.createClient({
             ...options?.headers,
             'Content-Type': 'application/json',
           },
-        }).then(async (response) => {
+        })
+        .then(async (response) => {
           clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const text = await response.text().catch(() => '');
+            console.error('[trpc] 404 Not Found:', url, text);
+            
+            if (response.status === 404) {
+              throw new Error(`Backend unavailable (Status ${response.status})`);
+            }
+            throw new Error(`Backend error (Status ${response.status})`);
+          }
+
+          const contentType = response.headers.get('content-type') || '';
+          if (!contentType.includes('application/json')) {
+            console.warn('[trpc] Unexpected content-type:', contentType, 'for', url);
+          }
+
           return response;
-        }).catch((error) => {
+        })
+        .catch((error) => {
           clearTimeout(timeoutId);
+          
+          if (error.name === 'AbortError') {
+            console.error('[trpc] Requête annulée (timeout ou abort manuel) pour', url);
+          } else if (!backendErrorLogged) {
+            console.warn('⚠️ Connexion backend impossible - Mode hors ligne');
+            console.warn('Erreur:', error.message);
+            backendErrorLogged = true;
+          }
+          
           throw error;
         });
       },
