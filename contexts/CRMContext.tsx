@@ -1,6 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useCallback, useMemo } from 'react';
-import { trpc } from '@/lib/trpc';
 
 export type CustomerSegment = 'all' | 'high_value' | 'at_risk' | 'new' | 'churned';
 
@@ -9,33 +8,28 @@ export const [CRMContext, useCRM] = createContextHook(() => {
   const [segment, setSegment] = useState<CustomerSegment>('all');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
-  const profilesQuery = trpc.crm.getCustomerProfiles.useQuery({
-    search: search || undefined,
-    segment,
-    limit: 50,
-    offset: 0,
-  }, { enabled: false });
+  const profilesQuery = useMemo(() => ({ 
+    data: { profiles: [], totalCount: 0 }, 
+    isLoading: false, 
+    refetch: () => Promise.resolve() 
+  }), []);
 
-  const customerHistoryQuery = trpc.crm.getCustomerHistory.useQuery(
-    { userId: selectedCustomerId! },
-    { enabled: !!selectedCustomerId }
-  );
+  const customerHistoryQuery = useMemo(() => ({ 
+    data: null, 
+    isLoading: false, 
+    refetch: () => Promise.resolve() 
+  }), []);
 
-  const addNoteMutation = trpc.crm.addCustomerNote.useMutation({
-    onSuccess: () => {
-      console.log('[CRM] Note added successfully');
-      if (selectedCustomerId) {
-        customerHistoryQuery.refetch();
-        profilesQuery.refetch();
-      }
+  const addNoteMutation = useMemo(() => ({
+    mutateAsync: async () => {
+      console.log('[CRM] Mode offline - Note non disponible');
+      return Promise.resolve();
     },
-    onError: (error) => {
-      console.error('[CRM] Error adding note:', error);
-    },
-  });
+    isPending: false,
+  }), []);
 
-  const addCustomerNote = useCallback((userId: string, content: string) => {
-    return addNoteMutation.mutateAsync({ userId, content });
+  const addCustomerNote = useCallback((_userId: string, _content: string) => {
+    return addNoteMutation.mutateAsync();
   }, [addNoteMutation]);
 
   const selectCustomer = useCallback((customerId: string | null) => {

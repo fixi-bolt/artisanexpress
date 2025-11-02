@@ -1,36 +1,34 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useCallback, useMemo } from 'react';
-import { trpc } from '@/lib/trpc';
 
 export type CampaignStatus = 'active' | 'scheduled' | 'completed' | 'all';
 
 export const [MarketingContext, useMarketing] = createContextHook(() => {
   const [campaignStatus, setCampaignStatus] = useState<CampaignStatus>('all');
 
-  const campaignsQuery = trpc.marketing.getCampaigns.useQuery({
-    status: campaignStatus,
-  }, { enabled: false });
+  const campaignsQuery = useMemo(() => ({ 
+    data: { campaigns: [], totalCount: 0 }, 
+    isLoading: false, 
+    refetch: () => Promise.resolve() 
+  }), []);
 
-  const createCampaignMutation = trpc.marketing.createCampaign.useMutation({
-    onSuccess: () => {
-      console.log('[Marketing] Campaign created successfully');
-      campaignsQuery.refetch();
+  const createCampaignMutation = useMemo(() => ({
+    mutateAsync: async () => {
+      console.log('[Marketing] Mode offline - Campaign creation non disponible');
+      return Promise.resolve();
     },
-    onError: (error) => {
-      console.error('[Marketing] Error creating campaign:', error);
-    },
-  });
+    isPending: false,
+  }), []);
 
-  const sendNotificationMutation = trpc.marketing.sendPromotionalNotification.useMutation({
-    onSuccess: (data: { recipients: number }) => {
-      console.log('[Marketing] Notification sent to', data.recipients, 'recipients');
+  const sendNotificationMutation = useMemo(() => ({
+    mutateAsync: async () => {
+      console.log('[Marketing] Mode offline - Notification non disponible');
+      return Promise.resolve();
     },
-    onError: (error) => {
-      console.error('[Marketing] Error sending notification:', error);
-    },
-  });
+    isPending: false,
+  }), []);
 
-  const createCampaign = useCallback((campaignData: {
+  const createCampaign = useCallback((_campaignData: {
     name: string;
     type: 'email' | 'push' | 'sms' | 'referral';
     targetAudience: string;
@@ -43,10 +41,10 @@ export const [MarketingContext, useMarketing] = createContextHook(() => {
       cta?: string;
     };
   }) => {
-    return createCampaignMutation.mutateAsync(campaignData);
+    return createCampaignMutation.mutateAsync();
   }, [createCampaignMutation]);
 
-  const sendPromotionalNotification = useCallback((data: {
+  const sendPromotionalNotification = useCallback((_data: {
     campaignId: string;
     userIds?: string[];
     targetAudience: string;
@@ -54,7 +52,7 @@ export const [MarketingContext, useMarketing] = createContextHook(() => {
     message: string;
     deepLink?: string;
   }) => {
-    return sendNotificationMutation.mutateAsync(data);
+    return sendNotificationMutation.mutateAsync();
   }, [sendNotificationMutation]);
 
   return useMemo(() => ({

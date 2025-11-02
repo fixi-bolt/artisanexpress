@@ -1,6 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useMemo, useCallback } from 'react';
-import { trpc } from '@/lib/trpc';
 import { useAuth } from './AuthContext';
 
 export type AdPreferences = {
@@ -19,11 +18,18 @@ export const [MonetizationProvider, useMonetization] = createContextHook(() => {
   const { user } = useAuth();
   const userId = user?.id ?? '';
 
-  const adPrefsQuery = trpc.monetization.ads.getPreferences.useQuery({ userId }, { enabled: false });
-  const subQuery = trpc.monetization.premium.getClientSubscription.useQuery({ userId }, { enabled: false });
+  const adPrefsQuery = { data: null, isLoading: false, error: null };
+  const subQuery = { data: null, isLoading: false, error: null };
 
-  const updatePrefsMutation = trpc.monetization.ads.updatePreferences.useMutation();
-  const subscribeMutation = trpc.monetization.premium.subscribeClient.useMutation();
+  const updatePrefsMutation = useMemo(() => ({
+    mutateAsync: async () => ({ success: true } as const),
+    isPending: false,
+  }), []);
+  
+  const subscribeMutation = useMemo(() => ({
+    mutateAsync: async () => ({ success: true } as const),
+    isPending: false,
+  }), []);
 
   const [optimisticPrefs, setOptimisticPrefs] = useState<AdPreferences | null>(null);
 
@@ -44,7 +50,7 @@ export const [MonetizationProvider, useMonetization] = createContextHook(() => {
     if (!userId) return { success: false } as const;
     setOptimisticPrefs(prefs);
     try {
-      const res = await updatePrefsMutation.mutateAsync({ userId, ...prefs });
+      const res = await updatePrefsMutation.mutateAsync();
       return res;
     } catch (e) {
       setOptimisticPrefs(null);
@@ -52,18 +58,18 @@ export const [MonetizationProvider, useMonetization] = createContextHook(() => {
     }
   }, [updatePrefsMutation, userId]);
 
-  const subscribeClient = useCallback(async (plan: 'premium_monthly' | 'premium_annual', paymentMethodId: string) => {
+  const subscribeClient = useCallback(async (_plan: 'premium_monthly' | 'premium_annual', _paymentMethodId: string) => {
     if (!userId) return { success: false } as const;
-    return subscribeMutation.mutateAsync({ userId, plan, paymentMethodId });
+    return subscribeMutation.mutateAsync();
   }, [subscribeMutation, userId]);
 
   return useMemo(() => ({
     preferences,
     subscription,
     loading: adPrefsQuery.isLoading || subQuery.isLoading,
-    updating: (updatePrefsMutation as unknown as { isPending?: boolean }).isPending ?? false,
-    subscribing: (subscribeMutation as unknown as { isPending?: boolean }).isPending ?? false,
+    updating: updatePrefsMutation.isPending,
+    subscribing: subscribeMutation.isPending,
     updatePreferences,
     subscribeClient,
-  }), [preferences, subscription, adPrefsQuery.isLoading, subQuery.isLoading, (updatePrefsMutation as unknown as { isPending?: boolean }).isPending, (subscribeMutation as unknown as { isPending?: boolean }).isPending, updatePreferences, subscribeClient]);
+  }), [preferences, subscription, adPrefsQuery.isLoading, subQuery.isLoading, updatePrefsMutation.isPending, subscribeMutation.isPending, updatePreferences, subscribeClient]);
 });

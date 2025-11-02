@@ -1,77 +1,33 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
-import { trpc } from '@/lib/trpc';
 import type { ChatMessage } from '@/types';
 
 export const [ChatProvider, useChat] = createContextHook(() => {
   const [currentMissionId, setCurrentMissionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const messagesQuery = trpc.chat.getMessages.useQuery(
-    { missionId: currentMissionId || '' },
-    { enabled: !!currentMissionId }
-  );
-
-  const sendMessageMutation = trpc.chat.sendMessage.useMutation({
-    onSuccess: (newMessage) => {
-      setMessages((prev) => [...prev, newMessage]);
-    },
-  });
-
-  const markReadMutation = trpc.chat.markRead.useMutation();
-
-  useEffect(() => {
-    if (messagesQuery.data) {
-      setMessages(messagesQuery.data);
-    }
-  }, [messagesQuery.data]);
-
-  useEffect(() => {
-    if (currentMissionId) {
-      const interval = setInterval(() => {
-        messagesQuery.refetch();
-      }, 3000);
-      pollingIntervalRef.current = interval;
-
-      return () => {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-        }
-      };
-    } else {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    }
-  }, [currentMissionId, messagesQuery]);
+  const [isLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   const sendMessage = useCallback(
     async (content: string, senderId: string, senderName: string, senderType: 'client' | 'artisan') => {
       if (!currentMissionId) return;
-
-      await sendMessageMutation.mutateAsync({
-        missionId: currentMissionId,
-        senderId,
-        senderName,
-        senderType,
-        content,
-      });
+      
+      setIsSending(true);
+      try {
+        console.log('[Chat] Mode offline - Message non envoyé:', { content, senderId, senderName, senderType });
+      } finally {
+        setIsSending(false);
+      }
     },
-    [currentMissionId, sendMessageMutation]
+    [currentMissionId]
   );
 
   const markAsRead = useCallback(
-    async (userId: string) => {
+    async (_userId: string) => {
       if (!currentMissionId) return;
-
-      await markReadMutation.mutateAsync({
-        missionId: currentMissionId,
-        userId,
-      });
+      console.log('[Chat] Mode offline - Mark as read non disponible');
     },
-    [currentMissionId, markReadMutation]
+    [currentMissionId]
   );
 
   const openChat = useCallback((missionId: string) => {
@@ -92,8 +48,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       markAsRead,
       openChat,
       closeChat,
-      isLoading: messagesQuery.isLoading,
-      isSending: sendMessageMutation.isPending,
+      isLoading,
+      isSending,
     }),
     [
       messages,
@@ -102,8 +58,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       markAsRead,
       openChat,
       closeChat,
-      messagesQuery.isLoading,
-      sendMessageMutation.isPending,
+      isLoading,
+      isSending,
     ]
   );
 });

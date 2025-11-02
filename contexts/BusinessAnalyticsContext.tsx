@@ -1,15 +1,14 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useCallback, useMemo } from 'react';
-import { trpc } from '@/lib/trpc';
 
 export type AnalyticsPeriod = 'week' | 'month' | 'quarter' | 'year';
 
 export const [BusinessAnalyticsContext, useBusinessAnalytics] = createContextHook(() => {
   const [period, setPeriod] = useState<AnalyticsPeriod>('month');
 
-  const revenueQuery = trpc.business.getRevenueAnalytics.useQuery({ period }, { enabled: false });
-  const userMetricsQuery = trpc.business.getUserMetrics.useQuery({ period }, { enabled: false });
-  const conversionFunnelQuery = trpc.business.getConversionFunnel.useQuery({ period }, { enabled: false });
+  const revenueQuery = useMemo(() => ({ data: null, isLoading: false, error: null, refetch: () => Promise.resolve() }), []);
+  const userMetricsQuery = useMemo(() => ({ data: null, isLoading: false, error: null, refetch: () => Promise.resolve() }), []);
+  const conversionFunnelQuery = useMemo(() => ({ data: null, isLoading: false, error: null, refetch: () => Promise.resolve() }), []);
 
   const changePeriod = useCallback((newPeriod: AnalyticsPeriod) => {
     console.log('[BusinessAnalytics] Changing period to:', newPeriod);
