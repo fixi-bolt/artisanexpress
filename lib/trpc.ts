@@ -32,7 +32,11 @@ export const trpcClient = trpc.createClient({
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutMs = 30000;
+        const timeoutId = setTimeout(() => {
+          console.warn('[trpc] Request timeout après', timeoutMs, 'ms pour', url);
+          controller.abort();
+        }, timeoutMs);
 
         return fetch(url, {
           ...options,
@@ -61,6 +65,12 @@ export const trpcClient = trpc.createClient({
           return response;
         }).catch((error) => {
           clearTimeout(timeoutId);
+          
+          if (error.name === 'AbortError') {
+            console.error('[trpc] Requête annulée (timeout ou abort manuel) pour', url);
+            throw new Error(`Request timeout - Backend trop lent ou injoignable`);
+          }
+          
           if (!backendErrorLogged) {
             console.warn('⚠️ Connexion backend impossible - Mode hors ligne');
             console.warn('Erreur:', error.message);
