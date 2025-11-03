@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   Clock, CheckCircle, XCircle, Navigation, Euro, Star, 
-  Edit3, Trash2, Calendar, MapPin, Package, ArrowLeft 
+  Edit3, Trash2, Calendar, MapPin, Package, ArrowLeft, X, Image as ImageIcon
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useMissions } from '@/contexts/MissionContext';
@@ -18,6 +18,7 @@ export default function MissionDetailsScreen() {
   const { missionId } = useLocalSearchParams<{ missionId: string }>();
   const { missions, cancelMission } = useMissions();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const mission = missions.find(m => m.id === missionId);
 
@@ -155,6 +156,37 @@ export default function MissionDetailsScreen() {
 
         <Text style={styles.title}>{mission.title}</Text>
         <Text style={styles.description}>{mission.description}</Text>
+
+        {mission.photos && mission.photos.length > 0 && (
+          <View style={styles.photosSection}>
+            <View style={styles.photosSectionHeader}>
+              <ImageIcon size={20} color={Colors.primary} strokeWidth={2} />
+              <Text style={styles.photosSectionTitle}>
+                Photos ({mission.photos.length})
+              </Text>
+            </View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.photosScroll}
+            >
+              {mission.photos.map((photo, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.photoThumbnail}
+                  onPress={() => setSelectedPhoto(photo)}
+                  activeOpacity={0.8}
+                >
+                  <Image 
+                    source={{ uri: photo }} 
+                    style={styles.photoThumbnailImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         <View style={styles.mapSection}>
           <RetractableMap
@@ -296,6 +328,30 @@ export default function MissionDetailsScreen() {
           <LoadingSpinner />
         </View>
       )}
+
+      <Modal
+        visible={selectedPhoto !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPhoto(null)}
+      >
+        <View style={styles.photoModal}>
+          <TouchableOpacity
+            style={styles.photoModalClose}
+            onPress={() => setSelectedPhoto(null)}
+            activeOpacity={0.9}
+          >
+            <X size={24} color={Colors.surface} strokeWidth={2} />
+          </TouchableOpacity>
+          {selectedPhoto && (
+            <Image
+              source={{ uri: selectedPhoto }}
+              style={styles.photoModalImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -498,5 +554,58 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  photosSection: {
+    marginBottom: 24,
+  },
+  photosSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  photosSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  photosScroll: {
+    flexDirection: 'row',
+  },
+  photoThumbnail: {
+    width: 100,
+    height: 100,
+    borderRadius: 16,
+    marginRight: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.border,
+    borderWidth: 2,
+    borderColor: Colors.primary + '30',
+  },
+  photoThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalClose: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  photoModalImage: {
+    width: '90%',
+    height: '80%',
   },
 });
