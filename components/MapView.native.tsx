@@ -18,6 +18,11 @@ interface MapViewProps {
   zoomEnabled?: boolean;
   scrollEnabled?: boolean;
   rotateEnabled?: boolean;
+  pitchEnabled?: boolean;
+  zoomControlEnabled?: boolean;
+  zoomTapEnabled?: boolean;
+  minZoomLevel?: number;
+  maxZoomLevel?: number;
   onPanDrag?: RNMapViewProps['onPanDrag'];
   onRegionChangeComplete?: RNMapViewProps['onRegionChangeComplete'];
   testID?: string;
@@ -40,6 +45,11 @@ export const MapView = forwardRef<MapViewNative, MapViewProps>(function MapView(
       zoomEnabled={props.zoomEnabled}
       scrollEnabled={props.scrollEnabled}
       rotateEnabled={props.rotateEnabled}
+      pitchEnabled={props.pitchEnabled}
+      zoomControlEnabled={props.zoomControlEnabled}
+      zoomTapEnabled={props.zoomTapEnabled}
+      minZoomLevel={props.minZoomLevel}
+      maxZoomLevel={props.maxZoomLevel}
       onPanDrag={props.onPanDrag}
       onRegionChangeComplete={props.onRegionChangeComplete}
       testID={props.testID}
