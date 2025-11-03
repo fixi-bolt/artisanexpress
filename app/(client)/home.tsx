@@ -154,7 +154,7 @@ export default function ClientHomeScreen() {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return Math.abs(gestureState.dy) > 5;
       },
@@ -220,40 +220,42 @@ export default function ClientHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.mapContainer, { opacity: mapOpacity }]}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          initialRegion={{
-            ...mapCenter,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-          zoomEnabled={true}
-          scrollEnabled={true}
-          rotateEnabled={true}
-          pitchEnabled={true}
-          onPanDrag={handleMapPan}
-        >
-          {position && (
-            <Marker
-              coordinate={{ latitude: position.latitude, longitude: position.longitude }}
-              title="Votre position"
-            >
-              <View style={styles.userMarker}>
-                <View style={styles.userMarkerInner} />
-              </View>
-            </Marker>
-          )}
-          {availableArtisans.map((artisan) => (
-            <Marker
-              key={artisan.id}
-              coordinate={artisan.location}
-              title={artisan.name}
-              description={artisan.category}
-            />
-          ))}
-        </MapView>
+      <View style={styles.mapContainer} pointerEvents="box-none">
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: mapOpacity }]}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={{
+              ...mapCenter,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+            zoomEnabled={true}
+            scrollEnabled={true}
+            rotateEnabled={true}
+            pitchEnabled={true}
+            onPanDrag={handleMapPan}
+          >
+            {position && (
+              <Marker
+                coordinate={{ latitude: position.latitude, longitude: position.longitude }}
+                title="Votre position"
+              >
+                <View style={styles.userMarker}>
+                  <View style={styles.userMarkerInner} />
+                </View>
+              </Marker>
+            )}
+            {availableArtisans.map((artisan) => (
+              <Marker
+                key={artisan.id}
+                coordinate={artisan.location}
+                title={artisan.name}
+                description={artisan.category}
+              />
+            ))}
+          </MapView>
+        </Animated.View>
 
         {overlayState !== OverlayState.EXPANDED && (
           <TouchableOpacity 
@@ -268,9 +270,11 @@ export default function ClientHomeScreen() {
             />
           </TouchableOpacity>
         )}
-      </Animated.View>
+      </View>
 
-      <Animated.View style={[styles.dimOverlay, { opacity: dimOpacity }]} pointerEvents="none" />
+      {overlayState === OverlayState.EXPANDED && (
+        <Animated.View style={[styles.dimOverlay, { opacity: dimOpacity }]} pointerEvents="none" />
+      )}
 
       <Animated.View 
         style={[
@@ -280,8 +284,9 @@ export default function ClientHomeScreen() {
             paddingTop: insets.top,
           },
         ]}
+        pointerEvents="box-none"
       >
-        <View style={styles.content}>
+        <View style={styles.content} pointerEvents="auto">
           <View 
             style={styles.handleBarContainer}
             {...panResponder.panHandlers}
