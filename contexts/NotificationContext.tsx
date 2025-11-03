@@ -25,11 +25,6 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
       console.log('[Notifications] Backend unavailable for token registration:', error.message);
     },
   });
-  const sendNotificationMutation = trpc.notifications.sendNotification.useMutation({
-    onError: (error) => {
-      console.log('[Notifications] Backend unavailable for sending:', error.message);
-    },
-  });
 
   const registerForPushNotificationsAsync = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -138,12 +133,6 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
       missionId?: string;
       data?: Record<string, string>;
     }) => {
-      sendNotificationMutation.mutate(params, {
-        onError: () => {
-          console.log('[Notifications] Backend unavailable - notification handled by trigger');
-        },
-      });
-
       if (Platform.OS !== 'web') {
         await Notifications.scheduleNotificationAsync({
           content: {
@@ -161,7 +150,7 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
 
       console.log('[Notifications] Notification sent:', params);
     },
-    [sendNotificationMutation]
+    []
   );
 
   const markAsRead = useCallback((notificationId: string) => {
