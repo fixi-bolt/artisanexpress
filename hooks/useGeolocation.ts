@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import * as Location from 'expo-location';
 
 export interface GeolocationPosition {
@@ -25,7 +26,7 @@ export function useGeolocation({
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasPermission, setHasPermission] = useState<boolean>(false);
-  const watchIdRef = useRef<Location.LocationSubscription | null>(null);
+  const watchIdRef = useRef<number | Location.LocationSubscription | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -34,18 +35,38 @@ export function useGeolocation({
     const requestPermission = async () => {
       try {
         console.log('[useGeolocation] Requesting location permission...');
-        
+
+        if (Platform.OS === 'web') {
+          // Best-effort permission detection on web
+          try {
+            const permStatus = await (navigator as any).permissions?.query?.({ name: 'geolocation' as any });
+            const granted = permStatus?.state === 'granted' || permStatus?.state === 'prompt' || permStatus == null;
+            if (!isMounted) return;
+            setHasPermission(granted);
+            if (!granted) {
+              const err = new Error('Permission to access location was denied');
+              setError(err);
+              setIsLoading(false);
+              onError?.(err);
+              console.error('[useGeolocation] Permission denied (web)');
+            }
+          } catch {
+            // Fallback: attempt to use geolocation, browser will prompt
+            setHasPermission(true);
+          }
+          return;
+        }
+
         const { status } = await Location.requestForegroundPermissionsAsync();
-        
         if (!isMounted) return;
 
         if (status !== 'granted') {
-          const error = new Error('Permission to access location was denied');
-          setError(error);
+          const err = new Error('Permission to access location was denied');
+          setError(err);
           setHasPermission(false);
           setIsLoading(false);
-          onError?.(error);
-          console.error('[useGeolocation] Permission denied');
+          onError?.(err);
+          console.error('[useGeolocation] Permission denied (native)');
           return;
         }
 
@@ -54,11 +75,11 @@ export function useGeolocation({
         setError(null);
       } catch (err) {
         if (!isMounted) return;
-        const error = err instanceof Error ? err : new Error('Failed to request location permission');
-        setError(error);
+        const e = err instanceof Error ? err : new Error('Failed to request location permission');
+        setError(e);
         setIsLoading(false);
-        onError?.(error);
-        console.error('[useGeolocation] Error requesting permission:', error);
+        onError?.(e);
+        console.error('[useGeolocation] Error requesting permission:', e);
       }
     };
 
@@ -71,7 +92,7 @@ export function useGeolocation({
     return () => {
       isMounted = false;
     };
-  }, [enabled]);
+  }, [enabled, onError]);
 
   useEffect(() => {
     if (!enabled || !hasPermission) {
@@ -81,10 +102,70 @@ export function useGeolocation({
 
     let isMounted = true;
 
-    const startTracking = async () => {
+    const startTrackingWeb = () => {
+      if (!('geolocation' in navigator)) {
+        const err = new Error('Geolocation API not available');
+        setError(err);
+        setIsLoading(false);
+        onError?.(err);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (loc) => {
+          if (!isMounted) return;
+          const newPosition: GeolocationPosition = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            accuracy: loc.coords.accuracy ?? null,
+            timestamp: loc.timestamp,
+          };
+          console.log('[useGeolocation] Initial position (web):', newPosition);
+          setPosition(newPosition);
+          setIsLoading(false);
+          onLocationUpdate?.(newPosition);
+        },
+        (err) => {
+          if (!isMounted) return;
+          const e = new Error(err.message);
+          setError(e);
+          setIsLoading(false);
+          onError?.(e);
+          console.error('[useGeolocation] Error getting position (web):', e);
+        },
+        { enableHighAccuracy: false, maximumAge: 10000, timeout: 10000 }
+      );
+
+      const id = navigator.geolocation.watchPosition(
+        (loc) => {
+          if (!isMounted) return;
+          const updatedPosition: GeolocationPosition = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            accuracy: loc.coords.accuracy ?? null,
+            timestamp: loc.timestamp,
+          };
+          console.log('[useGeolocation] Position updated (web):', updatedPosition);
+          setPosition(updatedPosition);
+          onLocationUpdate?.(updatedPosition);
+        },
+        (err) => {
+          if (!isMounted) return;
+          const e = new Error(err.message);
+          setError(e);
+          onError?.(e);
+          console.error('[useGeolocation] Watch error (web):', e);
+        },
+        { enableHighAccuracy: false, maximumAge: updateInterval, timeout: 10000 }
+      );
+
+      watchIdRef.current = id;
+    };
+
+    const startTrackingNative = async () => {
       try {
-        console.log('[useGeolocation] Starting location tracking...');
-        
+        console.log('[useGeolocation] Starting location tracking (native)...');
+
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
@@ -98,7 +179,7 @@ export function useGeolocation({
           timestamp: location.timestamp,
         };
 
-        console.log('[useGeolocation] Initial position:', newPosition);
+        console.log('[useGeolocation] Initial position (native):', newPosition);
         setPosition(newPosition);
         setIsLoading(false);
         onLocationUpdate?.(newPosition);
@@ -109,49 +190,60 @@ export function useGeolocation({
             timeInterval: updateInterval,
             distanceInterval: 100,
           },
-          (location) => {
+          (loc) => {
             if (!isMounted) return;
 
             const updatedPosition: GeolocationPosition = {
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-              accuracy: location.coords.accuracy,
-              timestamp: location.timestamp,
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+              accuracy: loc.coords.accuracy,
+              timestamp: loc.timestamp,
             };
 
-            console.log('[useGeolocation] Position updated:', updatedPosition);
+            console.log('[useGeolocation] Position updated (native):', updatedPosition);
             setPosition(updatedPosition);
             onLocationUpdate?.(updatedPosition);
           }
         );
 
         watchIdRef.current = subscription;
-
       } catch (err) {
         if (!isMounted) return;
-        const error = err instanceof Error ? err : new Error('Failed to get location');
-        setError(error);
+        const e = err instanceof Error ? err : new Error('Failed to get location');
+        setError(e);
         setIsLoading(false);
-        onError?.(error);
-        console.error('[useGeolocation] Error tracking location:', error);
+        onError?.(e);
+        console.error('[useGeolocation] Error tracking location (native):', e);
       }
     };
 
-    startTracking();
+    if (Platform.OS === 'web') {
+      startTrackingWeb();
+    } else {
+      startTrackingNative();
+    }
 
     return () => {
       isMounted = false;
-      if (watchIdRef.current) {
-        console.log('[useGeolocation] Stopping location tracking');
-        watchIdRef.current.remove();
-        watchIdRef.current = null;
+      if (Platform.OS === 'web') {
+        if (typeof watchIdRef.current === 'number') {
+          console.log('[useGeolocation] Stopping location tracking (web)');
+          navigator.geolocation.clearWatch(watchIdRef.current);
+        }
+      } else {
+        const sub = watchIdRef.current as Location.LocationSubscription | null;
+        if (sub) {
+          console.log('[useGeolocation] Stopping location tracking (native)');
+          sub.remove();
+        }
       }
+      watchIdRef.current = null;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
-  }, [enabled, hasPermission, updateInterval]);
+  }, [enabled, hasPermission, updateInterval, onLocationUpdate, onError]);
 
   return {
     position,
