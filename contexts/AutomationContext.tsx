@@ -18,8 +18,11 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
   const [settings, setSettings] = useState<AutomationSettings>(DEFAULT_SETTINGS);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
+    if (isLoaded) return;
+    
     const load = async () => {
       const key = 'automation:settings';
       try {
@@ -122,10 +125,18 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
         }
       } catch {
         setSettings(DEFAULT_SETTINGS);
+      } finally {
+        setIsLoaded(true);
       }
     };
-    load();
-  }, []);
+    
+    // Defer loading to not block initial render
+    const timeoutId = setTimeout(() => {
+      load();
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isLoaded]);
 
   const save = useCallback(async (next: AutomationSettings) => {
     setIsSaving(true);

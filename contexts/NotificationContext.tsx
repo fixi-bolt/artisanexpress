@@ -55,15 +55,18 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
   }, []);
 
   useEffect(() => {
-    registerForPushNotificationsAsync()
-      .then((token) => {
-        if (token) {
-          setExpoPushToken(token);
-        }
-      })
-      .catch((error) => {
-        console.log('[Notifications] Failed to register for push notifications:', error);
-      });
+    // Defer push token registration to not block initial render
+    const timeoutId = setTimeout(() => {
+      registerForPushNotificationsAsync()
+        .then((token) => {
+          if (token) {
+            setExpoPushToken(token);
+          }
+        })
+        .catch((error) => {
+          console.log('[Notifications] Failed to register for push notifications:', error);
+        });
+    }, 500);
 
     if (Platform.OS !== 'web') {
       notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
@@ -88,6 +91,7 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
       });
 
       return () => {
+        clearTimeout(timeoutId);
         if (notificationListener.current) {
           notificationListener.current.remove();
         }
@@ -95,6 +99,8 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
           responseListener.current.remove();
         }
       };
+    } else {
+      return () => clearTimeout(timeoutId);
     }
   }, [registerForPushNotificationsAsync]);
 

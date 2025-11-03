@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
@@ -140,8 +140,11 @@ export const [LocalizationProvider, useLocalization] = createContextHook<Localiz
   const [currency, setCurrencyState] = useState<CurrencyCode>('EUR');
   const [distanceUnit, setDistanceUnitState] = useState<DistanceUnit>('km');
   const [region, setRegionState] = useState<string>('FR');
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
+    if (isLoaded) return;
+    
     const load = async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -162,9 +165,16 @@ export const [LocalizationProvider, useLocalization] = createContextHook<Localiz
       setCurrencyState(inferred === 'fr' || inferred === 'de' ? 'EUR' : inferred === 'en' ? 'USD' : 'EUR');
       setDistanceUnitState(inferred === 'en' ? 'mi' : 'km');
       setRegionState(inferred === 'de' ? 'DE' : inferred === 'es' ? 'ES' : inferred === 'en' ? 'US' : 'FR');
+      setIsLoaded(true);
     };
-    load();
-  }, []);
+    
+    // Defer loading to not block initial render
+    const timeoutId = setTimeout(() => {
+      load();
+    }, 150);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isLoaded]);
 
   const persist = useCallback(async (next: { locale?: SupportedLocale; currency?: CurrencyCode; distanceUnit?: DistanceUnit; region?: string }) => {
     try {

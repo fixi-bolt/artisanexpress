@@ -49,8 +49,10 @@ export const [AnalyticsProvider, useAnalytics] = createContextHook(() => {
     averageSessionDuration: 0,
     lastSessionDate: null,
   });
+  const [statsLoaded, setStatsLoaded] = useState<boolean>(false);
 
   const loadStats = useCallback(async () => {
+    if (statsLoaded) return;
     try {
       const storedStats = await AsyncStorage.getItem('analytics_stats');
       if (storedStats) {
@@ -58,8 +60,10 @@ export const [AnalyticsProvider, useAnalytics] = createContextHook(() => {
       }
     } catch (error) {
       console.error('Failed to load analytics stats:', error);
+    } finally {
+      setStatsLoaded(true);
     }
-  }, []);
+  }, [statsLoaded]);
 
   const saveStats = useCallback(async (newStats: AnalyticsStats) => {
     try {
@@ -176,10 +180,14 @@ export const [AnalyticsProvider, useAnalytics] = createContextHook(() => {
   }, [getEvents]);
 
   useEffect(() => {
-    loadStats();
-    trackEvent('app_opened', { sessionId });
+    // Defer analytics loading to not block initial render
+    const timeoutId = setTimeout(() => {
+      loadStats();
+      trackEvent('app_opened', { sessionId });
+    }, 200);
     
     return () => {
+      clearTimeout(timeoutId);
       const sessionDuration = (Date.now() - sessionStart) / 1000;
       updateSessionStats(sessionDuration);
     };
