@@ -14,6 +14,7 @@ interface MapViewProps {
   showsUserLocation?: boolean;
   showsMyLocationButton?: boolean;
   showsCompass?: boolean;
+  onRegionChangeComplete?: (region: any) => void;
   testID?: string;
   children?: React.ReactNode;
 }
@@ -40,6 +41,17 @@ interface MarkerProps {
 }
 
 export function Marker(_props: MarkerProps) {
+  return null;
+}
+
+interface CircleProps {
+  center: { latitude: number; longitude: number };
+  radius: number;
+  strokeColor?: string;
+  fillColor?: string;
+}
+
+export function Circle(_props: CircleProps) {
   return null;
 }
 

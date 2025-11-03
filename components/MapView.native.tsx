@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import MapViewNative, { Marker as MarkerNative, PROVIDER_DEFAULT, MapViewProps as RNMapViewProps } from 'react-native-maps';
+import MapViewNative, { Marker as MarkerNative, Circle as CircleNative, PROVIDER_DEFAULT, MapViewProps as RNMapViewProps } from 'react-native-maps';
 
 interface Region {
   latitude: number;
@@ -19,6 +19,7 @@ interface MapViewProps {
   scrollEnabled?: boolean;
   rotateEnabled?: boolean;
   onPanDrag?: RNMapViewProps['onPanDrag'];
+  onRegionChangeComplete?: RNMapViewProps['onRegionChangeComplete'];
   testID?: string;
   children?: React.ReactNode;
 }
@@ -40,6 +41,7 @@ export const MapView = forwardRef<MapViewNative, MapViewProps>(function MapView(
       scrollEnabled={props.scrollEnabled}
       rotateEnabled={props.rotateEnabled}
       onPanDrag={props.onPanDrag}
+      onRegionChangeComplete={props.onRegionChangeComplete}
       testID={props.testID}
     >
       {props.children}
@@ -66,6 +68,24 @@ export function Marker(props: MarkerProps) {
     >
       {props.children}
     </MarkerNative>
+  );
+}
+
+interface CircleProps {
+  center: { latitude: number; longitude: number };
+  radius: number;
+  strokeColor?: string;
+  fillColor?: string;
+}
+
+export function Circle(props: CircleProps) {
+  return (
+    <CircleNative
+      center={props.center}
+      radius={props.radius}
+      strokeColor={props.strokeColor}
+      fillColor={props.fillColor}
+    />
   );
 }
 
