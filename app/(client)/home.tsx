@@ -220,8 +220,8 @@ export default function ClientHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.mapContainer} pointerEvents="box-none">
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: mapOpacity }]}>
+      <View style={styles.mapContainer}>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: mapOpacity }]} pointerEvents="box-none">
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -235,6 +235,7 @@ export default function ClientHomeScreen() {
             rotateEnabled={true}
             pitchEnabled={true}
             onPanDrag={handleMapPan}
+            pointerEvents="auto"
           >
             {position && (
               <Marker
