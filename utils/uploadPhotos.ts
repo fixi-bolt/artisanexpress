@@ -22,23 +22,22 @@ export async function uploadMissionPhotos(
       const fileName = `${missionId}_${i}_${Date.now()}.${fileExtension}`;
       const filePath = `missions/${missionId}/${fileName}`;
 
-      let fileData: Blob | ArrayBuffer | string;
+      let fileData: Blob | ArrayBuffer;
 
-      if (Platform.OS === 'web') {
-        const response = await fetch(photoUri);
-        fileData = await response.blob();
-      } else {
-        const base64 = await FileSystem.readAsStringAsync(photoUri, {
-          encoding: 'base64',
-        });
-        
-        const byteCharacters = atob(base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let j = 0; j < byteCharacters.length; j++) {
-          byteNumbers[j] = byteCharacters.charCodeAt(j);
+      try {
+        const resp = await fetch(photoUri);
+        if (!resp.ok) {
+          throw new Error(`Failed to read file uri: ${photoUri} status=${resp.status}`);
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        fileData = new Blob([byteArray], { type: `image/${fileExtension}` });
+        fileData = await resp.blob();
+      } catch (readErr) {
+        console.log('[PhotoUpload] fetch(uri) failed, falling back to FileSystem read', readErr);
+        const base64 = await FileSystem.readAsStringAsync(photoUri, { encoding: 'base64' });
+        const binaryString = Platform.OS === 'web' ? atob(base64) : globalThis.atob ? globalThis.atob(base64) : Buffer.from(base64, 'base64').toString('binary');
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let j = 0; j < len; j++) bytes[j] = binaryString.charCodeAt(j);
+        fileData = bytes.buffer;
       }
 
       console.log(`[PhotoUpload] Uploading to bucket: mission-photos, path: ${filePath}`);
