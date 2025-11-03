@@ -103,9 +103,14 @@ export default function UserLocationMap({
         showsUserLocation
         showsMyLocationButton={false}
         showsCompass
-        zoomEnabled
-        scrollEnabled
-        rotateEnabled={false}
+        zoomEnabled={true}
+        scrollEnabled={true}
+        pitchEnabled={true}
+        rotateEnabled={true}
+        zoomControlEnabled={true}
+        zoomTapEnabled={true}
+        minZoomLevel={2}
+        maxZoomLevel={20}
         onRegionChangeComplete={(reg: any) => {
           if (reg && typeof reg.latitude === 'number' && typeof reg.longitude === 'number') {
             setCurrentRegion({
