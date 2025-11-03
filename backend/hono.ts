@@ -6,6 +6,16 @@ import { createContext } from "./trpc/create-context";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
+console.log('[BACKEND] Initializing backend services...');
+console.log('[BACKEND] SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL ? '✅ Set' : '❌ Missing');
+console.log('[BACKEND] SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Set' : '❌ Missing');
+console.log('[BACKEND] STRIPE_SECRET_KEY:', process.env.STRIPE_SECRET_KEY ? '✅ Set' : '❌ Missing');
+
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ [BACKEND] SUPABASE_SERVICE_ROLE_KEY is missing! Backend features will not work.');
+  console.error('❌ [BACKEND] Add SUPABASE_SERVICE_ROLE_KEY to your .env file');
+}
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2025-09-30.clover',
 });
@@ -14,6 +24,8 @@ const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL || '',
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 );
+
+console.log('[BACKEND] Services initialized successfully');
 
 const app = new Hono();
 
