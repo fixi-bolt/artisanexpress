@@ -81,6 +81,8 @@ export default function ClientHomeScreen() {
   const mapOpacity = useRef(new Animated.Value(1)).current;
   const dimOpacity = useRef(new Animated.Value(0)).current;
 
+  const hasInitializedMap = useRef(false);
+
   const { position } = useGeolocation({
     enabled: true,
     updateInterval: 2000,
@@ -95,6 +97,18 @@ export default function ClientHomeScreen() {
   });
 
   useScreenTracking('client_home');
+
+  useEffect(() => {
+    if (position && mapRef.current && !hasInitializedMap.current) {
+      hasInitializedMap.current = true;
+      setTimeout(() => {
+        mapRef.current?.animateCamera({
+          center: { latitude: position.latitude, longitude: position.longitude },
+          zoom: 14,
+        }, { duration: 500 });
+      }, 300);
+    }
+  }, [position]);
 
   useEffect(() => {
     if (activeMission && !hasNavigated.current) {
@@ -221,42 +235,43 @@ export default function ClientHomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.mapContainer}>
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: mapOpacity }]} pointerEvents="box-none">
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={{
-              ...mapCenter,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
-            }}
-            zoomEnabled={true}
-            scrollEnabled={true}
-            rotateEnabled={true}
-            pitchEnabled={true}
-            onPanDrag={handleMapPan}
-            pointerEvents="auto"
-          >
-            {position && (
-              <Marker
-                coordinate={{ latitude: position.latitude, longitude: position.longitude }}
-                title="Votre position"
-              >
-                <View style={styles.userMarker}>
-                  <View style={styles.userMarkerInner} />
-                </View>
-              </Marker>
-            )}
-            {availableArtisans.map((artisan) => (
-              <Marker
-                key={artisan.id}
-                coordinate={artisan.location}
-                title={artisan.name}
-                description={artisan.category}
-              />
-            ))}
-          </MapView>
-        </Animated.View>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          initialRegion={{
+            ...mapCenter,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }}
+          zoomEnabled={true}
+          scrollEnabled={true}
+          rotateEnabled={true}
+          pitchEnabled={true}
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+          showsCompass={false}
+          onPanDrag={handleMapPan}
+        >
+          {position && (
+            <Marker
+              coordinate={{ latitude: position.latitude, longitude: position.longitude }}
+              title="Votre position"
+            >
+              <View style={styles.userMarker}>
+                <View style={styles.userMarkerInner} />
+              </View>
+            </Marker>
+          )}
+          {availableArtisans.map((artisan) => (
+            <Marker
+              key={artisan.id}
+              coordinate={artisan.location}
+              title={artisan.name}
+              description={artisan.category}
+            />
+          ))}
+        </MapView>
+        <Animated.View style={[styles.mapDimOverlay, { opacity: dimOpacity }]} pointerEvents="none" />
 
         {overlayState !== OverlayState.EXPANDED && (
           <TouchableOpacity 
@@ -604,6 +619,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
     zIndex: 5,
+  },
+  mapDimOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    zIndex: 2,
   },
   closeButton: {
     width: 36,
