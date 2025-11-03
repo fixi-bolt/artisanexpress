@@ -41,6 +41,8 @@ export async function uploadMissionPhotos(
         fileData = new Blob([byteArray], { type: `image/${fileExtension}` });
       }
 
+      console.log(`[PhotoUpload] Uploading to bucket: mission-photos, path: ${filePath}`);
+      
       const { error } = await supabase.storage
         .from('mission-photos')
         .upload(filePath, fileData, {
@@ -51,16 +53,26 @@ export async function uploadMissionPhotos(
 
       if (error) {
         console.error(`[PhotoUpload] Error uploading photo ${i + 1}:`, error);
+        console.error(`[PhotoUpload] Error details:`, {
+          message: error.message,
+          statusCode: (error as any).statusCode,
+          error: (error as any).error,
+        });
         throw new Error(`Failed to upload photo ${i + 1}: ${error.message}`);
       }
+      
+      console.log(`[PhotoUpload] Upload successful for photo ${i + 1}`);
 
       const { data: urlData } = supabase.storage
         .from('mission-photos')
         .getPublicUrl(filePath);
 
       if (!urlData?.publicUrl) {
+        console.error(`[PhotoUpload] Failed to get public URL for path: ${filePath}`);
         throw new Error(`Failed to get public URL for photo ${i + 1}`);
       }
+      
+      console.log(`[PhotoUpload] Public URL generated: ${urlData.publicUrl}`);
 
       uploadedPhotos.push({
         publicUrl: urlData.publicUrl,
