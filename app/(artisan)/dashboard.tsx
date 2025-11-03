@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMissions } from '@/contexts/MissionContext';
 import { Mission } from '@/types';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { trpc } from '@/lib/trpc';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface NearbyMission {
@@ -34,8 +33,8 @@ export default function ArtisanDashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user, updateUser } = useAuth();
   const { getPendingMissionsForArtisan, acceptMission, unreadNotificationsCount } = useMissions();
-  const [nearbyMissions, setNearbyMissions] = useState<NearbyMission[]>([]);
-  const [isLoadingMissions, setIsLoadingMissions] = useState<boolean>(false);
+  const nearbyMissions: NearbyMission[] = [];
+  const isLoadingMissions = false;
   const [isAvailable, setIsAvailable] = useState<boolean>(false);
   const [isToggling, setIsToggling] = useState<boolean>(false);
   
@@ -47,44 +46,14 @@ export default function ArtisanDashboardScreen() {
     }
   }, [user]);
 
-  const updateLocationMutation = trpc.location.updateLocation.useMutation();
-  const utils = trpc.useUtils();
-
   const handleLocationUpdate = useCallback(
     async (position: { latitude: number; longitude: number; accuracy: number | null }) => {
       if (!user?.id) return;
 
       console.log('[Dashboard] Location received:', position);
-
-      try {
-        console.log('[Dashboard] Attempting to update location on backend...');
-        await updateLocationMutation.mutateAsync({
-          artisanId: user.id,
-          latitude: position.latitude,
-          longitude: position.longitude,
-          accuracy: position.accuracy || undefined,
-        });
-
-        console.log('[Dashboard] Fetching nearby missions...');
-        setIsLoadingMissions(true);
-
-        const result = await utils.location.getNearbyMissions.fetch({
-          artisanId: user.id,
-          latitude: position.latitude,
-          longitude: position.longitude,
-        });
-
-        if (result?.missions) {
-          console.log('[Dashboard] Found missions:', result.missions.length);
-          setNearbyMissions(result.missions);
-        }
-      } catch {
-        console.log('[Dashboard] Backend not available - location features disabled');
-      } finally {
-        setIsLoadingMissions(false);
-      }
+      console.log('[Dashboard] Location tracking active (backend features disabled)');
     },
-    [user?.id, updateLocationMutation, utils]
+    [user?.id]
   );
 
   const handleLocationError = useCallback((error: Error) => {

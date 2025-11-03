@@ -21,8 +21,16 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
-  const registerTokenMutation = trpc.notifications.registerToken.useMutation();
-  const sendNotificationMutation = trpc.notifications.sendNotification.useMutation();
+  const registerTokenMutation = trpc.notifications.registerToken.useMutation({
+    onError: (error) => {
+      console.log('[Notifications] Backend unavailable for token registration:', error.message);
+    },
+  });
+  const sendNotificationMutation = trpc.notifications.sendNotification.useMutation({
+    onError: (error) => {
+      console.log('[Notifications] Backend unavailable for sending:', error.message);
+    },
+  });
 
   const registerForPushNotificationsAsync = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -107,12 +115,16 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
   const registerPushToken = useCallback(
     async (userId: string) => {
       if (expoPushToken) {
-        await registerTokenMutation.mutateAsync({
-          userId,
-          token: expoPushToken,
-          platform: Platform.OS as 'ios' | 'android' | 'web',
-        });
-        console.log('[Notifications] Token registered for user:', userId);
+        try {
+          await registerTokenMutation.mutateAsync({
+            userId,
+            token: expoPushToken,
+            platform: Platform.OS as 'ios' | 'android' | 'web',
+          });
+          console.log('[Notifications] Token registered for user:', userId);
+        } catch (error) {
+          console.log('[Notifications] Failed to register token - backend unavailable');
+        }
       }
     },
     [expoPushToken, registerTokenMutation]
@@ -127,7 +139,11 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
       missionId?: string;
       data?: Record<string, string>;
     }) => {
-      await sendNotificationMutation.mutateAsync(params);
+      try {
+        await sendNotificationMutation.mutateAsync(params);
+      } catch (error) {
+        console.log('[Notifications] Backend unavailable - showing local notification only');
+      }
 
       if (Platform.OS !== 'web') {
         await Notifications.scheduleNotificationAsync({
