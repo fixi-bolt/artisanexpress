@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
 export interface PhotoUploadResult {
@@ -31,26 +30,31 @@ export async function uploadMissionPhotos(
       const fileName = `${missionId}_${i}_${Date.now()}.${fileExtension}`;
       const filePath = `missions/${missionId}/${fileName}`;
 
-      let fileData: Blob | ArrayBuffer;
+      let fileData: Blob | FormData;
 
-      try {
-        const resp = await fetch(photoUri);
-        if (!resp.ok) {
-          throw new Error(`Failed to read file uri: ${photoUri} status=${resp.status}`);
+      if (Platform.OS === 'web') {
+        try {
+          const resp = await fetch(photoUri);
+          if (!resp.ok) {
+            throw new Error(`Failed to read file uri: ${photoUri} status=${resp.status}`);
+          }
+          fileData = await resp.blob();
+        } catch (error) {
+          console.error('[PhotoUpload] Web fetch failed:', error);
+          throw new Error(`Failed to read photo on web: ${error}`);
         }
-        fileData = await resp.blob();
-      } catch (readErr) {
-        console.log('[PhotoUpload] fetch(uri) failed, falling back to FileSystem read', readErr);
-        const base64 = await FileSystem.readAsStringAsync(photoUri, { encoding: 'base64' });
-        const binaryString = Platform.OS === 'web'
-          ? (globalThis.atob as (data: string) => string)(base64)
-          : globalThis.atob
-          ? (globalThis.atob as (data: string) => string)(base64)
-          : Buffer.from(base64, 'base64').toString('binary');
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let j = 0; j < len; j++) bytes[j] = binaryString.charCodeAt(j);
-        fileData = bytes.buffer;
+      } else {
+        console.log('[PhotoUpload] Preparing FormData for native upload...');
+        const formData = new FormData();
+        
+        formData.append('file', {
+          uri: photoUri,
+          name: fileName,
+          type: `image/${fileExtension}`,
+        } as any);
+        
+        fileData = formData;
+        console.log('[PhotoUpload] FormData prepared for upload');
       }
 
       console.log(`[PhotoUpload] Uploading to bucket: mission-photos, path: ${filePath}`);
