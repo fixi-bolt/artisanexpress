@@ -229,9 +229,10 @@ export default function ClientHomeScreen() {
             latitudeDelta: 0.05,
             longitudeDelta: 0.05,
           }}
-          zoomEnabled={overlayState !== OverlayState.EXPANDED}
-          scrollEnabled={overlayState !== OverlayState.EXPANDED}
-          rotateEnabled={false}
+          zoomEnabled={true}
+          scrollEnabled={true}
+          rotateEnabled={true}
+          pitchEnabled={true}
           onPanDrag={handleMapPan}
         >
           {position && (
