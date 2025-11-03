@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { useNotifications } from './NotificationContext';
 import { supabase } from '@/lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { uploadMissionPhotos } from '@/utils/uploadPhotos';
 
 export const [MissionContext, useMissions] = createContextHook(() => {
   const { user } = useAuth();
@@ -192,6 +193,22 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     try {
       const commission = data.estimatedPrice > 150 ? 0.15 : 0.10;
 
+      const tempMissionId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      let uploadedPhotoUrls: string[] = [];
+      
+      if (data.photos && data.photos.length > 0) {
+        console.log('[MissionContext] Uploading photos...');
+        try {
+          const uploadResults = await uploadMissionPhotos(data.photos, tempMissionId);
+          uploadedPhotoUrls = uploadResults.map(result => result.publicUrl);
+          console.log('[MissionContext] Photos uploaded:', uploadedPhotoUrls);
+        } catch (uploadError: any) {
+          console.error('[MissionContext] Photo upload failed:', uploadError);
+          throw new Error(`Échec de l'upload des photos: ${uploadError.message}`);
+        }
+      }
+
       const { data: missionData, error: missionError } = await supabase
         .from('missions')
         .insert({
@@ -199,7 +216,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           category: data.category,
           title: data.title,
           description: data.description,
-          photos: data.photos || [],
+          photos: uploadedPhotoUrls,
           latitude: data.location.latitude,
           longitude: data.location.longitude,
           address: data.location.address,

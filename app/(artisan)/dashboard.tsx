@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Switch, Image, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Bell, MapPin, Clock, Euro, Navigation, Image as ImageIcon, Satellite } from 'lucide-react-native';
+import { Bell, MapPin, Clock, Euro, Navigation, Image as ImageIcon, Satellite, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMissions } from '@/contexts/MissionContext';
@@ -254,8 +254,10 @@ export default function ArtisanDashboardScreen() {
 
 function NearbyMissionCard({ mission, onAccept }: { mission: NearbyMission; onAccept: () => void }) {
   const timeAgo = Math.floor((Date.now() - new Date(mission.createdAt).getTime()) / 60000);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   return (
+    <>
     <View style={styles.requestCard}>
       <View style={styles.requestHeader}>
         <View style={styles.requestTimeContainer}>
@@ -303,14 +305,64 @@ function NearbyMissionCard({ mission, onAccept }: { mission: NearbyMission; onAc
           <Text style={styles.acceptButtonText}>Accepter</Text>
         </TouchableOpacity>
       </View>
+
+      {mission.photos && mission.photos.length > 0 && (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.photosScroll}
+        >
+          {mission.photos.map((photo, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={styles.photoThumbnail}
+              onPress={() => setSelectedPhoto(photo)}
+              activeOpacity={0.8}
+            >
+              <Image 
+                source={{ uri: photo }} 
+                style={styles.photoThumbnailImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
     </View>
+
+    <Modal
+      visible={selectedPhoto !== null}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setSelectedPhoto(null)}
+    >
+      <View style={styles.photoModal}>
+        <TouchableOpacity
+          style={styles.photoModalClose}
+          onPress={() => setSelectedPhoto(null)}
+          activeOpacity={0.9}
+        >
+          <X size={24} color={Colors.surface} strokeWidth={2} />
+        </TouchableOpacity>
+        {selectedPhoto && (
+          <Image
+            source={{ uri: selectedPhoto }}
+            style={styles.photoModalImage}
+            resizeMode="contain"
+          />
+        )}
+      </View>
+    </Modal>
+    </>
   );
 }
 
 function MissionRequestCard({ mission, onAccept }: { mission: Mission; onAccept: () => void }) {
   const timeAgo = Math.floor((Date.now() - mission.createdAt.getTime()) / 60000);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   return (
+    <>
     <View style={styles.requestCard}>
       <View style={styles.requestHeader}>
         <View style={styles.requestTimeContainer}>
@@ -357,7 +409,55 @@ function MissionRequestCard({ mission, onAccept }: { mission: Mission; onAccept:
           <Text style={styles.acceptButtonText}>Accepter</Text>
         </TouchableOpacity>
       </View>
+
+      {mission.photos && mission.photos.length > 0 && (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.photosScroll}
+        >
+          {mission.photos.map((photo, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={styles.photoThumbnail}
+              onPress={() => setSelectedPhoto(photo)}
+              activeOpacity={0.8}
+            >
+              <Image 
+                source={{ uri: photo }} 
+                style={styles.photoThumbnailImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
     </View>
+
+    <Modal
+      visible={selectedPhoto !== null}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setSelectedPhoto(null)}
+    >
+      <View style={styles.photoModal}>
+        <TouchableOpacity
+          style={styles.photoModalClose}
+          onPress={() => setSelectedPhoto(null)}
+          activeOpacity={0.9}
+        >
+          <X size={24} color={Colors.surface} strokeWidth={2} />
+        </TouchableOpacity>
+        {selectedPhoto && (
+          <Image
+            source={{ uri: selectedPhoto }}
+            style={styles.photoModalImage}
+            resizeMode="contain"
+          />
+        )}
+      </View>
+    </Modal>
+    </>
   );
 }
 
@@ -689,5 +789,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700' as const,
     color: Colors.surface,
+  },
+  photosScroll: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  photoThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    marginRight: 8,
+    overflow: 'hidden',
+    backgroundColor: Colors.border,
+  },
+  photoThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalClose: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  photoModalImage: {
+    width: '90%',
+    height: '80%',
   },
 });
