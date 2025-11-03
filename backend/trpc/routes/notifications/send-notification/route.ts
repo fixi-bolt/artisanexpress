@@ -29,52 +29,54 @@ export const sendNotificationProcedure = publicProcedure
 
     console.log('[Notifications] Sending notification:', notification);
 
-    const { data: tokenData } = await ctx.supabase
-      .from('push_tokens')
-      .select('token')
-      .eq('user_id', input.userId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const pushToken = tokenData?.token;
-
-    if (pushToken && Expo.isExpoPushToken(pushToken)) {
-      const messages: ExpoPushMessage[] = [
-        {
-          to: pushToken,
-          sound: 'default',
-          title: input.title,
-          body: input.message,
-          data: {
-            type: input.type,
-            missionId: input.missionId,
-            ...input.data,
-          },
-        },
-      ];
-
+    setImmediate(async () => {
       try {
-        const chunks = expo.chunkPushNotifications(messages);
-        const tickets = [];
+        const { data: tokenData } = await ctx.supabase
+          .from('push_tokens')
+          .select('token')
+          .eq('user_id', input.userId)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        for (const chunk of chunks) {
-          try {
-            const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-            console.log('[Notifications] Push sent successfully:', ticketChunk);
-            tickets.push(...ticketChunk);
-          } catch (error) {
-            console.error('[Notifications] Error sending push chunk:', error);
+        const pushToken = tokenData?.token;
+
+        if (pushToken && Expo.isExpoPushToken(pushToken)) {
+          const messages: ExpoPushMessage[] = [
+            {
+              to: pushToken,
+              sound: 'default',
+              title: input.title,
+              body: input.message,
+              data: {
+                type: input.type,
+                missionId: input.missionId,
+                ...input.data,
+              },
+            },
+          ];
+
+          const chunks = expo.chunkPushNotifications(messages);
+          const tickets = [];
+
+          for (const chunk of chunks) {
+            try {
+              const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+              console.log('[Notifications] Push sent successfully:', ticketChunk);
+              tickets.push(...ticketChunk);
+            } catch (error) {
+              console.error('[Notifications] Error sending push chunk:', error);
+            }
           }
-        }
 
-        console.log('[Notifications] All push notifications sent');
+          console.log('[Notifications] All push notifications sent');
+        } else {
+          console.warn('[Notifications] No valid push token for user:', input.userId);
+        }
       } catch (error) {
-        console.error('[Notifications] Error sending push notification:', error);
+        console.error('[Notifications] Error in background push send:', error);
       }
-    } else {
-      console.warn('[Notifications] No valid push token for user:', input.userId);
-    }
+    });
 
     return notification;
   });

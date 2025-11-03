@@ -32,7 +32,8 @@ export const trpcClient = trpc.createClient({
         }
 
         const controller = new AbortController();
-        const timeoutMs = 5000;
+        const isNotificationRoute = url.toString().includes('/notifications.');
+        const timeoutMs = isNotificationRoute ? 15000 : 10000;
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         console.debug('[trpc] Fetching', url);

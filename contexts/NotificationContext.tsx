@@ -7,7 +7,6 @@ import type { Notification as AppNotification } from '@/types';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -122,7 +121,7 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
             platform: Platform.OS as 'ios' | 'android' | 'web',
           });
           console.log('[Notifications] Token registered for user:', userId);
-        } catch (error) {
+        } catch {
           console.log('[Notifications] Failed to register token - backend unavailable');
         }
       }
@@ -139,11 +138,11 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
       missionId?: string;
       data?: Record<string, string>;
     }) => {
-      try {
-        await sendNotificationMutation.mutateAsync(params);
-      } catch (error) {
-        console.log('[Notifications] Backend unavailable - showing local notification only');
-      }
+      sendNotificationMutation.mutate(params, {
+        onError: () => {
+          console.log('[Notifications] Backend unavailable - notification handled by trigger');
+        },
+      });
 
       if (Platform.OS !== 'web') {
         await Notifications.scheduleNotificationAsync({
