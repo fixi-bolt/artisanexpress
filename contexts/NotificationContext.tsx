@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import createContextHook from '@nkzw/create-context-hook';
-import { trpc } from '@/lib/trpc';
 import type { Notification as AppNotification } from '@/types';
 
 Notifications.setNotificationHandler({
@@ -19,12 +18,6 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
   const [expoPushToken, setExpoPushToken] = useState<string>('');
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
-
-  const registerTokenMutation = trpc.notifications.registerToken.useMutation({
-    onError: (error) => {
-      console.log('[Notifications] Backend unavailable for token registration:', error.message);
-    },
-  });
 
   const registerForPushNotificationsAsync = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -109,19 +102,10 @@ export const [NotificationProvider, useNotifications] = createContextHook(() => 
   const registerPushToken = useCallback(
     async (userId: string) => {
       if (expoPushToken) {
-        try {
-          await registerTokenMutation.mutateAsync({
-            userId,
-            token: expoPushToken,
-            platform: Platform.OS as 'ios' | 'android' | 'web',
-          });
-          console.log('[Notifications] Token registered for user:', userId);
-        } catch {
-          console.log('[Notifications] Failed to register token - backend unavailable');
-        }
+        console.log('[Notifications] Token registration skipped - backend route not available');
       }
     },
-    [expoPushToken, registerTokenMutation]
+    [expoPushToken]
   );
 
   const sendNotification = useCallback(
