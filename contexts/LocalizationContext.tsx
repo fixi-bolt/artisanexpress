@@ -11,7 +11,7 @@ type Dictionary = Record<string, string>;
 
 const fr: Dictionary = {
   common_ok: 'OK',
-  nav_map: 'Carte',
+  nav_map: 'Accueil',
   nav_missions: 'Missions',
   nav_profile: 'Profil',
   profile_title: 'Profil',
@@ -38,7 +38,7 @@ const fr: Dictionary = {
 
 const en: Dictionary = {
   common_ok: 'OK',
-  nav_map: 'Map',
+  nav_map: 'Home',
   nav_missions: 'Jobs',
   nav_profile: 'Profile',
   profile_title: 'Profile',
@@ -65,7 +65,7 @@ const en: Dictionary = {
 
 const es: Dictionary = {
   common_ok: 'OK',
-  nav_map: 'Mapa',
+  nav_map: 'Inicio',
   nav_missions: 'Trabajos',
   nav_profile: 'Perfil',
   profile_title: 'Perfil',
@@ -92,7 +92,7 @@ const es: Dictionary = {
 
 const de: Dictionary = {
   common_ok: 'OK',
-  nav_map: 'Karte',
+  nav_map: 'Startseite',
   nav_missions: 'Aufträge',
   nav_profile: 'Profil',
   profile_title: 'Profil',
