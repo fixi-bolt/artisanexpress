@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "@/backend/trpc/create-context";
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
-import { getPushToken } from '../register-token/route';
 
 const expo = new Expo();
 
@@ -16,7 +15,7 @@ export const sendNotificationProcedure = publicProcedure
       data: z.record(z.string(), z.any()).optional(),
     })
   )
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input, ctx }) => {
     const notification = {
       id: Math.random().toString(36).substring(7),
       userId: input.userId,
@@ -30,7 +29,15 @@ export const sendNotificationProcedure = publicProcedure
 
     console.log('[Notifications] Sending notification:', notification);
 
-    const pushToken = await getPushToken(input.userId);
+    const { data: tokenData } = await ctx.supabase
+      .from('push_tokens')
+      .select('token')
+      .eq('user_id', input.userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const pushToken = tokenData?.token;
 
     if (pushToken && Expo.isExpoPushToken(pushToken)) {
       const messages: ExpoPushMessage[] = [

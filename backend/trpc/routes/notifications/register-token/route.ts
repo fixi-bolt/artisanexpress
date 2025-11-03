@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { publicProcedure } from "@/backend/trpc/create-context";
-import { supabase } from "@/lib/supabase";
 
 export const registerTokenProcedure = publicProcedure
   .input(
@@ -10,9 +9,9 @@ export const registerTokenProcedure = publicProcedure
       platform: z.enum(['ios', 'android', 'web']).optional(),
     })
   )
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input, ctx }) => {
     try {
-      const { error } = await supabase
+      const { error } = await ctx.supabase
         .from('push_tokens')
         .upsert(
           {
@@ -37,24 +36,4 @@ export const registerTokenProcedure = publicProcedure
     }
   });
 
-export async function getPushToken(userId: string): Promise<string | undefined> {
-  try {
-    const { data, error } = await supabase
-      .from('push_tokens')
-      .select('token')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
 
-    if (error || !data) {
-      console.warn('[Notifications] No push token found for user:', userId);
-      return undefined;
-    }
-
-    return data.token;
-  } catch (error) {
-    console.error('[Notifications] Error fetching push token:', error);
-    return undefined;
-  }
-}
