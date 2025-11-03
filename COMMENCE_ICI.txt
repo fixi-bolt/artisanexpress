@@ -1,0 +1,72 @@
+========================================
+🎯 CORRECTION NOTIFICATIONS - 3 ÉTAPES
+========================================
+
+Tu as 3 choses à faire (2 minutes):
+
+┌─────────────────────────────────────┐
+│ ÉTAPE 1: SUPABASE SQL               │
+└─────────────────────────────────────┘
+
+1. Va sur https://app.supabase.com
+2. Clique sur ton projet
+3. Va dans "SQL Editor" (menu gauche)
+4. Clique "New Query"
+5. Ouvre le fichier: SCRIPT_SUPABASE_COMPLET_FINAL.sql
+6. Copie TOUT le contenu
+7. Colle dans Supabase SQL Editor
+8. Clique "RUN" ▶️
+
+Résultat attendu:
+✅ Table push_tokens créée
+✅ Trigger créé
+✅ SCRIPT EXÉCUTÉ AVEC SUCCÈS
+
+┌─────────────────────────────────────┐
+│ ÉTAPE 2: AJOUTER CLÉ SUPABASE      │
+└─────────────────────────────────────┘
+
+1. Reste sur Supabase
+2. Va dans "Settings" → "API"
+3. Copie la clé "service_role" (celle du MILIEU)
+
+4. Ouvre ton fichier .env
+5. Ajoute cette ligne:
+
+SUPABASE_SERVICE_ROLE_KEY=colle_la_clé_ici
+
+┌─────────────────────────────────────┐
+│ ÉTAPE 3: REDÉMARRER                 │
+└─────────────────────────────────────┘
+
+Dans ton terminal:
+
+Ctrl+C (pour stopper)
+bun run start (pour redémarrer)
+
+Tu devrais voir:
+[BACKEND] SUPABASE_SERVICE_ROLE_KEY: ✅ Set
+
+========================================
+🧪 TESTER
+========================================
+
+1. Ouvre l'app
+2. Connecte-toi en tant qu'artisan
+3. Accepte une mission
+4. → Le client reçoit une notification 🔔
+
+========================================
+📄 FICHIERS CRÉÉS
+========================================
+
+COMMENCE_ICI.txt              ← Tu es ici
+COPIER_COLLER_MAINTENANT.md   ← Guide rapide
+FIX_BACKEND_ET_ENV.md         ← Guide détaillé
+RÉCAPITULATIF_CORRECTION_FINALE.md  ← Vue d'ensemble
+
+SCRIPT_SUPABASE_COMPLET_FINAL.sql  ← À exécuter dans Supabase
+
+========================================
+
+C'est tout ! 🚀
