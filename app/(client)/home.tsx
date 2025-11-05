@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import Colors from '@/constants/colors';
 import { Search, ChevronDown, ChevronUp, Star, MapPin } from 'lucide-react-native';
-import { mockArtisans } from '@/mocks/artisans';
+import { useSupabaseArtisans } from '@/hooks/useSupabaseArtisans';
 import { InteractiveBackgroundMap } from '@/components/InteractiveBackgroundMap';
 import { BoltBottomSheet, SnapPoint } from '@/components/BoltBottomSheet';
 
@@ -49,7 +49,6 @@ export default function ClientHomeScreen() {
   const hasNavigated = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
   const [mapProgress, setMapProgress] = useState(0.5);
 
   useScreenTracking('client_home');
@@ -65,6 +64,10 @@ export default function ClientHomeScreen() {
     }
   }, [activeMission, router]);
 
+  const { artisans, isLoading: isLoadingArtisans } = useSupabaseArtisans({
+    isAvailable: true,
+  });
+
   const filteredSpecialties = SPECIALTIES.filter(s => 
     s.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -73,7 +76,7 @@ export default function ClientHomeScreen() {
     ? filteredSpecialties 
     : filteredSpecialties.filter(s => s.visible);
 
-  const availableArtisans = mockArtisans.filter(a => a.isAvailable);
+  const availableArtisans = artisans;
 
   const handleSnapPointChange = useCallback((snapPoint: SnapPoint, progress: number) => {
     console.log('[ClientHome] Bottom sheet snap point:', snapPoint, 'progress:', progress);
@@ -98,16 +101,12 @@ export default function ClientHomeScreen() {
         headerComponent={
           <View style={styles.sheetHeader}>
             <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
-            <Text style={styles.greetingSubtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
+            <Text style={styles.greetingSubtitle}>
+              {isLoadingArtisans ? 'Chargement...' : `${availableArtisans.length} artisans disponibles près de vous`}
+            </Text>
           </View>
         }
       >
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
-        >
         <View style={styles.searchSection}>
           <View style={styles.searchBar}>
             <Search size={20} color={Colors.textSecondary} />
@@ -193,7 +192,6 @@ export default function ClientHomeScreen() {
             </TouchableOpacity>
           )}
         </View>
-        </ScrollView>
       </BoltBottomSheet>
     </View>
   );
@@ -204,6 +202,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+
   sheetHeader: {
     paddingTop: DesignTokens.spacing[2],
   },
@@ -218,9 +217,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 
-  scrollContent: {
-    flexGrow: 1,
-  },
+
   searchSection: {
     paddingHorizontal: DesignTokens.spacing[6],
     paddingBottom: DesignTokens.spacing[4],
