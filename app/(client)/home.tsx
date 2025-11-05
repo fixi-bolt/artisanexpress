@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import Colors from '@/constants/colors';
 import { MapView, Marker } from '@/components/MapView';
-import { Search, ChevronDown, ChevronUp, Target, Star, MapPin } from 'lucide-react-native';
+import { Search, ChevronDown, ChevronUp, Star, MapPin } from 'lucide-react-native';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { mockArtisans } from '@/mocks/artisans';
 
@@ -202,16 +202,6 @@ export default function ClientHomeScreen() {
     }
   }, [overlayState, animateToState]);
 
-  const handleRecenter = useCallback(() => {
-    if (mapMode === MapMode.FREE && position && mapRef.current) {
-      mapRef.current.animateCamera({
-        center: { latitude: position.latitude, longitude: position.longitude },
-        zoom: 14,
-      }, { duration: 300 });
-      setMapMode(MapMode.FOLLOW);
-    }
-  }, [mapMode, position]);
-
   const handleMapPan = useCallback(() => {
     if (mapMode === MapMode.FOLLOW) {
       setMapMode(MapMode.FREE);
@@ -272,20 +262,6 @@ export default function ClientHomeScreen() {
           ))}
         </MapView>
         <Animated.View style={[styles.mapDimOverlay, { opacity: dimOpacity }]} pointerEvents="none" />
-
-        {overlayState !== OverlayState.EXPANDED && (
-          <TouchableOpacity 
-            style={[styles.recenterButton, { bottom: SCREEN_HEIGHT - OVERLAY_HEIGHTS[overlayState] + 16 }]}
-            onPress={handleRecenter}
-            activeOpacity={0.7}
-          >
-            <Target 
-              size={24} 
-              color={mapMode === MapMode.FOLLOW ? Colors.primary : Colors.textSecondary} 
-              fill={mapMode === MapMode.FOLLOW ? Colors.primary : 'transparent'}
-            />
-          </TouchableOpacity>
-        )}
       </View>
 
       {overlayState === OverlayState.EXPANDED && (
@@ -600,17 +576,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: Colors.white,
   },
-  recenterButton: {
-    position: 'absolute',
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...DesignTokens.shadows.lg,
-  },
+
   dimOverlay: {
     position: 'absolute',
     top: 0,
