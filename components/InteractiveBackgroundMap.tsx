@@ -170,7 +170,7 @@ export function InteractiveBackgroundMap({
           transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
         },
       ]}
-      pointerEvents={progress > 0.5 ? 'auto' : 'none'}
+      pointerEvents="box-none"
     >
       <MapView
         ref={mapRef}
@@ -285,7 +285,6 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
-    pointerEvents: 'auto',
   },
   permissionContainer: {
     flex: 1,
