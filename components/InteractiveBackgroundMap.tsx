@@ -163,7 +163,7 @@ export function InteractiveBackgroundMap({
           transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
         },
       ]}
-      pointerEvents={isVisible ? 'auto' : 'none'}
+      pointerEvents="auto"
     >
       <MapView
         ref={mapRef}
@@ -239,12 +239,7 @@ export function InteractiveBackgroundMap({
         </View>
       )}
 
-      <View style={styles.statsOverlay}>
-        <View style={styles.statsCard}>
-          <Text style={styles.statsNumber}>{nearbyArtisans.length}</Text>
-          <Text style={styles.statsLabel}>artisans à proximité</Text>
-        </View>
-      </View>
+
     </Animated.View>
   );
 }
