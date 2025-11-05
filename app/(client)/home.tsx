@@ -104,7 +104,7 @@ export default function ClientHomeScreen() {
       >
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
         >
