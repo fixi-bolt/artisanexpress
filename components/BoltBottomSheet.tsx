@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,12 +6,15 @@ import {
   PanResponder,
   Dimensions,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { DesignTokens } from '@/constants/design-tokens';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+const MINIMUM_DRAG_DISTANCE = 8;
+const VELOCITY_THRESHOLD = 0.4;
 
 export type SnapPoint = 'closed' | 'half' | 'full';
 
@@ -25,6 +28,7 @@ interface BoltBottomSheetProps {
   initialSnapPoint?: SnapPoint;
   onSnapPointChange?: (snapPoint: SnapPoint, progress: number) => void;
   headerComponent?: React.ReactNode;
+  enablePanDownToClose?: boolean;
 }
 
 export function BoltBottomSheet({
@@ -32,124 +36,152 @@ export function BoltBottomSheet({
   snapPoints = {
     closed: 120,
     half: SCREEN_HEIGHT * 0.5,
-    full: SCREEN_HEIGHT * 0.8,
+    full: SCREEN_HEIGHT * 0.85,
   },
   initialSnapPoint = 'half',
   onSnapPointChange,
   headerComponent,
+  enablePanDownToClose = true,
 }: BoltBottomSheetProps) {
   const insets = useSafeAreaInsets();
-  const translateY = useRef(
-    new Animated.Value(SCREEN_HEIGHT - snapPoints[initialSnapPoint])
-  ).current;
-  const lastGesture = useRef(SCREEN_HEIGHT - snapPoints[initialSnapPoint]);
-  const currentSnapPoint = useRef<SnapPoint>(initialSnapPoint);
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT - snapPoints[initialSnapPoint])).current;
+  const [currentSnapPoint, setCurrentSnapPoint] = useState<SnapPoint>(initialSnapPoint);
+  const currentSnapPointRef = useRef<SnapPoint>(initialSnapPoint);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollOffset = useRef(0);
+  const scrollEnabledRef = useRef(initialSnapPoint === 'full');
+  const isDraggingSheet = useRef(false);
+
+  const snapToPoint = useCallback(
+    (snapPoint: SnapPoint, animated = true) => {
+      const targetY = SCREEN_HEIGHT - snapPoints[snapPoint];
+      
+      setCurrentSnapPoint(snapPoint);
+      currentSnapPointRef.current = snapPoint;
+      scrollEnabledRef.current = snapPoint === 'full';
+      
+      if (!animated) {
+        translateY.setValue(targetY);
+        const progress = snapPoint === 'full' ? 1 : snapPoint === 'half' ? 0.5 : 0;
+        onSnapPointChange?.(snapPoint, progress);
+        return;
+      }
+      
+      Animated.spring(translateY, {
+        toValue: targetY,
+        useNativeDriver: true,
+        damping: 20,
+        mass: 0.8,
+        stiffness: 100,
+      }).start(() => {
+        const progress = snapPoint === 'full' ? 1 : snapPoint === 'half' ? 0.5 : 0;
+        onSnapPointChange?.(snapPoint, progress);
+      });
+    },
+    [translateY, snapPoints, onSnapPointChange]
+  );
+
+  useEffect(() => {
+    if (currentSnapPointRef.current !== initialSnapPoint) {
+      snapToPoint(initialSnapPoint, false);
+    }
+  }, [initialSnapPoint, snapToPoint]);
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
+      
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dy) > 5;
+        const { dy, dx } = gestureState;
+        
+        if (Math.abs(dx) > Math.abs(dy)) {
+          return false;
+        }
+        
+        const isDraggingDown = dy > MINIMUM_DRAG_DISTANCE;
+        const isDraggingUp = dy < -MINIMUM_DRAG_DISTANCE;
+        const isAtTop = scrollOffset.current <= 1;
+        
+        if (isDraggingDown && isAtTop) {
+          if (!enablePanDownToClose && currentSnapPointRef.current === 'closed') {
+            return false;
+          }
+          isDraggingSheet.current = true;
+          return true;
+        }
+        
+        if (isDraggingUp && isAtTop && currentSnapPointRef.current !== 'full') {
+          isDraggingSheet.current = true;
+          return true;
+        }
+        
+        return false;
       },
+      
       onPanResponderGrant: () => {
-        translateY.setOffset(lastGesture.current);
+        isDraggingSheet.current = true;
+        translateY.stopAnimation();
+        translateY.extractOffset();
+        translateY.setValue(0);
       },
-      onPanResponderMove: (_, gestureState) => {
-        const newValue = gestureState.dy;
-        const minY = SCREEN_HEIGHT - snapPoints.full;
-        const maxY = SCREEN_HEIGHT - snapPoints.closed;
-
-        const clampedValue = Math.max(minY, Math.min(maxY, newValue));
-        translateY.setValue(clampedValue);
-
-        const totalDistance = maxY - minY;
-        const currentDistance = clampedValue - minY;
-        const progress = 1 - currentDistance / totalDistance;
-
-        const snapPoint = getClosestSnapPoint(SCREEN_HEIGHT - clampedValue, snapPoints);
-        onSnapPointChange?.(snapPoint, progress);
-      },
+      
+      onPanResponderMove: Animated.event(
+        [null, { dy: translateY }],
+        { useNativeDriver: false }
+      ) as any,
+      
       onPanResponderRelease: (_, gestureState) => {
         translateY.flattenOffset();
-
-        const velocity = gestureState.vy;
-        const currentY = lastGesture.current + gestureState.dy;
-
-        let targetSnapPoint: SnapPoint;
-        let targetY: number;
-
-        if (Math.abs(velocity) > 0.5) {
-          if (velocity < 0) {
-            if (currentSnapPoint.current === 'closed') {
-              targetSnapPoint = 'half';
-            } else {
-              targetSnapPoint = 'full';
-            }
+        isDraggingSheet.current = false;
+        
+        const { vy } = gestureState;
+        const currentPosition = (translateY as any)._value;
+        
+        let targetSnapPoint: SnapPoint = currentSnapPointRef.current;
+        
+        if (Math.abs(vy) > VELOCITY_THRESHOLD) {
+          if (vy < 0) {
+            targetSnapPoint = currentSnapPointRef.current === 'closed' ? 'half' : 'full';
           } else {
-            if (currentSnapPoint.current === 'full') {
+            if (!enablePanDownToClose && currentSnapPointRef.current === 'half') {
               targetSnapPoint = 'half';
             } else {
-              targetSnapPoint = 'closed';
+              targetSnapPoint = currentSnapPointRef.current === 'full' ? 'half' : 'closed';
             }
           }
         } else {
-          const currentHeight = SCREEN_HEIGHT - currentY;
-          targetSnapPoint = getClosestSnapPoint(currentHeight, snapPoints);
+          const distances = {
+            closed: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPoints.closed)),
+            half: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPoints.half)),
+            full: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPoints.full)),
+          };
+          
+          let closest: SnapPoint = 'half';
+          let minDistance = Infinity;
+          
+          (Object.keys(distances) as SnapPoint[]).forEach((point) => {
+            if (distances[point] < minDistance) {
+              if (point === 'closed' && !enablePanDownToClose && currentSnapPointRef.current === 'half') {
+                return;
+              }
+              minDistance = distances[point];
+              closest = point;
+            }
+          });
+          
+          targetSnapPoint = closest;
         }
-
-        targetY = SCREEN_HEIGHT - snapPoints[targetSnapPoint];
-        lastGesture.current = targetY;
-        currentSnapPoint.current = targetSnapPoint;
-
-        Animated.spring(translateY, {
-          toValue: targetY,
-          useNativeDriver: true,
-          tension: 68,
-          friction: 12,
-          velocity: velocity * -1,
-        }).start(() => {
-          const progress =
-            targetSnapPoint === 'full' ? 1 : targetSnapPoint === 'half' ? 0.5 : 0;
-          onSnapPointChange?.(targetSnapPoint, progress);
-        });
+        
+        snapToPoint(targetSnapPoint);
+      },
+      
+      onPanResponderTerminate: () => {
+        translateY.flattenOffset();
+        isDraggingSheet.current = false;
+        snapToPoint(currentSnapPointRef.current);
       },
     })
   ).current;
-
-  const getClosestSnapPoint = (
-    height: number,
-    points: { closed: number; half: number; full: number }
-  ): SnapPoint => {
-    const distances = {
-      closed: Math.abs(height - points.closed),
-      half: Math.abs(height - points.half),
-      full: Math.abs(height - points.full),
-    };
-
-    const closest = Object.entries(distances).reduce((prev, curr) =>
-      curr[1] < prev[1] ? curr : prev
-    );
-
-    return closest[0] as SnapPoint;
-  };
-
-
-
-  useEffect(() => {
-    const listenerId = translateY.addListener(({ value }) => {
-      const currentHeight = SCREEN_HEIGHT - value;
-      const totalDistance = snapPoints.full - snapPoints.closed;
-      const currentDistance = currentHeight - snapPoints.closed;
-      const progress = Math.max(0, Math.min(1, currentDistance / totalDistance));
-
-      const snapPoint = getClosestSnapPoint(currentHeight, snapPoints);
-      onSnapPointChange?.(snapPoint, progress);
-    });
-
-    return () => {
-      translateY.removeListener(listenerId);
-    };
-  }, [translateY, snapPoints, onSnapPointChange]);
 
   return (
     <Animated.View
@@ -165,23 +197,28 @@ export function BoltBottomSheet({
         <View style={styles.handle} />
       </View>
 
-      {headerComponent && <View style={styles.header}>{headerComponent}</View>}
+      {headerComponent && <View style={styles.header}>{headerComponent as any}</View>}
 
-      <View style={styles.scrollContainer}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + 120 }
-          ]}
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
-          bounces={true}
-          nestedScrollEnabled={true}
-        >
-          {children}
-        </ScrollView>
-      </View>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 16) }
+        ]}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        bounces={currentSnapPoint === 'full'}
+        scrollEnabled={scrollEnabledRef.current && !isDraggingSheet.current}
+        onScroll={(event) => {
+          scrollOffset.current = event.nativeEvent.contentOffset.y;
+        }}
+        onScrollBeginDrag={() => {
+          isDraggingSheet.current = false;
+        }}
+      >
+        {children}
+      </ScrollView>
     </Animated.View>
   );
 }
@@ -197,26 +234,29 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: DesignTokens.borderRadius['2xl'],
     borderTopRightRadius: DesignTokens.borderRadius['2xl'],
     ...DesignTokens.shadows.xl,
-    overflow: 'hidden',
+    ...Platform.select({
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   handleContainer: {
     paddingVertical: DesignTokens.spacing[3],
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    minHeight: 44,
   },
   handle: {
     width: 40,
-    height: 5,
-    borderRadius: 2.5,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: Colors.borderLight,
   },
   header: {
     paddingHorizontal: DesignTokens.spacing[6],
     paddingBottom: DesignTokens.spacing[3],
-  },
-  scrollContainer: {
-    flex: 1,
-    minHeight: 0,
+    backgroundColor: Colors.surface,
   },
   scrollView: {
     flex: 1,
