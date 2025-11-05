@@ -13,8 +13,8 @@ import Colors from '@/constants/colors';
 import { DesignTokens } from '@/constants/design-tokens';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const MINIMUM_DRAG_DISTANCE = 8;
-const VELOCITY_THRESHOLD = 0.4;
+const MINIMUM_DRAG_DISTANCE = 5;
+const VELOCITY_THRESHOLD = 0.5;
 
 export type SnapPoint = 'closed' | 'half' | 'full';
 
@@ -51,6 +51,7 @@ export function BoltBottomSheet({
   const scrollOffset = useRef(0);
   const [scrollEnabled, setScrollEnabled] = useState(initialSnapPoint === 'full');
   const isDraggingSheet = useRef(false);
+  const panStartY = useRef(0);
 
   const snapToPoint = useCallback(
     (snapPoint: SnapPoint, animated = true) => {
@@ -100,27 +101,27 @@ export function BoltBottomSheet({
         
         const isDraggingDown = dy > MINIMUM_DRAG_DISTANCE;
         const isDraggingUp = dy < -MINIMUM_DRAG_DISTANCE;
-        const isAtTop = scrollOffset.current <= 1;
+        const isAtTop = scrollOffset.current <= 0;
         
         if (isDraggingDown && isAtTop) {
           if (!enablePanDownToClose && currentSnapPointRef.current === 'closed') {
             return false;
           }
-          isDraggingSheet.current = true;
           return true;
         }
         
         if (isDraggingUp && isAtTop && currentSnapPointRef.current !== 'full') {
-          isDraggingSheet.current = true;
           return true;
         }
         
         return false;
       },
       
-      onPanResponderGrant: () => {
+      onPanResponderGrant: (_, gestureState) => {
         isDraggingSheet.current = true;
+        setScrollEnabled(false);
         translateY.stopAnimation();
+        panStartY.current = (translateY as any)._value;
         translateY.extractOffset();
         translateY.setValue(0);
       },
