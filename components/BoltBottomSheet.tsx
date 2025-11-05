@@ -41,14 +41,18 @@ export function BoltBottomSheet({
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT - snapPoints[initialSnapPoint])).current;
   const [currentSnapPoint, setCurrentSnapPoint] = useState<SnapPoint>(initialSnapPoint);
+  const currentSnapPointRef = useRef<SnapPoint>(initialSnapPoint);
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollOffset = useRef(0);
+  const [scrollEnabled, setScrollEnabled] = useState(initialSnapPoint === 'full');
 
   const snapToPoint = useCallback(
     (snapPoint: SnapPoint) => {
       const targetY = SCREEN_HEIGHT - snapPoints[snapPoint];
       
       setCurrentSnapPoint(snapPoint);
+      currentSnapPointRef.current = snapPoint;
+      setScrollEnabled(snapPoint === 'full');
       
       Animated.spring(translateY, {
         toValue: targetY,
@@ -69,42 +73,49 @@ export function BoltBottomSheet({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         const { dy } = gestureState;
+        const isDraggingDown = dy > 5;
+        const isDraggingUp = dy < -5;
         
-        if (scrollOffset.current <= 0 && dy > 5) {
+        if (isDraggingDown && scrollOffset.current <= 0) {
           return true;
         }
         
-        if (scrollOffset.current <= 0 && dy < -5 && currentSnapPoint !== 'full') {
+        if (isDraggingUp && scrollOffset.current <= 0 && currentSnapPointRef.current !== 'full') {
           return true;
         }
         
         return false;
       },
       onPanResponderGrant: () => {
-        (translateY as any).setOffset((translateY as any)._value);
-        translateY.setValue(0);
+        translateY.stopAnimation();
       },
-      onPanResponderMove: Animated.event([null, { dy: translateY }], {
-        useNativeDriver: false,
-      }),
-      onPanResponderRelease: (_, gestureState) => {
-        (translateY as any).flattenOffset();
+      onPanResponderMove: (_, gestureState) => {
+        const { dy } = gestureState;
+        const currentY = SCREEN_HEIGHT - snapPoints[currentSnapPointRef.current];
+        const newY = currentY + dy;
         
+        const minY = SCREEN_HEIGHT - snapPoints.full;
+        const maxY = SCREEN_HEIGHT - snapPoints.closed;
+        const clampedY = Math.max(minY, Math.min(maxY, newY));
+        
+        translateY.setValue(clampedY);
+      },
+      onPanResponderRelease: (_, gestureState) => {
         const { dy, vy } = gestureState;
         
-        let targetSnapPoint: SnapPoint = currentSnapPoint;
+        let targetSnapPoint: SnapPoint = currentSnapPointRef.current;
         
         if (Math.abs(vy) > 0.5) {
           if (vy < 0) {
-            targetSnapPoint = currentSnapPoint === 'closed' ? 'half' : 'full';
+            targetSnapPoint = currentSnapPointRef.current === 'closed' ? 'half' : 'full';
           } else {
-            targetSnapPoint = currentSnapPoint === 'full' ? 'half' : 'closed';
+            targetSnapPoint = currentSnapPointRef.current === 'full' ? 'half' : 'closed';
           }
         } else if (Math.abs(dy) > 50) {
           if (dy < 0) {
-            targetSnapPoint = currentSnapPoint === 'closed' ? 'half' : 'full';
+            targetSnapPoint = currentSnapPointRef.current === 'closed' ? 'half' : 'full';
           } else {
-            targetSnapPoint = currentSnapPoint === 'full' ? 'half' : 'closed';
+            targetSnapPoint = currentSnapPointRef.current === 'full' ? 'half' : 'closed';
           }
         }
         
@@ -134,11 +145,12 @@ export function BoltBottomSheet({
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 100 }
+          { paddingBottom: Math.max(insets.bottom, 16) }
         ]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
-        bounces={true}
+        bounces={currentSnapPoint === 'full'}
+        scrollEnabled={scrollEnabled}
         onScroll={(event) => {
           scrollOffset.current = event.nativeEvent.contentOffset.y;
         }}
