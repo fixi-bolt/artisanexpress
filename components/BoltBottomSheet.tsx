@@ -31,7 +31,7 @@ export function BoltBottomSheet({
   snapPoints = {
     closed: 120,
     half: SCREEN_HEIGHT * 0.5,
-    full: SCREEN_HEIGHT * 0.92,
+    full: SCREEN_HEIGHT * 0.8,
   },
   initialSnapPoint = 'half',
   onSnapPointChange,
@@ -58,16 +58,15 @@ export function BoltBottomSheet({
         const minY = SCREEN_HEIGHT - snapPoints.full;
         const maxY = SCREEN_HEIGHT - snapPoints.closed;
 
-        if (newValue >= minY && newValue <= maxY) {
-          translateY.setValue(newValue);
+        const clampedValue = Math.max(minY, Math.min(maxY, newValue));
+        translateY.setValue(clampedValue);
 
-          const totalDistance = maxY - minY;
-          const currentDistance = newValue - minY;
-          const progress = 1 - currentDistance / totalDistance;
+        const totalDistance = maxY - minY;
+        const currentDistance = clampedValue - minY;
+        const progress = 1 - currentDistance / totalDistance;
 
-          const snapPoint = getClosestSnapPoint(SCREEN_HEIGHT - newValue, snapPoints);
-          onSnapPointChange?.(snapPoint, progress);
-        }
+        const snapPoint = getClosestSnapPoint(SCREEN_HEIGHT - clampedValue, snapPoints);
+        onSnapPointChange?.(snapPoint, progress);
       },
       onPanResponderRelease: (_, gestureState) => {
         translateY.flattenOffset();
