@@ -224,7 +224,7 @@ export default function ClientHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.mapContainer}>
+      <View style={styles.mapContainer} pointerEvents="box-none">
         <MapView
           ref={mapRef}
           style={styles.map}
@@ -237,6 +237,8 @@ export default function ClientHomeScreen() {
           scrollEnabled={true}
           rotateEnabled={true}
           pitchEnabled={true}
+          zoomControlEnabled={true}
+          zoomTapEnabled={true}
           showsUserLocation={true}
           showsMyLocationButton={false}
           showsCompass={false}
