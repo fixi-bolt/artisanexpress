@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { View, StyleSheet, Animated, TouchableOpacity, Text, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { MapView, Marker } from '@/components/MapView';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { MapPin, Navigation, Star } from 'lucide-react-native';
@@ -21,8 +21,6 @@ export function InteractiveBackgroundMap({
   progress = 1,
 }: InteractiveBackgroundMapProps) {
   const mapRef = useRef<any>(null);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const translateYAnim = useRef(new Animated.Value(0)).current;
   
   const { position, isLoading, hasPermission } = useGeolocation({
     enabled: true,
@@ -33,25 +31,7 @@ export function InteractiveBackgroundMap({
 
   useEffect(() => {
     console.log('[InteractiveBackgroundMap] Visibility changed:', isVisible, 'progress:', progress);
-    
-    const targetScale = isVisible ? 1 - (1 - progress) * 0.1 : 0.9;
-    const targetY = isVisible ? (1 - progress) * -20 : -30;
-
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: targetScale,
-        useNativeDriver: true,
-        tension: 65,
-        friction: 8,
-      }),
-      Animated.spring(translateYAnim, {
-        toValue: targetY,
-        useNativeDriver: true,
-        tension: 65,
-        friction: 8,
-      }),
-    ]).start();
-  }, [isVisible, progress, scaleAnim, translateYAnim]);
+  }, [isVisible, progress]);
 
   useEffect(() => {
     if (position && mapRef.current && isVisible) {
@@ -115,14 +95,7 @@ export function InteractiveBackgroundMap({
 
   if (!hasPermission) {
     return (
-      <Animated.View
-        style={[
-          styles.container,
-          {
-            transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
-          },
-        ]}
-      >
+      <View style={styles.container}>
         <View style={styles.permissionContainer}>
           <Navigation size={48} color={Colors.primary} />
           <Text style={styles.permissionTitle}>Géolocalisation désactivée</Text>
@@ -130,36 +103,24 @@ export function InteractiveBackgroundMap({
             Activez la géolocalisation pour voir les artisans à proximité
           </Text>
         </View>
-      </Animated.View>
+      </View>
     );
   }
 
   if (isLoading) {
     return (
-      <Animated.View
-        style={[
-          styles.container,
-          {
-            transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
-          },
-        ]}
-      >
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <Navigation size={32} color={Colors.primary} />
           <Text style={styles.loadingText}>Localisation en cours...</Text>
         </View>
-      </Animated.View>
+      </View>
     );
   }
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
-        },
-      ]}
+    <View
+      style={styles.container}
       pointerEvents="box-none"
     >
       <MapView
@@ -239,7 +200,7 @@ export function InteractiveBackgroundMap({
       )}
 
 
-    </Animated.View>
+    </View>
   );
 }
 
