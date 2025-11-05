@@ -64,14 +64,21 @@ export default function RequestScreen() {
   const reverseGeocode = async (latitude: number, longitude: number) => {
     try {
       console.log('📍 Reverse geocoding:', { latitude, longitude });
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
         {
           headers: {
             'User-Agent': 'ArtisanConnect/1.0',
           },
+          signal: controller.signal,
         }
       );
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
@@ -79,10 +86,11 @@ export default function RequestScreen() {
         console.log('📍 Address found:', formattedAddress);
         setAddress(formattedAddress);
       } else {
+        console.log('📍 Reverse geocoding failed, using coordinates');
         setAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
       }
     } catch (error) {
-      console.error('📍 Reverse geocoding error:', error);
+      console.log('📍 Reverse geocoding unavailable:', error instanceof Error ? error.message : 'Network error');
       setAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
     }
   };
