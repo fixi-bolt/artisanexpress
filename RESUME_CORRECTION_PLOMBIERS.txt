@@ -1,0 +1,130 @@
+═══════════════════════════════════════════════════════════════════
+  🔧 CORRECTION VISIBILITÉ ARTISANS PLOMBIERS - RÉSUMÉ EXÉCUTIF
+═══════════════════════════════════════════════════════════════════
+
+📋 PROBLÈME SIGNALÉ
+───────────────────
+  • 2 nouveaux comptes artisans Plombiers créés
+  • ❌ Invisibles sur la carte principale
+  • ❌ Invisibles dans la liste des artisans
+  • ❌ Invisibles dans la vue détail de mission
+
+🔍 CAUSE IDENTIFIÉE
+───────────────────
+  L'application affichait des DONNÉES MOCKÉES au lieu de lire 
+  les vrais artisans depuis la base de données Supabase.
+
+✅ CORRECTION APPLIQUÉE DANS LE CODE
+─────────────────────────────────────
+  ✓ Fichier modifié : app/(client)/home.tsx
+  ✓ Remplacement de mockArtisans par useSupabaseArtisans()
+  ✓ Ajout de logs de débogage dans hooks/useSupabaseArtisans.ts
+  
+  → L'application charge maintenant les VRAIES données Supabase
+
+⚡ ACTION REQUISE (VOUS)
+────────────────────────
+  1. Rafraîchir l'application (Ctrl+R ou Cmd+R)
+  
+  2. Exécuter dans Supabase SQL Editor :
+     
+     ┌─────────────────────────────────────────────────────────┐
+     │ UPDATE artisans                                         │
+     │ SET is_available = true,                                │
+     │     is_suspended = false,                               │
+     │     latitude = 48.8566,    -- ⚠️ À ADAPTER !           │
+     │     longitude = 2.3522,    -- ⚠️ À ADAPTER !           │
+     │     intervention_radius = 20                            │
+     │ WHERE category = 'plumber';                             │
+     │                                                         │
+     │ UPDATE users                                            │
+     │ SET user_type = 'artisan'                               │
+     │ WHERE id IN (                                           │
+     │   SELECT id FROM artisans WHERE category = 'plumber'    │
+     │ );                                                      │
+     └─────────────────────────────────────────────────────────┘
+  
+  3. Vérifier :
+     
+     ┌─────────────────────────────────────────────────────────┐
+     │ SELECT u.name, a.is_available, a.latitude, a.longitude │
+     │ FROM users u                                            │
+     │ INNER JOIN artisans a ON u.id = a.id                    │
+     │ WHERE a.category = 'plumber';                           │
+     │                                                         │
+     │ Résultat attendu :                                      │
+     │   • is_available = true                                 │
+     │   • latitude ≠ NULL                                     │
+     │   • longitude ≠ NULL                                    │
+     └─────────────────────────────────────────────────────────┘
+
+📂 FICHIERS CRÉÉS POUR VOUS AIDER
+──────────────────────────────────
+  
+  🚀 RAPIDE (2 min)
+     → ACTION_RAPIDE_30_SECONDES.md
+  
+  📖 VUE D'ENSEMBLE (5 min)
+     → LIRE_EN_PREMIER_PLOMBIERS.md
+  
+  🔧 DIAGNOSTIC DÉTAILLÉ (10 min)
+     → ACTION_IMMEDIATE_PLOMBIERS.md
+  
+  🗺️ ARCHITECTURE (15 min)
+     → SCHEMA_FLUX_ARTISANS.md
+  
+  🧪 TESTS (5 min)
+     → TEST_ARTISANS_CHARGEMENT.md
+  
+  📍 COORDONNÉES GPS
+     → database/AJOUTER_COORDONNEES_GPS_ARTISANS.sql
+  
+  📚 INDEX COMPLET
+     → INDEX_CORRECTION_PLOMBIERS.md
+
+✅ RÉSULTAT ATTENDU APRÈS CORRECTION
+─────��───────────────────────────────
+  ✓ Les 2 Plombiers apparaissent sur la carte (marqueurs 📍)
+  ✓ Les 2 Plombiers apparaissent dans la liste scrollable
+  ✓ Le compteur affiche le bon nombre d'artisans
+  ✓ Clic sur un artisan fonctionne correctement
+
+⚠️ POINTS D'ATTENTION
+──────────────────────
+  1. COORDONNÉES GPS OBLIGATOIRES
+     Sans latitude/longitude, les artisans ne peuvent PAS 
+     apparaître sur la carte.
+     
+     Comment obtenir les vraies coordonnées :
+     → Google Maps → Rechercher l'adresse
+     → Clic droit sur le point → "What's here?"
+     → Noter les coordonnées (latitude, longitude)
+  
+  2. DISPONIBILITÉ
+     is_available = false → Artisan INVISIBLE même avec GPS
+  
+  3. ZONE D'INTERVENTION
+     L'artisan doit être à distance ≤ intervention_radius du client
+
+🆘 SI LE PROBLÈME PERSISTE
+───────────────────────────
+  1. Ouvrez la console navigateur (F12)
+  2. Recherchez les messages [useSupabaseArtisans]
+  3. Exécutez : database/DIAGNOSTIC_PLOMBIERS.sql
+  4. Lisez : ACTION_IMMEDIATE_PLOMBIERS.md
+
+📞 CHECKLIST RAPIDE
+───────────────────
+  □ Code corrigé (✅ déjà fait)
+  □ Application rafraîchie
+  □ Script SQL exécuté dans Supabase
+  □ Coordonnées GPS ajoutées
+  □ is_available = true
+  □ is_suspended = false
+  □ user_type = 'artisan'
+  □ Vérification finale effectuée
+  □ Test dans l'app : artisans visibles ✅
+
+═══════════════════════════════════════════════════════════════════
+  COMMENCEZ PAR : ACTION_RAPIDE_30_SECONDES.md
+═════════════════════════════════════════════════════════════��═════
