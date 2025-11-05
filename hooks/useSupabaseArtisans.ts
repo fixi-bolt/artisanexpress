@@ -16,6 +16,7 @@ export const useSupabaseArtisans = (filters?: {
 
   const loadArtisans = async () => {
     try {
+      console.log('[useSupabaseArtisans] Loading artisans with filters:', filters);
       setIsLoading(true);
 
       let query = supabase
@@ -45,7 +46,10 @@ export const useSupabaseArtisans = (filters?: {
 
       const { data, error } = await query.order('rating', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useSupabaseArtisans] Error fetching artisans:', error);
+        throw error;
+      }
 
       let mapped: Artisan[] = (data || []).map((a: any) => ({
         id: a.id,
@@ -85,9 +89,10 @@ export const useSupabaseArtisans = (filters?: {
         });
       }
 
+      console.log(`[useSupabaseArtisans] Loaded ${mapped.length} artisans`);
       setArtisans(mapped);
     } catch (error) {
-      console.error('Error loading artisans:', error);
+      console.error('[useSupabaseArtisans] Error loading artisans:', error);
     } finally {
       setIsLoading(false);
     }
