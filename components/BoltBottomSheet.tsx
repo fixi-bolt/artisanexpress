@@ -5,6 +5,7 @@ import {
   Animated,
   PanResponder,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
@@ -166,7 +167,16 @@ export function BoltBottomSheet({
 
       {headerComponent && <View style={styles.header}>{headerComponent}</View>}
 
-      <View style={styles.content}>{children}</View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 200 }}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        bounces={true}
+        nestedScrollEnabled={true}
+      >
+        {children}
+      </ScrollView>
     </Animated.View>
   );
 }
@@ -199,8 +209,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: DesignTokens.spacing[6],
     paddingBottom: DesignTokens.spacing[3],
   },
-  content: {
+  scrollView: {
     flex: 1,
-    overflow: 'hidden',
   },
 });
