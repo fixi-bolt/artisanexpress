@@ -224,7 +224,7 @@ export default function ClientHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.mapContainer} pointerEvents="box-none">
+      <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
           style={styles.map}
