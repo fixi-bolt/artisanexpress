@@ -2,15 +2,11 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useState, useCallback, useMemo } from 'react';
 import { Transaction, PaymentMethod } from '@/types';
 import { useAuth } from './AuthContext';
-import { trpc } from '@/lib/trpc';
 
 export const [PaymentContext, usePayments] = createContextHook(() => {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [processingPayment, setProcessingPayment] = useState(false);
-
-  const createPaymentIntentMutation = trpc.payments.createPaymentIntent.useMutation();
-  const processPaymentMutation = trpc.payments.processPayment.useMutation();
 
   const calculateCommission = useCallback((amount: number): { commission: number; commissionAmount: number; artisanPayout: number } => {
     const commission = amount > 150 ? 0.15 : 0.10;
@@ -25,20 +21,10 @@ export const [PaymentContext, usePayments] = createContextHook(() => {
   }, []);
 
   const createPaymentIntent = useCallback(async (missionId: string, amount: number) => {
-    console.log('Creating payment intent:', { missionId, amount });
-    
-    try {
-      const result = await createPaymentIntentMutation.mutateAsync({
-        missionId,
-        amount,
-      });
-
-      return result;
-    } catch (error) {
-      console.error('Failed to create payment intent:', error);
-      throw error;
-    }
-  }, [createPaymentIntentMutation]);
+    console.log('[PaymentContext] Creating payment intent:', { missionId, amount });
+    console.log('[PaymentContext] Backend features disabled - use Stripe directly');
+    throw new Error('Backend not available - use direct Stripe integration');
+  }, []);
 
   const processPayment = useCallback(async (
     missionId: string,
@@ -49,46 +35,13 @@ export const [PaymentContext, usePayments] = createContextHook(() => {
     artisanId: string
   ): Promise<{ success: boolean; transactionId?: string; error?: string }> => {
     setProcessingPayment(true);
+    
+    console.log('[PaymentContext] Processing payment - Backend features disabled');
+    console.log('[PaymentContext] Use direct Stripe integration or enable backend');
 
-    try {
-      const result = await processPaymentMutation.mutateAsync({
-        missionId,
-        paymentIntentId,
-        paymentMethodId: paymentMethod.id,
-      });
-
-      if (result.success && result.transactionId) {
-        const { commission, commissionAmount, artisanPayout } = calculateCommission(amount);
-
-        const transaction: Transaction = {
-          id: result.transactionId,
-          missionId,
-          clientId,
-          artisanId,
-          amount,
-          commission,
-          commissionAmount,
-          artisanPayout,
-          status: 'completed',
-          paymentMethod,
-          createdAt: new Date(),
-          processedAt: new Date(),
-        };
-
-        setTransactions(prev => [transaction, ...prev]);
-        console.log('Payment processed successfully:', transaction);
-
-        return { success: true, transactionId: result.transactionId };
-      } else {
-        return { success: false, error: result.error || 'Payment failed' };
-      }
-    } catch (error) {
-      console.error('Payment processing error:', error);
-      return { success: false, error: 'Payment processing failed. Please try again.' };
-    } finally {
-      setProcessingPayment(false);
-    }
-  }, [calculateCommission, processPaymentMutation]);
+    setProcessingPayment(false);
+    return { success: false, error: 'Backend not available - use direct Stripe integration' };
+  }, []);
 
   const getTransactionByMission = useCallback((missionId: string): Transaction | undefined => {
     return transactions.find(t => t.missionId === missionId);
