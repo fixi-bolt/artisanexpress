@@ -11,12 +11,14 @@ interface InteractiveBackgroundMapProps {
   isVisible: boolean;
   artisans: Artisan[];
   onArtisanPress?: (artisan: Artisan) => void;
+  progress?: number;
 }
 
 export function InteractiveBackgroundMap({
   isVisible,
   artisans,
   onArtisanPress,
+  progress = 1,
 }: InteractiveBackgroundMapProps) {
   const mapRef = useRef<any>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -31,27 +33,32 @@ export function InteractiveBackgroundMap({
   const [selectedArtisan, setSelectedArtisan] = useState<Artisan | null>(null);
 
   useEffect(() => {
-    console.log('[InteractiveBackgroundMap] Visibility changed:', isVisible);
+    console.log('[InteractiveBackgroundMap] Visibility changed:', isVisible, 'progress:', progress);
+    
+    const targetScale = isVisible ? 1 - (1 - progress) * 0.15 : 0.85;
+    const targetOpacity = isVisible ? progress * 0.7 + 0.3 : 0.3;
+    const targetY = isVisible ? (1 - progress) * -30 : -50;
+
     Animated.parallel([
       Animated.spring(scaleAnim, {
-        toValue: isVisible ? 1 : 0.85,
+        toValue: targetScale,
         useNativeDriver: true,
         tension: 65,
         friction: 8,
       }),
       Animated.timing(opacityAnim, {
-        toValue: isVisible ? 1 : 0.3,
-        duration: 300,
+        toValue: targetOpacity,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.spring(translateYAnim, {
-        toValue: isVisible ? 0 : -50,
+        toValue: targetY,
         useNativeDriver: true,
         tension: 65,
         friction: 8,
       }),
     ]).start();
-  }, [isVisible, scaleAnim, opacityAnim, translateYAnim]);
+  }, [isVisible, progress, scaleAnim, opacityAnim, translateYAnim]);
 
   useEffect(() => {
     if (position && mapRef.current && isVisible) {
@@ -163,7 +170,7 @@ export function InteractiveBackgroundMap({
           transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
         },
       ]}
-      pointerEvents="box-none"
+      pointerEvents={progress > 0.5 ? 'auto' : 'none'}
     >
       <MapView
         ref={mapRef}
