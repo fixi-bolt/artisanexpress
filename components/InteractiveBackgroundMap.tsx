@@ -163,7 +163,7 @@ export function InteractiveBackgroundMap({
           transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
         },
       ]}
-      pointerEvents="auto"
+      pointerEvents="box-none"
     >
       <MapView
         ref={mapRef}
@@ -175,8 +175,10 @@ export function InteractiveBackgroundMap({
         zoomEnabled={true}
         scrollEnabled={true}
         rotateEnabled={true}
-        pitchEnabled={false}
-        zoomControlEnabled={false}
+        pitchEnabled={true}
+        zoomControlEnabled={true}
+        minZoomLevel={3}
+        maxZoomLevel={20}
         testID="background-map"
       >
         {nearbyArtisans.map((artisan) => {
@@ -272,9 +274,11 @@ const styles = StyleSheet.create({
     height: 400,
     zIndex: 0,
     overflow: 'hidden',
+    pointerEvents: 'box-none',
   },
   map: {
     flex: 1,
+    pointerEvents: 'auto',
   },
   permissionContainer: {
     flex: 1,
