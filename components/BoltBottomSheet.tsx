@@ -49,7 +49,7 @@ export function BoltBottomSheet({
   const currentSnapPointRef = useRef<SnapPoint>(initialSnapPoint);
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollOffset = useRef(0);
-  const scrollEnabledRef = useRef(initialSnapPoint === 'full');
+  const [scrollEnabled, setScrollEnabled] = useState(initialSnapPoint === 'full');
   const isDraggingSheet = useRef(false);
 
   const snapToPoint = useCallback(
@@ -58,7 +58,7 @@ export function BoltBottomSheet({
       
       setCurrentSnapPoint(snapPoint);
       currentSnapPointRef.current = snapPoint;
-      scrollEnabledRef.current = snapPoint === 'full';
+      setScrollEnabled(snapPoint === 'full');
       
       if (!animated) {
         translateY.setValue(targetY);
@@ -209,7 +209,7 @@ export function BoltBottomSheet({
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         bounces={currentSnapPoint === 'full'}
-        scrollEnabled={scrollEnabledRef.current && !isDraggingSheet.current}
+        scrollEnabled={scrollEnabled && !isDraggingSheet.current}
         onScroll={(event) => {
           scrollOffset.current = event.nativeEvent.contentOffset.y;
         }}
