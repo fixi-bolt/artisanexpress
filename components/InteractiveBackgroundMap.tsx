@@ -22,7 +22,6 @@ export function InteractiveBackgroundMap({
 }: InteractiveBackgroundMapProps) {
   const mapRef = useRef<any>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(1)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;
   
   const { position, isLoading, hasPermission } = useGeolocation({
@@ -35,9 +34,8 @@ export function InteractiveBackgroundMap({
   useEffect(() => {
     console.log('[InteractiveBackgroundMap] Visibility changed:', isVisible, 'progress:', progress);
     
-    const targetScale = isVisible ? 1 - (1 - progress) * 0.15 : 0.85;
-    const targetOpacity = isVisible ? progress * 0.7 + 0.3 : 0.3;
-    const targetY = isVisible ? (1 - progress) * -30 : -50;
+    const targetScale = isVisible ? 1 - (1 - progress) * 0.1 : 0.9;
+    const targetY = isVisible ? (1 - progress) * -20 : -30;
 
     Animated.parallel([
       Animated.spring(scaleAnim, {
@@ -46,11 +44,6 @@ export function InteractiveBackgroundMap({
         tension: 65,
         friction: 8,
       }),
-      Animated.timing(opacityAnim, {
-        toValue: targetOpacity,
-        duration: 200,
-        useNativeDriver: true,
-      }),
       Animated.spring(translateYAnim, {
         toValue: targetY,
         useNativeDriver: true,
@@ -58,7 +51,7 @@ export function InteractiveBackgroundMap({
         friction: 8,
       }),
     ]).start();
-  }, [isVisible, progress, scaleAnim, opacityAnim, translateYAnim]);
+  }, [isVisible, progress, scaleAnim, translateYAnim]);
 
   useEffect(() => {
     if (position && mapRef.current && isVisible) {
@@ -126,7 +119,6 @@ export function InteractiveBackgroundMap({
         style={[
           styles.container,
           {
-            opacity: opacityAnim,
             transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
           },
         ]}
@@ -148,7 +140,6 @@ export function InteractiveBackgroundMap({
         style={[
           styles.container,
           {
-            opacity: opacityAnim,
             transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
           },
         ]}
@@ -166,7 +157,6 @@ export function InteractiveBackgroundMap({
       style={[
         styles.container,
         {
-          opacity: opacityAnim,
           transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
         },
       ]}
@@ -278,7 +268,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 400,
+    bottom: 0,
     zIndex: 0,
     overflow: 'hidden',
     pointerEvents: 'box-none',
