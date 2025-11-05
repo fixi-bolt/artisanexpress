@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,7 +49,6 @@ export default function ClientHomeScreen() {
   const hasNavigated = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
   const [mapProgress, setMapProgress] = useState(0.5);
 
   useScreenTracking('client_home');
@@ -102,12 +101,6 @@ export default function ClientHomeScreen() {
           </View>
         }
       >
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
-        >
         <View style={styles.searchSection}>
           <View style={styles.searchBar}>
             <Search size={20} color={Colors.textSecondary} />
@@ -193,7 +186,6 @@ export default function ClientHomeScreen() {
             </TouchableOpacity>
           )}
         </View>
-        </ScrollView>
       </BoltBottomSheet>
     </View>
   );
@@ -204,6 +196,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+
   sheetHeader: {
     paddingTop: DesignTokens.spacing[2],
   },
@@ -218,9 +211,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 
-  scrollContent: {
-    flexGrow: 1,
-  },
+
   searchSection: {
     paddingHorizontal: DesignTokens.spacing[6],
     paddingBottom: DesignTokens.spacing[4],
