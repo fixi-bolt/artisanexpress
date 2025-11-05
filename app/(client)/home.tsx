@@ -9,6 +9,8 @@ import { useScreenTracking } from '@/hooks/useScreenTracking';
 import Colors from '@/constants/colors';
 import { Search, ChevronDown, ChevronUp, Star, MapPin } from 'lucide-react-native';
 import { mockArtisans } from '@/mocks/artisans';
+import { InteractiveBackgroundMap } from '@/components/InteractiveBackgroundMap';
+import { useScrollBehavior } from '@/hooks/useScrollBehavior';
 
 const SPECIALTIES = [
   { id: 'plumber', label: 'Plombier', emoji: '🔧', visible: true },
@@ -49,6 +51,12 @@ export default function ClientHomeScreen() {
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const { isMapVisible, handleScroll } = useScrollBehavior({
+    threshold: 100,
+    onScrollDown: () => console.log('[ClientHome] Map hidden'),
+    onScrollUp: () => console.log('[ClientHome] Map visible'),
+  });
+
   useScreenTracking('client_home');
 
   useEffect(() => {
@@ -74,12 +82,23 @@ export default function ClientHomeScreen() {
 
   return (
     <View style={styles.container}>
+      <InteractiveBackgroundMap
+        isVisible={isMapVisible}
+        artisans={availableArtisans}
+        onArtisanPress={(artisan) => {
+          console.log('[ClientHome] Artisan selected from map:', artisan.name);
+          router.push(`/request?artisanId=${artisan.id}` as any);
+        }}
+      />
+
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: 400, paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
-        <View style={[styles.greetingSection, { paddingTop: insets.top + DesignTokens.spacing[4] }]}>
+        <View style={styles.greetingSection}>
           <View style={styles.greetingContent}>
             <View style={{ flex: 1 }}>
               <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>

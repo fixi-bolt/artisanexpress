@@ -60,6 +60,7 @@ import { listEndpointsProcedure } from "./routes/public-api/list-endpoints/route
 import { verifySiretProcedure } from "./routes/compliance/verify-siret/route";
 import { updateLocationProcedure } from "./routes/location/update-location/route";
 import { getNearbyMissionsProcedure } from "./routes/location/get-nearby-missions/route";
+import { getNearbyArtisansProcedure } from "./routes/location/get-nearby-artisans/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -172,6 +173,7 @@ export const appRouter = createTRPCRouter({
   location: createTRPCRouter({
     updateLocation: updateLocationProcedure,
     getNearbyMissions: getNearbyMissionsProcedure,
+    getNearbyArtisans: getNearbyArtisansProcedure,
   }),
 });
 
