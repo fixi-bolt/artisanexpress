@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DesignTokens } from '@/constants/design-tokens';
 import { useMissions } from '@/contexts/MissionContext';
@@ -10,7 +10,7 @@ import Colors from '@/constants/colors';
 import { Search, ChevronDown, ChevronUp, Star, MapPin } from 'lucide-react-native';
 import { mockArtisans } from '@/mocks/artisans';
 import { InteractiveBackgroundMap } from '@/components/InteractiveBackgroundMap';
-import { useScrollBehavior } from '@/hooks/useScrollBehavior';
+import { BoltBottomSheet, SnapPoint } from '@/components/BoltBottomSheet';
 
 const SPECIALTIES = [
   { id: 'plumber', label: 'Plombier', emoji: '🔧', visible: true },
@@ -50,12 +50,7 @@ export default function ClientHomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-
-  const { isMapVisible, handleScroll } = useScrollBehavior({
-    threshold: 100,
-    onScrollDown: () => console.log('[ClientHome] Map hidden'),
-    onScrollUp: () => console.log('[ClientHome] Map visible'),
-  });
+  const [mapProgress, setMapProgress] = useState(0.5);
 
   useScreenTracking('client_home');
 
@@ -80,10 +75,16 @@ export default function ClientHomeScreen() {
 
   const availableArtisans = mockArtisans.filter(a => a.isAvailable);
 
+  const handleSnapPointChange = useCallback((snapPoint: SnapPoint, progress: number) => {
+    console.log('[ClientHome] Bottom sheet snap point:', snapPoint, 'progress:', progress);
+    setMapProgress(1 - progress);
+  }, []);
+
   return (
     <View style={styles.container}>
       <InteractiveBackgroundMap
-        isVisible={isMapVisible}
+        isVisible={mapProgress > 0.1}
+        progress={mapProgress}
         artisans={availableArtisans}
         onArtisanPress={(artisan) => {
           console.log('[ClientHome] Artisan selected from map:', artisan.name);
@@ -91,29 +92,23 @@ export default function ClientHomeScreen() {
         }}
       />
 
-      <ScrollView
-        ref={scrollViewRef}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: 400, paddingBottom: insets.bottom + 100 }]}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-      >
-        <View style={styles.greetingSection}>
-          <View style={styles.greetingContent}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
-              <Text style={styles.greetingSubtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
-            </View>
-            <TouchableOpacity style={styles.avatarButtonSmall}>
-              <Image
-                source={{ uri: user?.photo || 'https://i.pravatar.cc/150' }}
-                style={styles.avatarSmall}
-              />
-            </TouchableOpacity>
+      <BoltBottomSheet
+        initialSnapPoint="half"
+        onSnapPointChange={handleSnapPointChange}
+        headerComponent={
+          <View style={styles.sheetHeader}>
+            <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
+            <Text style={styles.greetingSubtitle}>{availableArtisans.length} artisans disponibles près de vous</Text>
           </View>
-        </View>
-
-        <View style={styles.searchSectionFixed}>
+        }
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+        >
+        <View style={styles.searchSection}>
           <View style={styles.searchBar}>
             <Search size={20} color={Colors.textSecondary} />
             <TextInput
@@ -198,7 +193,8 @@ export default function ClientHomeScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+        </ScrollView>
+      </BoltBottomSheet>
     </View>
   );
 }
@@ -208,16 +204,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  greetingSection: {
-    paddingHorizontal: DesignTokens.spacing[6],
-    paddingBottom: DesignTokens.spacing[4],
-    backgroundColor: Colors.surface,
-    marginBottom: DesignTokens.spacing[4],
-  },
-  greetingContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  sheetHeader: {
+    paddingTop: DesignTokens.spacing[2],
   },
   greetingTitle: {
     fontSize: DesignTokens.typography.fontSize['2xl'],
@@ -229,23 +217,15 @@ const styles = StyleSheet.create({
     fontSize: DesignTokens.typography.fontSize.base,
     color: Colors.textSecondary,
   },
-  avatarButtonSmall: {
-    borderRadius: DesignTokens.borderRadius.full,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-  },
-  avatarSmall: {
-    width: 48,
-    height: 48,
-    borderRadius: DesignTokens.borderRadius.full,
-  },
+
   scrollContent: {
     flexGrow: 1,
   },
-  searchSectionFixed: {
+  searchSection: {
     paddingHorizontal: DesignTokens.spacing[6],
     paddingBottom: DesignTokens.spacing[4],
-    backgroundColor: Colors.background,
+    paddingTop: DesignTokens.spacing[4],
+    backgroundColor: Colors.surface,
   },
   sectionTitle: {
     fontSize: DesignTokens.typography.fontSize.xl,
