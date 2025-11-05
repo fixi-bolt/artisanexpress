@@ -16,6 +16,7 @@ export const useSupabaseArtisans = (filters?: {
 
   const loadArtisans = async () => {
     try {
+      console.log('[useSupabaseArtisans] Loading artisans with filters:', filters);
       setIsLoading(true);
 
       let query = supabase
@@ -43,9 +44,17 @@ export const useSupabaseArtisans = (filters?: {
 
       query = query.eq('is_suspended', false);
 
-      const { data, error } = await query.order('rating', { ascending: false });
+      const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useSupabaseArtisans] Error fetching artisans:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+        throw error;
+      }
 
       let mapped: Artisan[] = (data || []).map((a: any) => ({
         id: a.id,
@@ -85,9 +94,18 @@ export const useSupabaseArtisans = (filters?: {
         });
       }
 
+      mapped.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+      console.log(`[useSupabaseArtisans] Loaded ${mapped.length} artisans`);
       setArtisans(mapped);
-    } catch (error) {
-      console.error('Error loading artisans:', error);
+    } catch (error: any) {
+      console.error('[useSupabaseArtisans] Error loading artisans:', {
+        message: error?.message || 'Unknown error',
+        details: error?.details || '',
+        hint: error?.hint || '',
+        code: error?.code || '',
+        stack: error?.stack || '',
+      });
     } finally {
       setIsLoading(false);
     }
