@@ -86,9 +86,9 @@ export default function ClientHomeScreen() {
   return (
     <View style={styles.container}>
       <InteractiveBackgroundMap
-        isVisible={true}
-        artisans={availableArtisans}
+        isVisible={mapProgress > 0.1}
         progress={mapProgress}
+        artisans={availableArtisans}
         onArtisanPress={(artisan) => {
           console.log('[ClientHome] Artisan selected from map:', artisan.name);
           router.push(`/request?artisanId=${artisan.id}` as any);
