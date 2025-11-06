@@ -55,9 +55,14 @@ export function BoltBottomSheet({
   const [scrollEnabled, setScrollEnabled] = useState(initialSnapPoint === 'full');
   const isDraggingSheet = useRef(false);
 
+  const snapPointsRef = useRef(snapPoints);
+  useEffect(() => {
+    snapPointsRef.current = snapPoints;
+  }, [snapPoints]);
+
   const snapToPoint = useCallback(
     (snapPoint: SnapPoint, animated = true) => {
-      const targetY = SCREEN_HEIGHT - snapPoints[snapPoint];
+      const targetY = SCREEN_HEIGHT - snapPointsRef.current[snapPoint];
       setCurrentSnapPoint(snapPoint);
       currentSnapPointRef.current = snapPoint;
       setScrollEnabled(snapPoint === 'full');
@@ -80,12 +85,14 @@ export function BoltBottomSheet({
         onSnapPointChange?.(snapPoint, progress);
       });
     },
-    [translateY, snapPoints, onSnapPointChange]
+    [translateY, onSnapPointChange]
   );
 
   useEffect(() => {
-    snapToPoint(initialSnapPoint, false);
-  }, [initialSnapPoint, snapPoints, snapToPoint]);
+    if (currentSnapPointRef.current !== initialSnapPoint) {
+      snapToPoint(initialSnapPoint, false);
+    }
+  }, [initialSnapPoint, snapToPoint]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -152,9 +159,9 @@ export function BoltBottomSheet({
           }
         } else {
           const distances = {
-            closed: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPoints.closed)),
-            half: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPoints.half)),
-            full: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPoints.full)),
+            closed: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.closed)),
+            half: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.half)),
+            full: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.full)),
           };
 
           let closest: SnapPoint = 'half';
@@ -189,8 +196,8 @@ export function BoltBottomSheet({
   // Overlay (semi-transparent fond)
   const overlayOpacity = translateY.interpolate({
     inputRange: [
-      SCREEN_HEIGHT - snapPoints.full,
-      SCREEN_HEIGHT - snapPoints.closed,
+      SCREEN_HEIGHT - snapPointsRef.current.full,
+      SCREEN_HEIGHT - snapPointsRef.current.closed,
     ],
     outputRange: [0.5, 0],
     extrapolate: 'clamp',
