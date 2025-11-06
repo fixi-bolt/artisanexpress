@@ -37,6 +37,7 @@ export default function RequestScreen() {
 
   const [estimatedPrice, setEstimatedPrice] = useState<number>(80 + Math.floor(Math.random() * 70));
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { position, isLoading: isLoadingLocation, error: locationError } = useGeolocation({
     enabled: true,
@@ -101,7 +102,15 @@ export default function RequestScreen() {
       return;
     }
 
+    if (isSubmitting) {
+      console.log('⚠️ Submission already in progress');
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
+      console.log('📤 Starting mission submission...');
+
       const mission = await createMission({
         category: categoryId,
         title: title.trim(),
@@ -128,6 +137,9 @@ export default function RequestScreen() {
     } catch (error: any) {
       console.error('❌ Error creating mission:', error);
       Alert.alert('Erreur', error?.message || 'Une erreur est survenue');
+    } finally {
+      setIsSubmitting(false);
+      console.log('📤 Submission completed');
     }
   };
 
@@ -511,13 +523,23 @@ Description: ${description || 'Pas de description'}`,
 
         <View style={styles.footer}>
           <TouchableOpacity 
-            style={styles.submitButton}
+            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             activeOpacity={0.8}
+            disabled={isSubmitting}
           >
-            <Text style={styles.submitButtonText}>
-              Envoyer la demande
-            </Text>
+            {isSubmitting ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <ActivityIndicator size="small" color={Colors.surface} />
+                <Text style={styles.submitButtonText}>
+                  Envoi en cours...
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.submitButtonText}>
+                Envoyer la demande
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -808,6 +830,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 6,
+  },
+  submitButtonDisabled: {
+    backgroundColor: Colors.textSecondary,
+    opacity: 0.6,
+    shadowOpacity: 0,
   },
   submitButtonText: {
     fontSize: 17,
