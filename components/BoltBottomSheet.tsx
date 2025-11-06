@@ -99,6 +99,8 @@ export function BoltBottomSheet({
     }
   }, [initialSnapPoint, snapToPoint]);
 
+
+
   // PanResponder uniquement pour la poignée et les zones non-scrollables
   const panResponder = useRef(
     PanResponder.create({
@@ -129,7 +131,7 @@ export function BoltBottomSheet({
       onPanResponderRelease: (_, gestureState) => {
         translateY.flattenOffset();
 
-        const { vy, dy } = gestureState;
+        const { vy } = gestureState;
         let currentPosition = 0;
         translateY.stopAnimation((value) => {
           currentPosition = value;
@@ -214,7 +216,50 @@ export function BoltBottomSheet({
         [null, { dy: translateY }],
         { useNativeDriver: false }
       ),
-      onPanResponderRelease: panResponder.panHandlers.onPanResponderRelease,
+      onPanResponderRelease: (_, gestureState) => {
+        translateY.flattenOffset();
+
+        const { vy } = gestureState;
+        let currentPosition = 0;
+        translateY.stopAnimation((value) => {
+          currentPosition = value;
+        });
+
+        let targetSnapPoint: SnapPoint = currentSnapPointRef.current;
+
+        if (Math.abs(vy) > VELOCITY_THRESHOLD) {
+          if (vy < 0) {
+            targetSnapPoint = currentSnapPointRef.current === 'closed' ? 'half' : 'full';
+          } else {
+            if (!enablePanDownToClose && currentSnapPointRef.current === 'half') {
+              targetSnapPoint = 'half';
+            } else {
+              targetSnapPoint = currentSnapPointRef.current === 'full' ? 'half' : 'closed';
+            }
+          }
+        } else {
+          const distances = {
+            closed: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.closed)),
+            half: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.half)),
+            full: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.full)),
+          };
+
+          let closest: SnapPoint = 'half';
+          let minDistance = Infinity;
+
+          (Object.keys(distances) as SnapPoint[]).forEach((point) => {
+            if (distances[point] < minDistance) {
+              if (point === 'closed' && !enablePanDownToClose && currentSnapPointRef.current === 'half') return;
+              minDistance = distances[point];
+              closest = point;
+            }
+          });
+
+          targetSnapPoint = closest;
+        }
+
+        snapToPoint(targetSnapPoint);
+      },
     })
   ).current;
 
@@ -267,30 +312,34 @@ export function BoltBottomSheet({
         {/* Zone header - draggable aussi */}
         {headerComponent && (
           <View style={styles.header} {...headerPanResponder.panHandlers}>
-            {headerComponent}
+            {headerComponent as any}
           </View>
         )}
 
-        {/* ScrollView - complètement indépendant */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: Math.max(insets.bottom + 80, 120) },
-          ]}
-          showsVerticalScrollIndicator={true}
-          scrollEventThrottle={16}
-          bounces={true}
-          scrollEnabled={true}
-          alwaysBounceVertical={true}
-          onScrollBeginDrag={handleScrollBeginDrag}
-          onScrollEndDrag={handleScrollEndDrag}
-          onMomentumScrollBegin={handleScrollBeginDrag}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
-        >
-          {children}
-        </ScrollView>
+        {/* ScrollView - SIMPLIFIÉ */}
+        <View style={styles.scrollViewWrapper}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.scrollView}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { 
+                paddingBottom: Math.max(insets.bottom + 40, 80),
+              }
+            ]}
+            showsVerticalScrollIndicator={true}
+            scrollEventThrottle={16}
+            bounces={true}
+            scrollEnabled={true}
+            alwaysBounceVertical={true}
+            onScrollBeginDrag={handleScrollBeginDrag}
+            onScrollEndDrag={handleScrollEndDrag}
+            onMomentumScrollBegin={handleScrollBeginDrag}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
+          >
+            {children}
+          </ScrollView>
+        </View>
       </Animated.View>
     </>
   );
@@ -333,6 +382,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: DesignTokens.spacing[6],
     paddingBottom: DesignTokens.spacing[3],
     backgroundColor: Colors.surface,
+  },
+  scrollViewWrapper: {
+    flex: 1,
+    overflow: 'hidden',
   },
   scrollView: { 
     flex: 1,
