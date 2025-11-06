@@ -1,135 +1,146 @@
--- ============================================================================
--- ✅ SOLUTION IMMÉDIATE : Créer le trigger et la fonction manquants
--- ============================================================================
--- Copiez-collez TOUT ce script dans l'éditeur SQL de Supabase
--- ============================================================================
+-- ============================================
+-- 🔍 DIAGNOSTIC SIMPLE - CONFIGURATION ACTUELLE
+-- ============================================
 
--- 1️⃣ Créer la fonction qui envoie la notification
-CREATE OR REPLACE FUNCTION notify_client_on_mission_accepted()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Vérifier que la mission vient d'être acceptée
-  IF NEW.status = 'accepted' AND OLD.status = 'pending' THEN
-    
-    -- Insérer la notification pour le client
-    INSERT INTO public.notifications (
-      user_id,
-      type,
-      title,
-      message,
-      mission_id,
-      is_read,
-      created_at
-    ) VALUES (
-      NEW.client_id,
-      'mission_accepted',
-      'Mission acceptée !',
-      'Votre mission "' || NEW.title || '" a été acceptée par un artisan.',
-      NEW.id,
-      false,
-      NOW()
-    );
-    
-    -- Log pour debug
-    RAISE NOTICE '✅ Notification créée pour client % sur mission %', NEW.client_id, NEW.id;
-    
-  END IF;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- 2️⃣ Supprimer l'ancien trigger s'il existe
-DROP TRIGGER IF EXISTS trg_notify_mission_accepted ON missions;
-
--- 3️⃣ Créer le nouveau trigger
-CREATE TRIGGER trg_notify_mission_accepted
-  AFTER UPDATE ON missions
-  FOR EACH ROW
-  WHEN (NEW.status = 'accepted' AND OLD.status = 'pending')
-  EXECUTE FUNCTION notify_client_on_mission_accepted();
-
--- 4️⃣ Vérifier que tout est créé
-SELECT 
-  '✅ VÉRIFICATION' as section,
-  (SELECT COUNT(*) FROM pg_trigger WHERE tgname = 'trg_notify_mission_accepted') as trigger_exists,
-  (SELECT COUNT(*) FROM pg_proc WHERE proname = 'notify_client_on_mission_accepted') as function_exists;
-
--- 5️⃣ Test manuel immédiat
 DO $$
-DECLARE
-  test_mission record;
-  notif_count_before integer;
-  notif_count_after integer;
 BEGIN
-  -- Compter les notifications avant
-  SELECT COUNT(*) INTO notif_count_before FROM public.notifications;
-  
-  -- Trouver une mission pending
-  SELECT * INTO test_mission
-  FROM public.missions
-  WHERE status = 'pending'
-  LIMIT 1;
-  
-  IF test_mission.id IS NOT NULL THEN
-    RAISE NOTICE '🧪 Test avec mission: %', test_mission.id;
-    
-    -- Simuler une acceptation
-    UPDATE public.missions
-    SET status = 'accepted', accepted_at = NOW()
-    WHERE id = test_mission.id;
-    
-    -- Compter après
-    SELECT COUNT(*) INTO notif_count_after FROM public.notifications;
-    
-    RAISE NOTICE '✅ Notifications avant: %, après: %', notif_count_before, notif_count_after;
-    
-    IF notif_count_after > notif_count_before THEN
-      RAISE NOTICE '✅✅✅ LE TRIGGER FONCTIONNE !';
-    ELSE
-      RAISE WARNING '❌ Le trigger ne s''est pas déclenché';
-    END IF;
-    
-    -- Remettre en pending pour ne pas gêner
-    UPDATE public.missions
-    SET status = 'pending', accepted_at = NULL
-    WHERE id = test_mission.id;
-    
-  ELSE
-    RAISE NOTICE '⚠️ Aucune mission pending pour tester';
-  END IF;
+  RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+  RAISE NOTICE '📊 VÉRIFICATION CONFIGURATION REALTIME';
+  RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 END $$;
 
--- 6️⃣ Afficher le résumé
-SELECT '🎯 RÉSUMÉ FINAL' as section;
+-- 1️⃣ Vérifier que la table notifications est dans la publication
+SELECT 
+  CASE 
+    WHEN COUNT(*) > 0 THEN '✅ notifications est dans supabase_realtime'
+    ELSE '❌ notifications manque dans supabase_realtime'
+  END as status_publication
+FROM pg_publication_tables
+WHERE pubname = 'supabase_realtime'
+  AND schemaname = 'public'
+  AND tablename = 'notifications';
 
+-- 2️⃣ Vérifier que le trigger existe
+SELECT 
+  CASE 
+    WHEN COUNT(*) > 0 THEN '✅ Trigger notify_mission_accepted existe'
+    ELSE '❌ Trigger notify_mission_accepted manque'
+  END as status_trigger
+FROM pg_trigger
+WHERE tgname = 'notify_mission_accepted';
+
+-- 3️⃣ Vérifier que la fonction existe
+SELECT 
+  CASE 
+    WHEN COUNT(*) > 0 THEN '✅ Fonction send_mission_accepted_notification existe'
+    ELSE '❌ Fonction send_mission_accepted_notification manque'
+  END as status_fonction
+FROM pg_proc
+WHERE proname = 'send_mission_accepted_notification';
+
+-- 4️⃣ Tester une notification de test
 DO $$
 DECLARE
-  has_trigger boolean;
-  has_function boolean;
+  v_test_user_id uuid;
+  v_test_mission_id uuid;
+  v_notification_id uuid;
 BEGIN
-  -- Vérifier trigger
-  SELECT EXISTS (
-    SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_mission_accepted'
-  ) INTO has_trigger;
+  RAISE NOTICE '';
+  RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+  RAISE NOTICE '🧪 TEST DE NOTIFICATION';
+  RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
   
-  -- Vérifier fonction
-  SELECT EXISTS (
-    SELECT 1 FROM pg_proc WHERE proname = 'notify_client_on_mission_accepted'
-  ) INTO has_function;
+  -- Créer un utilisateur test (client)
+  INSERT INTO users (email, user_type, name)
+  VALUES ('test_client_notif_' || floor(random() * 10000) || '@test.com', 'client', 'Test Client')
+  RETURNING id INTO v_test_user_id;
   
-  IF has_trigger AND has_function THEN
-    RAISE NOTICE '=================================================';
-    RAISE NOTICE '✅✅✅ CONFIGURATION COMPLÈTE !';
-    RAISE NOTICE '=================================================';
-    RAISE NOTICE 'Trigger: ✅';
-    RAISE NOTICE 'Fonction: ✅';
-    RAISE NOTICE '';
-    RAISE NOTICE '🚀 Testez maintenant dans l''app :';
-    RAISE NOTICE '1. Un artisan accepte une mission';
-    RAISE NOTICE '2. Le client devrait recevoir la notification instantanément';
-    RAISE NOTICE '=================================================';
-  ELSE
-    RAISE WARNING '❌ Problème lors de la création';
-  END IF;
+  -- Créer l'entrée client
+  INSERT INTO clients (id) VALUES (v_test_user_id);
+  
+  RAISE NOTICE '✅ Utilisateur test créé: %', v_test_user_id;
+  
+  -- Créer une mission test
+  INSERT INTO missions (
+    client_id, 
+    title, 
+    description, 
+    category, 
+    status,
+    latitude,
+    longitude
+  )
+  VALUES (
+    v_test_user_id,
+    'Test Mission Notification',
+    'Test',
+    'Plomberie',
+    'pending',
+    48.8566,
+    2.3522
+  )
+  RETURNING id INTO v_test_mission_id;
+  
+  RAISE NOTICE '✅ Mission test créée: %', v_test_mission_id;
+  
+  -- Insérer une notification directement
+  INSERT INTO notifications (
+    user_id,
+    type,
+    title,
+    message,
+    data,
+    is_read
+  )
+  VALUES (
+    v_test_user_id,
+    'mission_accepted',
+    'Test Notification',
+    'Ceci est un test de notification',
+    jsonb_build_object('mission_id', v_test_mission_id),
+    false
+  )
+  RETURNING id INTO v_notification_id;
+  
+  RAISE NOTICE '✅ Notification test créée: %', v_notification_id;
+  RAISE NOTICE '';
+  RAISE NOTICE '🎯 VÉRIFICATION: Regardez dans votre app si la notification apparaît !';
+  RAISE NOTICE '   User ID: %', v_test_user_id;
+  RAISE NOTICE '   Mission ID: %', v_test_mission_id;
+  RAISE NOTICE '   Notification ID: %', v_notification_id;
+  
+  -- Nettoyer les données de test
+  DELETE FROM notifications WHERE id = v_notification_id;
+  DELETE FROM missions WHERE id = v_test_mission_id;
+  DELETE FROM clients WHERE id = v_test_user_id;
+  DELETE FROM users WHERE id = v_test_user_id;
+  
+  RAISE NOTICE '';
+  RAISE NOTICE '🧹 Données de test nettoyées';
+  
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE '❌ ERREUR lors du test: %', SQLERRM;
+  
+  -- Nettoyer en cas d'erreur
+  DELETE FROM notifications WHERE user_id = v_test_user_id;
+  DELETE FROM missions WHERE client_id = v_test_user_id;
+  DELETE FROM clients WHERE id = v_test_user_id;
+  DELETE FROM users WHERE id = v_test_user_id;
+END $$;
+
+DO $$
+BEGIN
+  RAISE NOTICE '';
+  RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+  RAISE NOTICE '🎯 RÉSUMÉ';
+  RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+  RAISE NOTICE '';
+  RAISE NOTICE '✅ Si tout est vert ci-dessus, la configuration est correcte';
+  RAISE NOTICE '📱 Le problème est probablement dans le code frontend';
+  RAISE NOTICE '';
+  RAISE NOTICE '🔍 Prochaine étape:';
+  RAISE NOTICE '   1. Vérifier que le client écoute bien les notifications';
+  RAISE NOTICE '   2. Vérifier les permissions RLS';
+  RAISE NOTICE '   3. Vérifier les logs console dans l''app';
+  RAISE NOTICE '';
 END $$;
