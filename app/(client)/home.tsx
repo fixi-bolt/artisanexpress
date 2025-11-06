@@ -49,6 +49,7 @@ export default function ClientHomeScreen() {
   const hasNavigated = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
+  const [mapProgress, setMapProgress] = useState(0.5);
 
   useScreenTracking('client_home');
 
@@ -79,6 +80,7 @@ export default function ClientHomeScreen() {
 
   const handleSnapPointChange = useCallback((snapPoint: SnapPoint, progress: number) => {
     console.log('[ClientHome] Bottom sheet snap point:', snapPoint, 'progress:', progress);
+    setMapProgress(1 - progress);
   }, []);
 
   return (
@@ -86,6 +88,7 @@ export default function ClientHomeScreen() {
       <InteractiveBackgroundMap
         isVisible={true}
         artisans={availableArtisans}
+        progress={mapProgress}
         onArtisanPress={(artisan) => {
           console.log('[ClientHome] Artisan selected from map:', artisan.name);
           router.push(`/request?artisanId=${artisan.id}` as any);
