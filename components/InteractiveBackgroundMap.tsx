@@ -28,80 +28,33 @@ export function InteractiveBackgroundMap({
   });
 
   const [selectedArtisan, setSelectedArtisan] = useState<Artisan | null>(null);
-  const [isMapReady, setIsMapReady] = useState(false);
-  const [hasCentered, setHasCentered] = useState(false);
 
   useEffect(() => {
     console.log('[InteractiveBackgroundMap] Visibility changed:', isVisible);
   }, [isVisible]);
 
-  // Recentrer la carte dès que la position ET la carte sont prêtes
   useEffect(() => {
-    if (position && mapRef.current && isMapReady && isVisible && !hasCentered) {
-      console.log('[InteractiveBackgroundMap] Initial centering on user position:', position);
+    if (position && mapRef.current && isVisible) {
+      console.log('[InteractiveBackgroundMap] Centering map on user position:', position);
       
       const region = {
         latitude: position.latitude,
         longitude: position.longitude,
-        latitudeDelta: 0.02, // Zoom plus serré
-        longitudeDelta: 0.02,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
       };
 
       if (Platform.OS === 'web') {
         if (mapRef.current?.panTo) {
-          mapRef.current.panTo({ 
-            lat: position.latitude, 
-            lng: position.longitude 
-          });
-          if (mapRef.current?.setZoom) {
-            mapRef.current.setZoom(15); // Zoom plus proche
-          }
+          mapRef.current.panTo({ lat: position.latitude, lng: position.longitude });
         }
       } else {
         if (mapRef.current?.animateToRegion) {
           mapRef.current.animateToRegion(region, 1000);
         }
       }
-      
-      setHasCentered(true);
     }
-  }, [position, isMapReady, isVisible, hasCentered]);
-
-  // Forcer le recentrage quand la carte redevient visible
-  useEffect(() => {
-    if (isVisible && position && isMapReady) {
-      console.log('[InteractiveBackgroundMap] Recentering due to visibility');
-      
-      const timer = setTimeout(() => {
-        const region = {
-          latitude: position.latitude,
-          longitude: position.longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        };
-
-        if (Platform.OS === 'web') {
-          if (mapRef.current?.panTo) {
-            mapRef.current.panTo({ 
-              lat: position.latitude, 
-              lng: position.longitude 
-            });
-          }
-        } else {
-          if (mapRef.current?.animateToRegion) {
-            mapRef.current.animateToRegion(region, 500);
-          }
-        }
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible, position, isMapReady]);
-
-  const handleMapReady = () => {
-    console.log('[InteractiveBackgroundMap] Map is ready');
-    setIsMapReady(true);
-  };
+  }, [position, isVisible]);
 
   const nearbyArtisans = useMemo(() => {
     if (!position) return artisans;
@@ -126,14 +79,19 @@ export function InteractiveBackgroundMap({
     onArtisanPress?.(artisan);
   };
 
-  // NE PAS utiliser initialRegion pour éviter Paris par défaut
-  // À la place, on laisse la carte vide jusqu'à ce qu'on ait la position
-  const mapRegion = position ? {
-    latitude: position.latitude,
-    longitude: position.longitude,
-    latitudeDelta: 0.02,
-    longitudeDelta: 0.02,
-  } : undefined;
+  const initialRegion = position
+    ? {
+        latitude: position.latitude,
+        longitude: position.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }
+    : {
+        latitude: 48.8566,
+        longitude: 2.3522,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
+      };
 
   if (!hasPermission) {
     return (
@@ -149,13 +107,12 @@ export function InteractiveBackgroundMap({
     );
   }
 
-  if (isLoading || !position) {
+  if (isLoading) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <Navigation size={32} color={Colors.primary} />
           <Text style={styles.loadingText}>Localisation en cours...</Text>
-          <Text style={styles.loadingSubtext}>Chargement de votre position...</Text>
         </View>
       </View>
     );
@@ -166,56 +123,51 @@ export function InteractiveBackgroundMap({
       style={styles.container}
       pointerEvents="box-none"
     >
-      {/* Afficher la carte SEULEMENT quand on a la position */}
-      {position && (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          region={mapRegion} // Utiliser region au lieu de initialRegion
-          showsUserLocation={true}
-          showsMyLocationButton={false}
-          showsCompass={false}
-          zoomEnabled={true}
-          scrollEnabled={true}
-          rotateEnabled={true}
-          pitchEnabled={true}
-          zoomControlEnabled={true}
-          minZoomLevel={12}
-          maxZoomLevel={20}
-          testID="background-map"
-          onMapReady={handleMapReady}
-          onLayout={handleMapReady}
-        >
-          {nearbyArtisans.map((artisan) => {
-            if (!artisan.location) return null;
-            
-            return (
-              <Marker
-                key={artisan.id}
-                coordinate={{
-                  latitude: artisan.location.latitude,
-                  longitude: artisan.location.longitude,
-                }}
-                title={artisan.name}
-                description={`${artisan.category} - ${artisan.hourlyRate}€/h`}
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        initialRegion={initialRegion}
+        showsUserLocation={true}
+        showsMyLocationButton={false}
+        showsCompass={false}
+        zoomEnabled={true}
+        scrollEnabled={true}
+        rotateEnabled={true}
+        pitchEnabled={true}
+        zoomControlEnabled={true}
+        minZoomLevel={3}
+        maxZoomLevel={20}
+        testID="background-map"
+      >
+        {nearbyArtisans.map((artisan) => {
+          if (!artisan.location) return null;
+          
+          return (
+            <Marker
+              key={artisan.id}
+              coordinate={{
+                latitude: artisan.location.latitude,
+                longitude: artisan.location.longitude,
+              }}
+              title={artisan.name}
+              description={`${artisan.category} - ${artisan.hourlyRate}€/h`}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.markerContainer,
+                  selectedArtisan?.id === artisan.id && styles.markerSelected,
+                ]}
+                onPress={() => handleMarkerPress(artisan)}
+                activeOpacity={0.8}
               >
-                <TouchableOpacity
-                  style={[
-                    styles.markerContainer,
-                    selectedArtisan?.id === artisan.id && styles.markerSelected,
-                  ]}
-                  onPress={() => handleMarkerPress(artisan)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.markerInner}>
-                    <MapPin size={20} color={Colors.surface} fill={Colors.primary} />
-                  </View>
-                </TouchableOpacity>
-              </Marker>
-            );
-          })}
-        </MapView>
-      )}
+                <View style={styles.markerInner}>
+                  <MapPin size={20} color={Colors.surface} fill={Colors.primary} />
+                </View>
+              </TouchableOpacity>
+            </Marker>
+          );
+        })}
+      </MapView>
 
       {selectedArtisan && (
         <View style={styles.artisanCardOverlay}>
@@ -247,37 +199,7 @@ export function InteractiveBackgroundMap({
         </View>
       )}
 
-      {/* Bouton de recentrage */}
-      {position && isMapReady && (
-        <TouchableOpacity
-          style={styles.recenterButton}
-          onPress={() => {
-            if (mapRef.current && position) {
-              const region = {
-                latitude: position.latitude,
-                longitude: position.longitude,
-                latitudeDelta: 0.02,
-                longitudeDelta: 0.02,
-              };
-              
-              if (Platform.OS === 'web') {
-                if (mapRef.current?.panTo) {
-                  mapRef.current.panTo({ 
-                    lat: position.latitude, 
-                    lng: position.longitude 
-                  });
-                }
-              } else {
-                if (mapRef.current?.animateToRegion) {
-                  mapRef.current.animateToRegion(region, 1000);
-                }
-              }
-            }
-          }}
-        >
-          <Navigation size={20} color={Colors.primary} />
-        </TouchableOpacity>
-      )}
+
     </View>
   );
 }
@@ -344,11 +266,6 @@ const styles = StyleSheet.create({
     fontSize: DesignTokens.typography.fontSize.base,
     color: Colors.textSecondary,
     marginTop: DesignTokens.spacing[3],
-  },
-  loadingSubtext: {
-    fontSize: DesignTokens.typography.fontSize.sm,
-    color: Colors.textSecondary,
-    marginTop: DesignTokens.spacing[2],
   },
   markerContainer: {
     width: 40,
@@ -434,19 +351,29 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     marginLeft: 'auto' as any,
   },
-  recenterButton: {
+  statsOverlay: {
     position: 'absolute',
     top: DesignTokens.spacing[4],
     right: DesignTokens.spacing[4],
+    zIndex: 5,
+  },
+  statsCard: {
     backgroundColor: Colors.surface,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: DesignTokens.borderRadius.lg,
+    padding: DesignTokens.spacing[3],
     ...DesignTokens.shadows.lg,
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    zIndex: 5,
+    alignItems: 'center',
+  },
+  statsNumber: {
+    fontSize: DesignTokens.typography.fontSize.xl,
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+    color: Colors.primary,
+  },
+  statsLabel: {
+    fontSize: DesignTokens.typography.fontSize.xs,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
 });

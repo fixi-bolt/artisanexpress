@@ -56,6 +56,9 @@ export function BoltBottomSheet({
   const scrollViewRef = useRef<ScrollView>(null);
   
   // Séparer complètement la gestion des gestes
+  const isScrollViewScrolling = useRef(false);
+  const lastScrollTimestamp = useRef(0);
+  const scrollStartOffset = useRef(0);
   
   // Use ref for snapPoints to avoid stale closures
   const snapPointsRef = useRef(snapPoints);
@@ -96,14 +99,18 @@ export function BoltBottomSheet({
     }
   }, [initialSnapPoint, snapToPoint]);
 
-  // CORRECTION : Animated overlay opacity - Overlay seulement quand le bottom sheet est très bas
-  const overlayOpacity = translateY.interpolate({
+  // Calcul de la hauteur dynamique pour le ScrollView
+  const scrollViewHeight = translateY.interpolate({
     inputRange: [
       SCREEN_HEIGHT - snapPointsRef.current.full,
-      SCREEN_HEIGHT - snapPointsRef.current.half,
+      SCREEN_HEIGHT - snapPointsRef.current.half, 
       SCREEN_HEIGHT - snapPointsRef.current.closed,
     ],
-    outputRange: [0, 0, 0], // Pas d'overlay
+    outputRange: [
+      snapPointsRef.current.full - 100, // Hauteur en position full (moins l'espace pour le header/poignée)
+      snapPointsRef.current.half - 100,  // Hauteur en position half
+      snapPointsRef.current.closed - 80, // Hauteur en position closed
+    ],
     extrapolate: 'clamp',
   });
 
@@ -137,7 +144,7 @@ export function BoltBottomSheet({
       onPanResponderRelease: (_, gestureState) => {
         translateY.flattenOffset();
 
-        const { vy } = gestureState;
+        const { vy, dy } = gestureState;
         let currentPosition = 0;
         translateY.stopAnimation((value) => {
           currentPosition = value;
@@ -188,7 +195,21 @@ export function BoltBottomSheet({
     })
   ).current;
 
+  // Gestion séparée du scroll
+  const handleScrollBeginDrag = useCallback(() => {
+    isScrollViewScrolling.current = true;
+    scrollStartOffset.current = Date.now();
+  }, []);
 
+  const handleScrollEndDrag = useCallback(() => {
+    isScrollViewScrolling.current = false;
+    lastScrollTimestamp.current = Date.now();
+  }, []);
+
+  const handleMomentumScrollEnd = useCallback(() => {
+    isScrollViewScrolling.current = false;
+    lastScrollTimestamp.current = Date.now();
+  }, []);
 
   // PanResponder pour le header (zone non-scrollable)
   const headerPanResponder = useRef(
@@ -208,52 +229,20 @@ export function BoltBottomSheet({
         [null, { dy: translateY }],
         { useNativeDriver: false }
       ),
-      onPanResponderRelease: (_, gestureState) => {
-        translateY.flattenOffset();
-
-        const { vy } = gestureState;
-        let currentPosition = 0;
-        translateY.stopAnimation((value) => {
-          currentPosition = value;
-        });
-
-        let targetSnapPoint: SnapPoint = currentSnapPointRef.current;
-
-        if (Math.abs(vy) > VELOCITY_THRESHOLD) {
-          if (vy < 0) {
-            targetSnapPoint = currentSnapPointRef.current === 'closed' ? 'half' : 'full';
-          } else {
-            if (!enablePanDownToClose && currentSnapPointRef.current === 'half') {
-              targetSnapPoint = 'half';
-            } else {
-              targetSnapPoint = currentSnapPointRef.current === 'full' ? 'half' : 'closed';
-            }
-          }
-        } else {
-          const distances = {
-            closed: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.closed)),
-            half: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.half)),
-            full: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.full)),
-          };
-
-          let closest: SnapPoint = 'half';
-          let minDistance = Infinity;
-
-          (Object.keys(distances) as SnapPoint[]).forEach((point) => {
-            if (distances[point] < minDistance) {
-              if (point === 'closed' && !enablePanDownToClose && currentSnapPointRef.current === 'half') return;
-              minDistance = distances[point];
-              closest = point;
-            }
-          });
-
-          targetSnapPoint = closest;
-        }
-
-        snapToPoint(targetSnapPoint);
-      },
+      onPanResponderRelease: panResponder.panHandlers.onPanResponderRelease,
     })
   ).current;
+
+  // CORRECTION : Animated overlay opacity ajustée pour éviter l'assombrissement à 50%
+  const overlayOpacity = translateY.interpolate({
+    inputRange: [
+      SCREEN_HEIGHT - snapPointsRef.current.full,
+      SCREEN_HEIGHT - snapPointsRef.current.half * 0.8, // Commencer plus bas
+      SCREEN_HEIGHT - snapPointsRef.current.closed,
+    ],
+    outputRange: [0, 0, 0.5], // Overlay seulement en position fermée/très basse
+    extrapolate: 'clamp',
+  });
 
   return (
     <>
@@ -297,14 +286,19 @@ export function BoltBottomSheet({
           </View>
         )}
 
-        {/* ScrollView avec hauteur dynamique */}
-        <ScrollView
+        {/* ScrollView avec hauteur dynamique - SOLUTION AMÉLIORÉE */}
+        <Animated.ScrollView
           ref={scrollViewRef}
-          style={styles.scrollView}
+          style={[
+            styles.scrollView,
+            {
+              maxHeight: scrollViewHeight,
+            }
+          ]}
           contentContainerStyle={[
             styles.scrollContent,
             { 
-              paddingBottom: Math.max(insets.bottom + 40, 80),
+              paddingBottom: Math.max(insets.bottom + 40, 80), // Padding réduit pour plus d'espace
             }
           ]}
           showsVerticalScrollIndicator={true}
@@ -312,9 +306,13 @@ export function BoltBottomSheet({
           bounces={true}
           scrollEnabled={true}
           alwaysBounceVertical={true}
+          onScrollBeginDrag={handleScrollBeginDrag}
+          onScrollEndDrag={handleScrollEndDrag}
+          onMomentumScrollBegin={handleScrollBeginDrag}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
         >
           {children}
-        </ScrollView>
+        </Animated.ScrollView>
       </Animated.View>
     </>
   );
