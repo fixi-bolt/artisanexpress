@@ -114,6 +114,18 @@ export function BoltBottomSheet({
     extrapolate: 'clamp',
   });
 
+  // CORRECTION : Animated overlay opacity - Overlay seulement quand le bottom sheet est très bas
+  const overlayOpacity = translateY.interpolate({
+    inputRange: [
+      SCREEN_HEIGHT - snapPointsRef.current.full,
+      SCREEN_HEIGHT - snapPointsRef.current.half,
+      SCREEN_HEIGHT - snapPointsRef.current.closed + 50, // Commencer l'overlay seulement très bas
+      SCREEN_HEIGHT - snapPointsRef.current.closed,
+    ],
+    outputRange: [0, 0, 0.2, 0.5], // Overlay progressif seulement en position très basse
+    extrapolate: 'clamp',
+  });
+
   // PanResponder uniquement pour la poignée et les zones non-scrollables
   const panResponder = useRef(
     PanResponder.create({
@@ -233,17 +245,6 @@ export function BoltBottomSheet({
     })
   ).current;
 
-  // CORRECTION : Animated overlay opacity ajustée pour éviter l'assombrissement à 50%
-  const overlayOpacity = translateY.interpolate({
-    inputRange: [
-      SCREEN_HEIGHT - snapPointsRef.current.full,
-      SCREEN_HEIGHT - snapPointsRef.current.half * 0.8, // Commencer plus bas
-      SCREEN_HEIGHT - snapPointsRef.current.closed,
-    ],
-    outputRange: [0, 0, 0.5], // Overlay seulement en position fermée/très basse
-    extrapolate: 'clamp',
-  });
-
   return (
     <>
       {/* Backdrop overlay */}
@@ -286,7 +287,7 @@ export function BoltBottomSheet({
           </View>
         )}
 
-        {/* ScrollView avec hauteur dynamique - SOLUTION AMÉLIORÉE */}
+        {/* ScrollView avec hauteur dynamique */}
         <Animated.ScrollView
           ref={scrollViewRef}
           style={[
@@ -298,7 +299,7 @@ export function BoltBottomSheet({
           contentContainerStyle={[
             styles.scrollContent,
             { 
-              paddingBottom: Math.max(insets.bottom + 40, 80), // Padding réduit pour plus d'espace
+              paddingBottom: Math.max(insets.bottom + 40, 80),
             }
           ]}
           showsVerticalScrollIndicator={true}
