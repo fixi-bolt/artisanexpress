@@ -99,7 +99,20 @@ export function BoltBottomSheet({
     }
   }, [initialSnapPoint, snapToPoint]);
 
-
+  // Calcul de la hauteur dynamique pour le ScrollView
+  const scrollViewHeight = translateY.interpolate({
+    inputRange: [
+      SCREEN_HEIGHT - snapPointsRef.current.full,
+      SCREEN_HEIGHT - snapPointsRef.current.half, 
+      SCREEN_HEIGHT - snapPointsRef.current.closed,
+    ],
+    outputRange: [
+      snapPointsRef.current.full - 100, // Hauteur en position full (moins l'espace pour le header/poignée)
+      snapPointsRef.current.half - 100,  // Hauteur en position half
+      snapPointsRef.current.closed - 80, // Hauteur en position closed
+    ],
+    extrapolate: 'clamp',
+  });
 
   // PanResponder uniquement pour la poignée et les zones non-scrollables
   const panResponder = useRef(
@@ -316,8 +329,15 @@ export function BoltBottomSheet({
           </View>
         )}
 
-        {/* ScrollView - SIMPLIFIÉ */}
-        <View style={styles.scrollViewWrapper}>
+        {/* ScrollView avec hauteur dynamique - SOLUTION AMÉLIORÉE */}
+        <Animated.View
+          style={[
+            styles.scrollViewWrapper,
+            {
+              height: scrollViewHeight,
+            }
+          ]}
+        >
           <ScrollView
             ref={scrollViewRef}
             style={styles.scrollView}
@@ -339,7 +359,7 @@ export function BoltBottomSheet({
           >
             {children}
           </ScrollView>
-        </View>
+        </Animated.View>
       </Animated.View>
     </>
   );
@@ -384,7 +404,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   scrollViewWrapper: {
-    flex: 1,
     overflow: 'hidden',
   },
   scrollView: { 
