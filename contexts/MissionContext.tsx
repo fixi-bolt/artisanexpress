@@ -16,34 +16,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
-  useEffect(() => {
-    if (!user) {
-      setMissions([]);
-      setNotifications([]);
-      setIsLoading(false);
-      return;
-    }
-
-    loadMissions();
-    loadNotifications();
-    setupRealtimeSubscription();
-
-    return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-    };
-  }, [user?.id]);
-
-  useEffect(() => {
-    const active = missions.find(
-      m => (m.status === 'in_progress' || m.status === 'accepted') && 
-           (m.clientId === user?.id || m.artisanId === user?.id)
-    );
-    setActiveMission(active || null);
-  }, [missions, user?.id]);
-
-  const loadMissions = async () => {
+  const loadMissions = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -93,9 +66,9 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -123,25 +96,22 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     } catch (error) {
       console.error('❌ Error loading notifications:', error);
     }
-  };
+  }, [user]);
 
-  const setupRealtimeSubscription = () => {
-    if (!user) return;
+  const setupRealtimeSubscription = useCallback(() => {
+    if (!user) return null;
 
     const newChannel = supabase
-      .channel('missions-changes')
+      .channel(`missions-changes-${user.id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'missions',
-          filter: user.type === 'client' 
-            ? `client_id=eq.${user.id}` 
-            : undefined,
         },
         (payload) => {
-          console.log('✅ Mission updated in realtime:', payload);
+          console.log('🔔 Realtime: Mission changed', payload);
           loadMissions();
         }
       )
@@ -154,14 +124,58 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           filter: `user_id=eq.${user.id}`,
         },
         () => {
-          console.log('✅ New notification');
+          console.log('🔔 Realtime: New notification');
           loadNotifications();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('🔔 Realtime subscription status:', status);
+      });
 
-    setChannel(newChannel);
-  };
+    return newChannel;
+  }, [user, loadMissions, loadNotifications]);
+
+  useEffect(() => {
+    if (!user) {
+      setMissions([]);
+      setNotifications([]);
+      setIsLoading(false);
+      if (channel) {
+        supabase.removeChannel(channel);
+        setChannel(null);
+      }
+      return;
+    }
+
+    let currentChannel: RealtimeChannel | null = null;
+
+    const initializeData = async () => {
+      console.log('🚀 Initializing MissionContext for user:', user.id, 'type:', user.type);
+      
+      const newChannel = setupRealtimeSubscription();
+      currentChannel = newChannel;
+      setChannel(newChannel);
+      
+      await Promise.all([loadMissions(), loadNotifications()]);
+    };
+
+    initializeData();
+
+    return () => {
+      console.log('🧹 Cleaning up realtime channel');
+      if (currentChannel) {
+        supabase.removeChannel(currentChannel);
+      }
+    };
+  }, [user?.id, setupRealtimeSubscription, loadMissions, loadNotifications]);
+
+  useEffect(() => {
+    const active = missions.find(
+      m => (m.status === 'in_progress' || m.status === 'accepted') && 
+           (m.clientId === user?.id || m.artisanId === user?.id)
+    );
+    setActiveMission(active || null);
+  }, [missions, user?.id]);
 
   const createMission = useCallback(async (data: {
     category: ArtisanCategory;
@@ -218,35 +232,26 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         });
       }
 
-      supabase.from('notifications').insert({
+      await supabase.from('notifications').insert({
         user_id: user.id,
         type: 'mission_request',
         title: 'Nouvelle demande créée',
         message: `Demande "${data.title}" en attente d'un artisan`,
         mission_id: missionData.id,
-      }).then(() => {
-        console.log('✅ Notification created');
+        is_read: false,
       });
-
-      sendNotification({
-        userId: user.id,
-        title: 'Nouvelle demande créée',
-        message: `Demande "${data.title}" en attente d'un artisan`,
-        type: 'mission_request',
-        missionId: missionData.id,
-      });
-
-      loadMissions();
       
       return missionData;
     } catch (error: any) {
       console.error('❌ Error in createMission:', error);
       throw error;
     }
-  }, [user, sendNotification]);
+  }, [user]);
 
   const acceptMission = useCallback(async (missionId: string, artisanId: string) => {
     try {
+      console.log('🎯 Accepting mission:', missionId, 'by artisan:', artisanId);
+      
       const { error: updateError } = await supabase
         .from('missions')
         .update({
@@ -259,18 +264,12 @@ export const [MissionContext, useMissions] = createContextHook(() => {
 
       if (updateError) throw updateError;
 
-      await loadMissions();
-      
-      setTimeout(() => {
-        loadMissions();
-        loadNotifications();
-      }, 1000);
       console.log('✅ Mission accepted:', missionId);
     } catch (error) {
       console.error('❌ Error accepting mission:', error);
       throw error;
     }
-  }, [missions, sendNotification]);
+  }, []);
 
   const startMission = useCallback(async (missionId: string) => {
     try {
@@ -281,7 +280,6 @@ export const [MissionContext, useMissions] = createContextHook(() => {
 
       if (error) throw error;
 
-      await loadMissions();
       console.log('✅ Mission started:', missionId);
     } catch (error) {
       console.error('❌ Error starting mission:', error);
@@ -310,6 +308,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           title: 'Mission terminée',
           message: `Montant: ${finalPrice}€. Notez votre artisan !`,
           mission_id: missionId,
+          is_read: false,
         });
 
         sendNotification({
@@ -321,7 +320,6 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         });
       }
 
-      await loadMissions();
       console.log('✅ Mission completed:', missionId, finalPrice);
     } catch (error) {
       console.error('❌ Error completing mission:', error);
@@ -338,7 +336,6 @@ export const [MissionContext, useMissions] = createContextHook(() => {
 
       if (error) throw error;
 
-      await loadMissions();
       console.log('✅ Mission cancelled:', missionId);
     } catch (error) {
       console.error('❌ Error cancelling mission:', error);
@@ -357,14 +354,12 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         .eq('id', missionId);
 
       if (error) throw error;
-
-      await loadMissions();
     } catch (error) {
       console.error('❌ Error updating artisan location:', error);
     }
   }, []);
 
-  const getUserMissions = () => {
+  const getUserMissions = useCallback(() => {
     if (!user) return [];
     
     if (user.type === 'client') {
@@ -372,16 +367,16 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     } else {
       return missions.filter(m => m.artisanId === user.id);
     }
-  };
+  }, [missions, user]);
 
-  const getPendingMissionsForArtisan = () => {
+  const getPendingMissionsForArtisan = useCallback(() => {
     if (!user || user.type !== 'artisan') return [];
     
     return missions.filter(m => 
       m.status === 'pending' && 
       m.category === (user as any).category
     );
-  };
+  }, [missions, user]);
 
   const markNotificationAsRead = useCallback(async (notificationId: string) => {
     try {
@@ -400,9 +395,10 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     }
   }, []);
 
-  const unreadNotificationsCount = notifications.filter(n => 
-    n.userId === user?.id && !n.read
-  ).length;
+  const unreadNotificationsCount = useMemo(() => 
+    notifications.filter(n => n.userId === user?.id && !n.read).length,
+    [notifications, user?.id]
+  );
 
   return useMemo(() => ({
     missions,
@@ -425,14 +421,18 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     missions,
     activeMission,
     notifications,
+    unreadNotificationsCount,
     isLoading,
-    user?.id,
     createMission,
     acceptMission,
     startMission,
     completeMission,
     cancelMission,
     updateArtisanLocation,
+    getUserMissions,
+    getPendingMissionsForArtisan,
     markNotificationAsRead,
+    loadMissions,
+    loadNotifications,
   ]);
 });
