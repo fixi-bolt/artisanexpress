@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { safeNavigateBackOrFallback } from '@/utils/safeNavigateBack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { mockArtisans, categories } from '@/mocks/artisans';
@@ -79,7 +80,7 @@ export default function AllArtisansScreen() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: (Platform.OS === 'ios' ? insets.top : 12) as number }]}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => safeNavigateBackOrFallback('/(client)/home')}
           style={styles.backBtn}
           activeOpacity={0.7}
           testID="back"
