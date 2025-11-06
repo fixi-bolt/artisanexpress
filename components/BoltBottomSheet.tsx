@@ -58,7 +58,6 @@ export function BoltBottomSheet({
   const scrollContentHeight = useRef(0);
   const scrollViewHeight = useRef(0);
   const isDraggingSheet = useRef(false);
-  const [scrollEnabled, setScrollEnabled] = useState(true);
   
   // Track if content is scrollable
   const isContentScrollable = useRef(false);
@@ -122,6 +121,7 @@ export function BoltBottomSheet({
         // Allow dragging down if at the top (for any snap point)
         if (isDraggingDown && isAtTop) {
           if (!enablePanDownToClose && currentSnapPointRef.current === 'closed') return false;
+          isDraggingSheet.current = true;
           return true;
         }
 
@@ -130,9 +130,11 @@ export function BoltBottomSheet({
         // - OR at bottom of scrollable content
         if (isDraggingUp) {
           if (isAtTop && currentSnapPointRef.current !== 'full') {
+            isDraggingSheet.current = true;
             return true;
           }
           if (isAtBottom && currentSnapPointRef.current !== 'full' && isContentScrollable.current) {
+            isDraggingSheet.current = true;
             return true;
           }
         }
@@ -142,7 +144,10 @@ export function BoltBottomSheet({
 
       onPanResponderGrant: () => {
         isDraggingSheet.current = true;
-        setScrollEnabled(false);
+        // Force disable scroll immediately
+        if (scrollViewRef.current) {
+          (scrollViewRef.current as any).setNativeProps?.({ scrollEnabled: false });
+        }
         translateY.stopAnimation((currentValue) => {
           translateY.setOffset(currentValue);
           translateY.setValue(0);
@@ -156,6 +161,11 @@ export function BoltBottomSheet({
 
       onPanResponderRelease: (_, gestureState) => {
         translateY.flattenOffset();
+        
+        // Re-enable scroll
+        if (scrollViewRef.current) {
+          (scrollViewRef.current as any).setNativeProps?.({ scrollEnabled: true });
+        }
 
         const { vy } = gestureState;
         let currentPosition = 0;
@@ -199,16 +209,20 @@ export function BoltBottomSheet({
         }
 
         snapToPoint(targetSnapPoint);
-        
-        // Re-enable scroll immediately after snap
-        isDraggingSheet.current = false;
-        setScrollEnabled(true);
+
+        // Small delay to prevent gesture conflicts
+        setTimeout(() => {
+          isDraggingSheet.current = false;
+        }, 100);
       },
 
       onPanResponderTerminate: () => {
         translateY.flattenOffset();
         isDraggingSheet.current = false;
-        setScrollEnabled(true);
+        // Re-enable scroll
+        if (scrollViewRef.current) {
+          (scrollViewRef.current as any).setNativeProps?.({ scrollEnabled: true });
+        }
         snapToPoint(currentSnapPointRef.current);
       },
     })
@@ -296,14 +310,15 @@ export function BoltBottomSheet({
           ]}
           showsVerticalScrollIndicator={true}
           scrollEventThrottle={16}
-          bounces={currentSnapPoint === 'full'}
-          scrollEnabled={scrollEnabled && currentSnapPoint === 'full'}
+          bounces={true}
+          scrollEnabled={!isDraggingSheet.current}
           onScroll={handleScroll}
           onContentSizeChange={handleContentSizeChange}
           onLayout={handleScrollViewLayout}
           onScrollBeginDrag={() => {
             isDraggingSheet.current = false;
           }}
+          nestedScrollEnabled={false}
         >
           {children}
         </ScrollView>
