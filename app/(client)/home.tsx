@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DesignTokens } from '@/constants/design-tokens';
 import { useMissions } from '@/contexts/MissionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,7 +10,7 @@ import Colors from '@/constants/colors';
 import { Search, ChevronDown, ChevronUp, Star, MapPin } from 'lucide-react-native';
 import { useSupabaseArtisans } from '@/hooks/useSupabaseArtisans';
 import { InteractiveBackgroundMap } from '@/components/InteractiveBackgroundMap';
-import { BoltBottomSheet } from '@/components/BoltBottomSheet';
+import { BoltBottomSheet, SnapPoint } from '@/components/BoltBottomSheet';
 
 const SPECIALTIES = [
   { id: 'plumber', label: 'Plombier', emoji: '🔧', visible: true },
@@ -42,11 +43,13 @@ const SPECIALTIES = [
 
 export default function ClientHomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { activeMission } = useMissions();
   const hasNavigated = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
+  const [mapProgress, setMapProgress] = useState(0.5);
 
   useScreenTracking('client_home');
 
@@ -75,11 +78,17 @@ export default function ClientHomeScreen() {
 
   const availableArtisans = artisans;
 
+  const handleSnapPointChange = useCallback((snapPoint: SnapPoint, progress: number) => {
+    console.log('[ClientHome] Bottom sheet snap point:', snapPoint, 'progress:', progress);
+    setMapProgress(1 - progress);
+  }, []);
+
   return (
     <View style={styles.container}>
       <InteractiveBackgroundMap
         isVisible={true}
         artisans={availableArtisans}
+        progress={mapProgress}
         onArtisanPress={(artisan) => {
           console.log('[ClientHome] Artisan selected from map:', artisan.name);
           router.push(`/request?artisanId=${artisan.id}` as any);
@@ -88,6 +97,7 @@ export default function ClientHomeScreen() {
 
       <BoltBottomSheet
         initialSnapPoint="half"
+        onSnapPointChange={handleSnapPointChange}
         headerComponent={
           <View style={styles.sheetHeader}>
             <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
