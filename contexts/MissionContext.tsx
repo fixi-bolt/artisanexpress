@@ -115,7 +115,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         title: n.title,
         message: n.message,
         missionId: n.mission_id || undefined,
-        read: n.read,
+        read: n.is_read,
         createdAt: new Date(n.created_at),
       }));
 
@@ -138,10 +138,10 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           table: 'missions',
           filter: user.type === 'client' 
             ? `client_id=eq.${user.id}` 
-            : `artisan_id=eq.${user.id}`,
+            : undefined,
         },
-        () => {
-          console.log('✅ Mission updated in realtime');
+        (payload) => {
+          console.log('✅ Mission updated in realtime:', payload);
           loadMissions();
         }
       )
@@ -259,26 +259,12 @@ export const [MissionContext, useMissions] = createContextHook(() => {
 
       if (updateError) throw updateError;
 
-      const mission = missions.find(m => m.id === missionId);
-      if (mission) {
-        await supabase.from('notifications').insert({
-          user_id: mission.clientId,
-          type: 'mission_accepted',
-          title: 'Mission acceptée !',
-          message: 'Un artisan arrive bientôt',
-          mission_id: missionId,
-        });
-
-        sendNotification({
-          userId: mission.clientId,
-          title: 'Mission acceptée !',
-          message: 'Un artisan arrive bientôt',
-          type: 'mission_accepted',
-          missionId,
-        });
-      }
-
       await loadMissions();
+      
+      setTimeout(() => {
+        loadMissions();
+        loadNotifications();
+      }, 1000);
       console.log('✅ Mission accepted:', missionId);
     } catch (error) {
       console.error('❌ Error accepting mission:', error);
@@ -401,7 +387,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .update({ is_read: true })
         .eq('id', notificationId);
 
       if (error) throw error;
