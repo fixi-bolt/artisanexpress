@@ -14,8 +14,8 @@ import Colors from '@/constants/colors';
 import { DesignTokens } from '@/constants/design-tokens';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const MINIMUM_DRAG_DISTANCE = 8;
-const VELOCITY_THRESHOLD = 0.4;
+const MINIMUM_DRAG_DISTANCE = 5;
+const VELOCITY_THRESHOLD = 0.3;
 
 export type SnapPoint = 'closed' | 'half' | 'full';
 
@@ -54,13 +54,11 @@ export function BoltBottomSheet({
   const [currentSnapPoint, setCurrentSnapPoint] = useState<SnapPoint>(initialSnapPoint);
   const currentSnapPointRef = useRef<SnapPoint>(initialSnapPoint);
   const scrollViewRef = useRef<ScrollView>(null);
-  const scrollOffset = useRef(0);
-  const scrollContentHeight = useRef(0);
-  const scrollViewHeight = useRef(0);
-  const isDraggingSheet = useRef(false);
   
-  // Track if content is scrollable
-  const isContentScrollable = useRef(false);
+  // Séparer complètement la gestion des gestes
+  const isScrollViewScrolling = useRef(false);
+  const lastScrollTimestamp = useRef(0);
+  const scrollStartOffset = useRef(0);
   
   // Use ref for snapPoints to avoid stale closures
   const snapPointsRef = useRef(snapPoints);
@@ -101,53 +99,22 @@ export function BoltBottomSheet({
     }
   }, [initialSnapPoint, snapToPoint]);
 
+  // PanResponder uniquement pour la poignée et les zones non-scrollables
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => false,
+      
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        const { dy, dx } = gestureState;
-        if (Math.abs(dx) > Math.abs(dy)) return false;
-
-        const isDraggingDown = dy > MINIMUM_DRAG_DISTANCE;
-        const isDraggingUp = dy < -MINIMUM_DRAG_DISTANCE;
-        const isAtTop = scrollOffset.current <= 1;
+        const { dy } = gestureState;
         
-        // Check if we're at the bottom of the scroll
-        const isAtBottom = scrollContentHeight.current > 0 && scrollViewHeight.current > 0
-          ? scrollOffset.current >= (scrollContentHeight.current - scrollViewHeight.current - 1)
-          : false;
-
-        // Allow dragging down if at the top (for any snap point)
-        if (isDraggingDown && isAtTop) {
-          if (!enablePanDownToClose && currentSnapPointRef.current === 'closed') return false;
-          isDraggingSheet.current = true;
-          return true;
-        }
-
-        // Allow dragging up if:
-        // - At top and not full
-        // - OR at bottom of scrollable content
-        if (isDraggingUp) {
-          if (isAtTop && currentSnapPointRef.current !== 'full') {
-            isDraggingSheet.current = true;
-            return true;
-          }
-          if (isAtBottom && currentSnapPointRef.current !== 'full' && isContentScrollable.current) {
-            isDraggingSheet.current = true;
-            return true;
-          }
-        }
-
-        return false;
+        // Toujours capturer les gestes sur la poignée
+        return Math.abs(dy) > MINIMUM_DRAG_DISTANCE;
       },
+      
+      onMoveShouldSetPanResponderCapture: () => false,
 
       onPanResponderGrant: () => {
-        isDraggingSheet.current = true;
-        // Force disable scroll immediately
-        if (scrollViewRef.current) {
-          (scrollViewRef.current as any).setNativeProps?.({ scrollEnabled: false });
-        }
         translateY.stopAnimation((currentValue) => {
           translateY.setOffset(currentValue);
           translateY.setValue(0);
@@ -157,17 +124,12 @@ export function BoltBottomSheet({
       onPanResponderMove: Animated.event(
         [null, { dy: translateY }],
         { useNativeDriver: false }
-      ) as any,
+      ),
 
       onPanResponderRelease: (_, gestureState) => {
         translateY.flattenOffset();
-        
-        // Re-enable scroll
-        if (scrollViewRef.current) {
-          (scrollViewRef.current as any).setNativeProps?.({ scrollEnabled: true });
-        }
 
-        const { vy } = gestureState;
+        const { vy, dy } = gestureState;
         let currentPosition = 0;
         translateY.stopAnimation((value) => {
           currentPosition = value;
@@ -176,18 +138,18 @@ export function BoltBottomSheet({
         let targetSnapPoint: SnapPoint = currentSnapPointRef.current;
 
         if (Math.abs(vy) > VELOCITY_THRESHOLD) {
+          // Logique basée sur la vélocité
           if (vy < 0) {
-            targetSnapPoint =
-              currentSnapPointRef.current === 'closed' ? 'half' : 'full';
+            targetSnapPoint = currentSnapPointRef.current === 'closed' ? 'half' : 'full';
           } else {
             if (!enablePanDownToClose && currentSnapPointRef.current === 'half') {
               targetSnapPoint = 'half';
             } else {
-              targetSnapPoint =
-                currentSnapPointRef.current === 'full' ? 'half' : 'closed';
+              targetSnapPoint = currentSnapPointRef.current === 'full' ? 'half' : 'closed';
             }
           }
         } else {
+          // Logique basée sur la position
           const distances = {
             closed: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.closed)),
             half: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.half)),
@@ -209,65 +171,67 @@ export function BoltBottomSheet({
         }
 
         snapToPoint(targetSnapPoint);
-
-        // Small delay to prevent gesture conflicts
-        setTimeout(() => {
-          isDraggingSheet.current = false;
-        }, 100);
       },
 
       onPanResponderTerminate: () => {
         translateY.flattenOffset();
-        isDraggingSheet.current = false;
-        // Re-enable scroll
-        if (scrollViewRef.current) {
-          (scrollViewRef.current as any).setNativeProps?.({ scrollEnabled: true });
-        }
         snapToPoint(currentSnapPointRef.current);
       },
     })
   ).current;
 
-  // Handle scroll events
-  const handleScroll = useCallback(
-    (event: any) => {
-      scrollOffset.current = event.nativeEvent.contentOffset.y;
-    },
-    []
-  );
+  // Gestion séparée du scroll
+  const handleScrollBeginDrag = useCallback(() => {
+    isScrollViewScrolling.current = true;
+    scrollStartOffset.current = Date.now();
+  }, []);
 
-  // Track content size to determine if scrollable
-  const handleContentSizeChange = useCallback(
-    (contentWidth: number, contentHeight: number) => {
-      scrollContentHeight.current = contentHeight;
-      isContentScrollable.current = contentHeight > scrollViewHeight.current;
-    },
-    []
-  );
+  const handleScrollEndDrag = useCallback(() => {
+    isScrollViewScrolling.current = false;
+    lastScrollTimestamp.current = Date.now();
+  }, []);
 
-  // Track layout of ScrollView
-  const handleScrollViewLayout = useCallback(
-    (event: any) => {
-      const { height } = event.nativeEvent.layout;
-      scrollViewHeight.current = height;
-      isContentScrollable.current = scrollContentHeight.current > height;
-    },
-    []
-  );
+  const handleMomentumScrollEnd = useCallback(() => {
+    isScrollViewScrolling.current = false;
+    lastScrollTimestamp.current = Date.now();
+  }, []);
 
-  // Animated overlay opacity
+  // PanResponder pour le header (zone non-scrollable)
+  const headerPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const { dy } = gestureState;
+        return Math.abs(dy) > MINIMUM_DRAG_DISTANCE;
+      },
+      onPanResponderGrant: () => {
+        translateY.stopAnimation((currentValue) => {
+          translateY.setOffset(currentValue);
+          translateY.setValue(0);
+        });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dy: translateY }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: panResponder.panHandlers.onPanResponderRelease,
+    })
+  ).current;
+
+  // CORRECTION : Animated overlay opacity ajustée pour éviter l'assombrissement à 50%
   const overlayOpacity = translateY.interpolate({
     inputRange: [
       SCREEN_HEIGHT - snapPointsRef.current.full,
+      SCREEN_HEIGHT - snapPointsRef.current.half * 0.8, // Commencer plus bas
       SCREEN_HEIGHT - snapPointsRef.current.closed,
     ],
-    outputRange: [0.5, 0],
+    outputRange: [0, 0, 0.5], // Overlay seulement en position fermée/très basse
     extrapolate: 'clamp',
   });
 
   return (
     <>
-      {/* Backdrop overlay - only visible when sheet is open */}
+      {/* Backdrop overlay */}
       {enableBackdrop && (
         <Pressable
           style={[StyleSheet.absoluteFillObject, styles.backdrop]}
@@ -295,12 +259,19 @@ export function BoltBottomSheet({
           },
         ]}
       >
+        {/* Zone de poignée - toujours draggable */}
         <View style={styles.handleContainer} {...panResponder.panHandlers}>
           <View style={styles.handle} />
         </View>
 
-        {headerComponent && <View style={styles.header}>{headerComponent}</View>}
+        {/* Zone header - draggable aussi */}
+        {headerComponent && (
+          <View style={styles.header} {...headerPanResponder.panHandlers}>
+            {headerComponent}
+          </View>
+        )}
 
+        {/* ScrollView - complètement indépendant */}
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
@@ -311,14 +282,12 @@ export function BoltBottomSheet({
           showsVerticalScrollIndicator={true}
           scrollEventThrottle={16}
           bounces={true}
-          scrollEnabled={!isDraggingSheet.current}
-          onScroll={handleScroll}
-          onContentSizeChange={handleContentSizeChange}
-          onLayout={handleScrollViewLayout}
-          onScrollBeginDrag={() => {
-            isDraggingSheet.current = false;
-          }}
-          nestedScrollEnabled={false}
+          scrollEnabled={true}
+          alwaysBounceVertical={true}
+          onScrollBeginDrag={handleScrollBeginDrag}
+          onScrollEndDrag={handleScrollEndDrag}
+          onMomentumScrollBegin={handleScrollBeginDrag}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
         >
           {children}
         </ScrollView>

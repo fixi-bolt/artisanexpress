@@ -10,15 +10,15 @@ import { Artisan } from '@/types';
 interface InteractiveBackgroundMapProps {
   isVisible: boolean;
   artisans: Artisan[];
-  onArtisanPress?: (artisan: Artisan) => void;
   progress?: number;
+  onArtisanPress?: (artisan: Artisan) => void;
 }
 
 export function InteractiveBackgroundMap({
   isVisible,
   artisans,
-  onArtisanPress,
   progress = 1,
+  onArtisanPress,
 }: InteractiveBackgroundMapProps) {
   const mapRef = useRef<any>(null);
   
@@ -30,8 +30,8 @@ export function InteractiveBackgroundMap({
   const [selectedArtisan, setSelectedArtisan] = useState<Artisan | null>(null);
 
   useEffect(() => {
-    console.log('[InteractiveBackgroundMap] Visibility changed:', isVisible, 'progress:', progress);
-  }, [isVisible, progress]);
+    console.log('[InteractiveBackgroundMap] Visibility changed:', isVisible);
+  }, [isVisible]);
 
   useEffect(() => {
     if (position && mapRef.current && isVisible) {
