@@ -66,7 +66,7 @@ export default function RequestScreen() {
       console.log('📍 Reverse geocoding:', { latitude, longitude });
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
       
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
@@ -102,19 +102,6 @@ export default function RequestScreen() {
     }
 
     try {
-      console.log('Creating mission with data:', {
-        category: categoryId,
-        title: title.trim(),
-        description: description.trim(),
-        photos,
-        location: {
-          latitude: currentLatitude,
-          longitude: currentLongitude,
-          address,
-        },
-        estimatedPrice,
-      });
-
       const mission = await createMission({
         category: categoryId,
         title: title.trim(),
@@ -128,28 +115,19 @@ export default function RequestScreen() {
         estimatedPrice,
       });
 
-      console.log('✅ Mission created successfully:', mission);
-      Alert.alert(
-        'Demande envoyée !',
-        'Nous recherchons un artisan disponible. Vous serez notifié dès qu\'un artisan accepte.',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      console.log('✅ Mission created:', mission.id);
+      
+      router.back();
+      
+      setTimeout(() => {
+        Alert.alert(
+          'Demande envoyée !',
+          'Nous recherchons un artisan disponible. Vous serez notifié dès qu\'un artisan accepte.'
+        );
+      }, 500);
     } catch (error: any) {
       console.error('❌ Error creating mission:', error);
-      
-      let errorMessage = 'Une erreur est survenue lors de la création de la mission.';
-      
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.details) {
-        errorMessage = error.details;
-      } else if (error?.hint) {
-        errorMessage = error.hint;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-      
-      Alert.alert('Erreur', errorMessage);
+      Alert.alert('Erreur', error?.message || 'Une erreur est survenue');
     }
   };
 

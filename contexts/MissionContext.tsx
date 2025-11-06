@@ -177,37 +177,10 @@ export const [MissionContext, useMissions] = createContextHook(() => {
       throw error;
     }
 
-    console.log('[MissionContext] Creating mission with:', {
-      client_id: user.id,
-      category: data.category,
-      title: data.title,
-      description: data.description,
-      photos: data.photos?.length || 0,
-      latitude: data.location.latitude,
-      longitude: data.location.longitude,
-      address: data.location.address,
-      status: 'pending',
-      estimated_price: data.estimatedPrice,
-    });
+    console.log('[MissionContext] Creating mission...');
 
     try {
       const commission = data.estimatedPrice > 150 ? 0.15 : 0.10;
-
-      const tempMissionId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      let uploadedPhotoUrls: string[] = [];
-      
-      if (data.photos && data.photos.length > 0) {
-        console.log('[MissionContext] Uploading photos...');
-        try {
-          const uploadResults = await uploadMissionPhotos(data.photos, tempMissionId);
-          uploadedPhotoUrls = uploadResults.map(result => result.publicUrl);
-          console.log('[MissionContext] Photos uploaded:', uploadedPhotoUrls);
-        } catch (uploadError: any) {
-          console.error('[MissionContext] Photo upload failed:', uploadError);
-          throw new Error(`Échec de l'upload des photos: ${uploadError.message}`);
-        }
-      }
 
       const { data: missionData, error: missionError } = await supabase
         .from('missions')
@@ -216,7 +189,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           category: data.category,
           title: data.title,
           description: data.description,
-          photos: uploadedPhotoUrls,
+          photos: data.photos || [],
           latitude: data.location.latitude,
           longitude: data.location.longitude,
           address: data.location.address,
@@ -228,49 +201,46 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         .single();
 
       if (missionError) {
-        console.error('❌ Supabase error:', {
-          message: missionError.message,
-          details: missionError.details,
-          hint: missionError.hint,
-          code: missionError.code,
-        });
+        console.error('❌ Supabase error:', missionError);
         throw new Error(missionError.message || 'Failed to create mission');
       }
 
-      console.log('✅ Mission created successfully:', missionData);
+      console.log('✅ Mission created:', missionData.id);
 
-      const { error: notifError } = await supabase.from('notifications').insert({
+      if (data.photos && data.photos.length > 0) {
+        uploadMissionPhotos(data.photos, missionData.id).then(uploadResults => {
+          const uploadedPhotoUrls = uploadResults.map(result => result.publicUrl);
+          supabase.from('missions').update({ photos: uploadedPhotoUrls }).eq('id', missionData.id).then(() => {
+            console.log('✅ Photos uploaded');
+          });
+        }).catch(err => {
+          console.error('⚠️ Photo upload failed:', err);
+        });
+      }
+
+      supabase.from('notifications').insert({
         user_id: user.id,
         type: 'mission_request',
         title: 'Nouvelle demande créée',
         message: `Demande "${data.title}" en attente d'un artisan`,
         mission_id: missionData.id,
+      }).then(() => {
+        console.log('✅ Notification created');
       });
 
-      if (notifError) console.warn('Failed to create notification:', notifError);
+      sendNotification({
+        userId: user.id,
+        title: 'Nouvelle demande créée',
+        message: `Demande "${data.title}" en attente d'un artisan`,
+        type: 'mission_request',
+        missionId: missionData.id,
+      });
 
-      if (user.id) {
-        sendNotification({
-          userId: user.id,
-          title: 'Nouvelle demande créée',
-          message: `Demande "${data.title}" en attente d'un artisan`,
-          type: 'mission_request',
-          missionId: missionData.id,
-        });
-      }
-
-      await loadMissions();
-      console.log('✅ Mission list refreshed');
+      loadMissions();
       
       return missionData;
     } catch (error: any) {
-      console.error('❌ Error in createMission:', {
-        error,
-        message: error?.message,
-        details: error?.details,
-        hint: error?.hint,
-        stack: error?.stack,
-      });
+      console.error('❌ Error in createMission:', error);
       throw error;
     }
   }, [user, sendNotification]);
