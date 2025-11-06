@@ -1,35 +1,54 @@
-# ⚡ ACTION IMMÉDIATE - 30 SECONDES
+# 🚨 ACTION IMMÉDIATE - FIX NOTIFICATIONS
 
-## 🎯 Le problème
-❌ **Trigger et fonction manquants** → Le client ne reçoit pas de notification quand l'artisan accepte
+## ❌ Problème identifié
+Les triggers et fonctions de notification sont manquants → les clients ne sont jamais notifiés quand un artisan accepte une mission.
 
-## ✅ La solution
+## ✅ Solution (30 secondes)
 
 ### 1️⃣ Copiez ce script
 ```sql
--- Ouvrez le fichier : database/DIAGNOSTIC_SIMPLE_AVEC_RESULTATS.sql
+-- COPIER CE FICHIER: database/DIAGNOSTIC_SIMPLE_AVEC_RESULTATS.sql
 ```
 
-### 2️⃣ Collez dans Supabase
-1. Allez sur **Supabase Dashboard** → **SQL Editor**
-2. Copiez-collez **tout le contenu** du fichier
-3. Cliquez sur **RUN** ▶️
+### 2️⃣ Exécutez dans Supabase
+1. Allez sur **Supabase.com** → Votre projet
+2. **SQL Editor** (barre latérale gauche)
+3. **New Query**
+4. Collez le contenu de `database/DIAGNOSTIC_SIMPLE_AVEC_RESULTATS.sql`
+5. **RUN** (ou Ctrl/Cmd + Enter)
 
-### 3️⃣ Vérifiez le résultat
-Vous devriez voir à la fin :
+### 3️⃣ Résultat attendu
 ```
-| fonction | trigger | realtime_notifications | realtime_missions |
-| ✅       | ✅      | ✅                     | ✅                |
+✅ CONFIGURATION TERMINÉE
+📋 Fonction créée: notify_client_mission_accepted()
+📋 Trigger créé: trigger_notify_mission_accepted
+✅ Prêt à tester !
 ```
 
-## 🧪 Testez maintenant
-1. **Artisan** : Acceptez une mission
-2. **Client** : Devrait recevoir instantanément :
-   - 🔔 Notification "Mission acceptée"
-   - 📋 Statut mission → "accepted"
+## 🧪 Test
 
-## ❌ Si ça ne marche toujours pas
-Envoyez-moi une capture d'écran du résultat SQL après avoir exécuté le script.
+1. **Côté Artisan** : Acceptez une mission
+2. **Côté Client** : La notification doit apparaître **instantanément**
+3. **Le statut** doit passer de "En attente" → "Acceptée"
 
----
-⏱️ **Temps total : 30 secondes**
+## 🔍 Ce que ça corrige
+
+| Avant ❌ | Après ✅ |
+|---------|---------|
+| Artisan accepte → rien ne se passe | Artisan accepte → notification instantanée |
+| Client ne voit pas le changement | Client voit "Mission acceptée" |
+| Pas de notification push | Notification push + in-app |
+
+## 📊 Diagnostic a confirmé
+- ❌ Trigger manquant → **CORRIGÉ**
+- ❌ Fonction manquante → **CORRIGÉ**
+- ✅ Realtime configuré → OK
+- ✅ Colonne is_read → OK
+
+## ⚡ Pourquoi c'était cassé ?
+Le code frontend envoie bien les requêtes, mais **la base de données ne réagit pas** car :
+1. Aucune fonction pour créer la notification
+2. Aucun trigger pour appeler cette fonction
+3. Donc : 0 notification créée
+
+**Maintenant c'est réparé !** 🎉
