@@ -7,15 +7,14 @@ import {
   Dimensions,
   ScrollView,
   Platform,
-  Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { DesignTokens } from '@/constants/design-tokens';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const MINIMUM_DRAG_DISTANCE = 8;
-const VELOCITY_THRESHOLD = 0.4;
+const MINIMUM_DRAG_DISTANCE = 10;
+const VELOCITY_THRESHOLD = 0.5;
 
 export type SnapPoint = 'closed' | 'half' | 'full';
 
@@ -30,6 +29,7 @@ interface BoltBottomSheetProps {
   onSnapPointChange?: (snapPoint: SnapPoint, progress: number) => void;
   headerComponent?: React.ReactNode;
   enablePanDownToClose?: boolean;
+  backdropComponent?: React.ReactNode;
 }
 
 export function BoltBottomSheet({
@@ -48,29 +48,30 @@ export function BoltBottomSheet({
   const translateY = useRef(
     new Animated.Value(SCREEN_HEIGHT - snapPoints[initialSnapPoint])
   ).current;
+  
   const [currentSnapPoint, setCurrentSnapPoint] = useState<SnapPoint>(initialSnapPoint);
   const currentSnapPointRef = useRef<SnapPoint>(initialSnapPoint);
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollOffset = useRef(0);
-  const [scrollEnabled, setScrollEnabled] = useState(initialSnapPoint === 'full');
+  const scrollContentHeight = useRef(0);
+  const scrollViewHeight = useRef(0);
+  
+  // Track if we're currently dragging the sheet
   const isDraggingSheet = useRef(false);
-
-  const snapPointsRef = useRef(snapPoints);
-  useEffect(() => {
-    snapPointsRef.current = snapPoints;
-  }, [snapPoints]);
+  
+  // Track if content is scrollable
+  const isContentScrollable = useRef(false);
 
   const snapToPoint = useCallback(
     (snapPoint: SnapPoint, animated = true) => {
-      const targetY = SCREEN_HEIGHT - snapPointsRef.current[snapPoint];
+      const targetY = SCREEN_HEIGHT - snapPoints[snapPoint];
+      
       setCurrentSnapPoint(snapPoint);
       currentSnapPointRef.current = snapPoint;
-      setScrollEnabled(snapPoint === 'full');
-
-      const progress = snapPoint === 'full' ? 1 : snapPoint === 'half' ? 0.5 : 0;
-
+      
       if (!animated) {
         translateY.setValue(targetY);
+        const progress = snapPoint === 'full' ? 1 : snapPoint === 'half' ? 0.5 : 0;
         onSnapPointChange?.(snapPoint, progress);
         return;
       }
@@ -78,16 +79,18 @@ export function BoltBottomSheet({
       Animated.spring(translateY, {
         toValue: targetY,
         useNativeDriver: true,
-        damping: 18,
-        mass: 0.9,
-        stiffness: 90,
+        damping: 20,
+        mass: 0.8,
+        stiffness: 100,
       }).start(() => {
+        const progress = snapPoint === 'full' ? 1 : snapPoint === 'half' ? 0.5 : 0;
         onSnapPointChange?.(snapPoint, progress);
       });
     },
-    [translateY, onSnapPointChange]
+    [translateY, snapPoints, onSnapPointChange]
   );
 
+  // Update snap point if initialSnapPoint changes
   useEffect(() => {
     if (currentSnapPointRef.current !== initialSnapPoint) {
       snapToPoint(initialSnapPoint, false);
@@ -97,159 +100,223 @@ export function BoltBottomSheet({
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-
+      
       onMoveShouldSetPanResponder: (_, gestureState) => {
         const { dy, dx } = gestureState;
-        if (Math.abs(dx) > Math.abs(dy)) return false;
-
+        
+        // Ignore horizontal swipes
+        if (Math.abs(dx) > Math.abs(dy)) {
+          return false;
+        }
+        
         const isDraggingDown = dy > MINIMUM_DRAG_DISTANCE;
         const isDraggingUp = dy < -MINIMUM_DRAG_DISTANCE;
-        const isAtTop = scrollOffset.current <= 1;
-
+        const isAtTop = scrollOffset.current <= 1; // Tolerance de 1px
+        
+        // Check if we're at the bottom of the scroll
+        const isAtBottom = scrollContentHeight.current > 0 && scrollViewHeight.current > 0
+          ? scrollOffset.current >= (scrollContentHeight.current - scrollViewHeight.current - 1)
+          : false;
+        
+        // Allow dragging down ONLY if:
+        // 1. We're at the top of the scroll content (to prevent conflict with scrolling)
+        // 2. Pan down to close is enabled OR we're not at the closed position
         if (isDraggingDown && isAtTop) {
-          if (!enablePanDownToClose && currentSnapPointRef.current === 'closed') return false;
+          if (!enablePanDownToClose && currentSnapPointRef.current === 'closed') {
+            return false;
+          }
           isDraggingSheet.current = true;
           return true;
         }
-
-        if (isDraggingUp && isAtTop && currentSnapPointRef.current !== 'full') {
-          isDraggingSheet.current = true;
-          return true;
+        
+        // Allow dragging up ONLY if:
+        // 1. We're at the top of the scroll content AND we're not at full
+        // OR we're at the bottom of scrollable content
+        if (isDraggingUp) {
+          // Si on est en haut ET qu'on n'est pas en full, on peut drag le sheet
+          if (isAtTop && currentSnapPointRef.current !== 'full') {
+            isDraggingSheet.current = true;
+            return true;
+          }
+          // Si on est en bas du contenu scrollable, on peut aussi drag le sheet vers le haut
+          if (isAtBottom && currentSnapPointRef.current !== 'full' && isContentScrollable.current) {
+            isDraggingSheet.current = true;
+            return true;
+          }
         }
-
+        
         return false;
       },
-
-      onPanResponderGrant: () => {
+      
+      onPanResponderGrant: (_, gestureState) => {
+        translateY.stopAnimation();
         isDraggingSheet.current = true;
-        translateY.stopAnimation((currentValue) => {
-          translateY.setOffset(currentValue);
-          translateY.setValue(0);
-        });
       },
-
-      onPanResponderMove: Animated.event(
-        [null, { dy: translateY }],
-        { useNativeDriver: false }
-      ) as any,
-
+      
+      onPanResponderMove: (_, gestureState) => {
+        if (!isDraggingSheet.current) return;
+        
+        const { dy } = gestureState;
+        const currentY = SCREEN_HEIGHT - snapPoints[currentSnapPointRef.current];
+        const newY = currentY + dy;
+        
+        // Apply bounds with slight resistance at edges
+        const minY = SCREEN_HEIGHT - snapPoints.full;
+        const maxY = SCREEN_HEIGHT - snapPoints.closed;
+        
+        let clampedY = newY;
+        
+        // Add rubber band effect at boundaries
+        if (newY < minY) {
+          const diff = minY - newY;
+          clampedY = minY - diff * 0.3; // 30% resistance
+        } else if (newY > maxY) {
+          const diff = newY - maxY;
+          clampedY = maxY + diff * 0.3; // 30% resistance
+        } else {
+          clampedY = newY;
+        }
+        
+        translateY.setValue(clampedY);
+      },
+      
       onPanResponderRelease: (_, gestureState) => {
-        translateY.flattenOffset();
         isDraggingSheet.current = false;
-
-        const { vy } = gestureState;
-        let currentPosition = 0;
-        translateY.stopAnimation((value) => {
-          currentPosition = value;
-        });
-
+        const { dy, vy } = gestureState;
+        
         let targetSnapPoint: SnapPoint = currentSnapPointRef.current;
-
+        
+        // Determine target based on velocity first (fast flick)
         if (Math.abs(vy) > VELOCITY_THRESHOLD) {
           if (vy < 0) {
-            targetSnapPoint =
-              currentSnapPointRef.current === 'closed' ? 'half' : 'full';
+            // Flicking up
+            targetSnapPoint = currentSnapPointRef.current === 'closed' 
+              ? 'half' 
+              : 'full';
           } else {
+            // Flicking down
             if (!enablePanDownToClose && currentSnapPointRef.current === 'half') {
               targetSnapPoint = 'half';
             } else {
-              targetSnapPoint =
-                currentSnapPointRef.current === 'full' ? 'half' : 'closed';
+              targetSnapPoint = currentSnapPointRef.current === 'full' 
+                ? 'half' 
+                : 'closed';
             }
           }
-        } else {
+        } 
+        // If no significant velocity, use distance traveled
+        else {
+          const currentY = SCREEN_HEIGHT - snapPoints[currentSnapPointRef.current];
+          const finalY = currentY + dy;
+          
+          // Calculate which snap point we're closest to
           const distances = {
-            closed: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.closed)),
-            half: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.half)),
-            full: Math.abs(currentPosition - (SCREEN_HEIGHT - snapPointsRef.current.full)),
+            closed: Math.abs(finalY - (SCREEN_HEIGHT - snapPoints.closed)),
+            half: Math.abs(finalY - (SCREEN_HEIGHT - snapPoints.half)),
+            full: Math.abs(finalY - (SCREEN_HEIGHT - snapPoints.full)),
           };
-
+          
+          // Find the closest snap point
           let closest: SnapPoint = 'half';
           let minDistance = Infinity;
-
+          
           (Object.keys(distances) as SnapPoint[]).forEach((point) => {
             if (distances[point] < minDistance) {
-              if (point === 'closed' && !enablePanDownToClose && currentSnapPointRef.current === 'half') return;
+              // Don't snap to closed if pan down is disabled and we're moving from half
+              if (point === 'closed' && !enablePanDownToClose && currentSnapPointRef.current === 'half') {
+                return;
+              }
               minDistance = distances[point];
               closest = point;
             }
           });
-
+          
           targetSnapPoint = closest;
         }
-
+        
         snapToPoint(targetSnapPoint);
-
-        setTimeout(() => {
-          isDraggingSheet.current = false;
-        }, 100);
       },
-
+      
       onPanResponderTerminate: () => {
-        translateY.flattenOffset();
         isDraggingSheet.current = false;
+        // Snap back to current position if gesture is interrupted
         snapToPoint(currentSnapPointRef.current);
       },
     })
   ).current;
 
-  // Overlay (semi-transparent fond)
-  const overlayOpacity = translateY.interpolate({
-    inputRange: [
-      SCREEN_HEIGHT - snapPointsRef.current.full,
-      SCREEN_HEIGHT - snapPointsRef.current.closed,
-    ],
-    outputRange: [0.5, 0],
-    extrapolate: 'clamp',
-  });
+  // Handle scroll events
+  const handleScroll = useCallback(
+    (event: any) => {
+      const offsetY = event.nativeEvent.contentOffset.y;
+      scrollOffset.current = offsetY;
+    },
+    []
+  );
+
+  // Track content size to determine if scrollable
+  const handleContentSizeChange = useCallback(
+    (contentWidth: number, contentHeight: number) => {
+      scrollContentHeight.current = contentHeight;
+      isContentScrollable.current = contentHeight > scrollViewHeight.current;
+    },
+    []
+  );
+
+  // Track layout of ScrollView
+  const handleScrollViewLayout = useCallback(
+    (event: any) => {
+      const { height } = event.nativeEvent.layout;
+      scrollViewHeight.current = height;
+      isContentScrollable.current = scrollContentHeight.current > height;
+    },
+    []
+  );
 
   return (
-    <>
-      {/* Optional: Overlay clickable pour fermer */}
-      <Pressable
-        style={[StyleSheet.absoluteFillObject]}
-        onPress={() => snapToPoint('closed')}
-      >
-        <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]} />
-      </Pressable>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          transform: [{ translateY }],
+          paddingBottom: insets.bottom,
+        },
+      ]}
+    >
+      <View style={styles.handleContainer} {...panResponder.panHandlers}>
+        <View style={styles.handle} />
+      </View>
 
-      <Animated.View
-        style={[
-          styles.container,
-          {
-            transform: [{ translateY }],
-            paddingBottom: insets.bottom,
-          },
+      {headerComponent && (
+        <View style={styles.header}>{headerComponent as any}</View>
+      )}
+
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 16) }
         ]}
+        showsVerticalScrollIndicator={true}
+        scrollEventThrottle={16}
+        // CRITIQUE : Toujours permettre le bounce pour une UX fluide
+        bounces={true}
+        // CRITIQUE : Le scroll est toujours activé, peu importe la position du sheet
+        scrollEnabled={!isDraggingSheet.current}
+        onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
+        onLayout={handleScrollViewLayout}
+        onScrollBeginDrag={() => {
+          // Ensure we're not trying to drag the sheet while scrolling
+          isDraggingSheet.current = false;
+        }}
+        // CRITIQUE : Désactiver le nestedScrollEnabled sur Android pour éviter les conflits
+        nestedScrollEnabled={false}
       >
-        <View style={styles.handleContainer} {...panResponder.panHandlers}>
-          <View style={styles.handle} />
-        </View>
-
-        {headerComponent && <View style={styles.header}>{headerComponent}</View>}
-
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: Math.max(insets.bottom, 16) },
-          ]}
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
-          bounces={currentSnapPoint === 'full'}
-          scrollEnabled={scrollEnabled && !isDraggingSheet.current}
-          onScroll={(event) => {
-            scrollOffset.current = event.nativeEvent.contentOffset.y;
-          }}
-          onScrollBeginDrag={() => {
-            isDraggingSheet.current = false;
-          }}
-        >
-          {children}
-        </ScrollView>
-      </Animated.View>
-    </>
+        {children}
+      </ScrollView>
+    </Animated.View>
   );
 }
 
@@ -264,8 +331,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: DesignTokens.borderRadius['2xl'],
     borderTopRightRadius: DesignTokens.borderRadius['2xl'],
     ...DesignTokens.shadows.xl,
+    // Prevent touch events from passing through on Android
     ...Platform.select({
-      android: { elevation: 8 },
+      android: {
+        elevation: 5,
+      },
     }),
   },
   handleContainer: {
@@ -273,24 +343,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.surface,
-    minHeight: 44,
+    // Make the handle area larger for easier dragging
+    minHeight: 40,
   },
   handle: {
-    width: 50,
-    height: 5,
-    borderRadius: 2.5,
+    width: 40,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: Colors.borderLight,
-    marginVertical: 4,
   },
   header: {
     paddingHorizontal: DesignTokens.spacing[6],
     paddingBottom: DesignTokens.spacing[3],
     backgroundColor: Colors.surface,
   },
-  scrollView: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
-  overlay: {
+  scrollView: {
     flex: 1,
-    backgroundColor: '#000',
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
 });
