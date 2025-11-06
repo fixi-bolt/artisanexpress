@@ -83,7 +83,6 @@ BEGIN
 
   RAISE NOTICE '════════════════════════════════════════';
   RAISE NOTICE '';
+  RAISE NOTICE '✅ Configuration Realtime corrigée !';
+  RAISE NOTICE '🔄 Redémarrez votre application pour prendre en compte les changements';
 END $$;
-
-RAISE NOTICE '✅ Configuration Realtime corrigée !';
-RAISE NOTICE '🔄 Redémarrez votre application pour prendre en compte les changements';
