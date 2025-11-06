@@ -99,7 +99,7 @@ SELECT
   n.is_read,
   n.created_at,
   u.name as user_name,
-  u.type as user_type
+  u.user_type as user_type
 FROM public.notifications n
 LEFT JOIN public.users u ON n.user_id = u.id
 ORDER BY n.created_at DESC
