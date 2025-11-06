@@ -58,7 +58,6 @@ export function BoltBottomSheet({
   const scrollContentHeight = useRef(0);
   const scrollViewHeight = useRef(0);
   const isDraggingSheet = useRef(false);
-  const [scrollEnabled, setScrollEnabled] = useState(true);
   
   // Track if content is scrollable
   const isContentScrollable = useRef(false);
@@ -108,8 +107,6 @@ export function BoltBottomSheet({
 
       onMoveShouldSetPanResponder: (_, gestureState) => {
         const { dy, dx } = gestureState;
-        
-        // Ignorer les gestes horizontaux
         if (Math.abs(dx) > Math.abs(dy)) return false;
 
         const isDraggingDown = dy > MINIMUM_DRAG_DISTANCE;
@@ -121,20 +118,23 @@ export function BoltBottomSheet({
           ? scrollOffset.current >= (scrollContentHeight.current - scrollViewHeight.current - 1)
           : false;
 
-        // 1. Toujours permettre le drag vers le bas quand on est en haut
+        // Allow dragging down if at the top (for any snap point)
         if (isDraggingDown && isAtTop) {
           if (!enablePanDownToClose && currentSnapPointRef.current === 'closed') return false;
+          isDraggingSheet.current = true;
           return true;
         }
 
-        // 2. Permettre le drag vers le haut dans ces cas :
-        // - Quand on est en haut (peu importe la position actuelle)
-        // - OU quand on est en bas du contenu scrollable
+        // Allow dragging up if:
+        // - At top and not full
+        // - OR at bottom of scrollable content
         if (isDraggingUp) {
-          if (isAtTop) {
-            return true; // CORRECTION : Permettre le drag vers le haut même en position 'full'
+          if (isAtTop && currentSnapPointRef.current !== 'full') {
+            isDraggingSheet.current = true;
+            return true;
           }
-          if (isAtBottom && isContentScrollable.current) {
+          if (isAtBottom && currentSnapPointRef.current !== 'full' && isContentScrollable.current) {
+            isDraggingSheet.current = true;
             return true;
           }
         }
@@ -144,7 +144,10 @@ export function BoltBottomSheet({
 
       onPanResponderGrant: () => {
         isDraggingSheet.current = true;
-        setScrollEnabled(false);
+        // Force disable scroll immediately
+        if (scrollViewRef.current) {
+          (scrollViewRef.current as any).setNativeProps?.({ scrollEnabled: false });
+        }
         translateY.stopAnimation((currentValue) => {
           translateY.setOffset(currentValue);
           translateY.setValue(0);
@@ -158,6 +161,11 @@ export function BoltBottomSheet({
 
       onPanResponderRelease: (_, gestureState) => {
         translateY.flattenOffset();
+        
+        // Re-enable scroll
+        if (scrollViewRef.current) {
+          (scrollViewRef.current as any).setNativeProps?.({ scrollEnabled: true });
+        }
 
         const { vy } = gestureState;
         let currentPosition = 0;
@@ -201,16 +209,20 @@ export function BoltBottomSheet({
         }
 
         snapToPoint(targetSnapPoint);
-        
-        // Re-enable scroll immediately after snap
-        isDraggingSheet.current = false;
-        setScrollEnabled(true);
+
+        // Small delay to prevent gesture conflicts
+        setTimeout(() => {
+          isDraggingSheet.current = false;
+        }, 100);
       },
 
       onPanResponderTerminate: () => {
         translateY.flattenOffset();
         isDraggingSheet.current = false;
-        setScrollEnabled(true);
+        // Re-enable scroll
+        if (scrollViewRef.current) {
+          (scrollViewRef.current as any).setNativeProps?.({ scrollEnabled: true });
+        }
         snapToPoint(currentSnapPointRef.current);
       },
     })
@@ -298,14 +310,15 @@ export function BoltBottomSheet({
           ]}
           showsVerticalScrollIndicator={true}
           scrollEventThrottle={16}
-          bounces={currentSnapPoint === 'full'}
-          scrollEnabled={scrollEnabled && (currentSnapPoint === 'full' || currentSnapPoint === 'half')}
+          bounces={true}
+          scrollEnabled={!isDraggingSheet.current}
           onScroll={handleScroll}
           onContentSizeChange={handleContentSizeChange}
           onLayout={handleScrollViewLayout}
           onScrollBeginDrag={() => {
             isDraggingSheet.current = false;
           }}
+          nestedScrollEnabled={false}
         >
           {children}
         </ScrollView>
