@@ -115,7 +115,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         title: n.title,
         message: n.message,
         missionId: n.mission_id || undefined,
-        read: n.read,
+        read: n.is_read ?? n.read ?? false,
         createdAt: new Date(n.created_at),
       }));
 
@@ -136,12 +136,9 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           event: '*',
           schema: 'public',
           table: 'missions',
-          filter: user.type === 'client' 
-            ? `client_id=eq.${user.id}` 
-            : `artisan_id=eq.${user.id}`,
         },
-        () => {
-          console.log('✅ Mission updated in realtime');
+        (payload) => {
+          console.log('✅ Mission updated in realtime:', payload);
           loadMissions();
         }
       )
@@ -153,8 +150,8 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          console.log('✅ New notification');
+        (payload) => {
+          console.log('✅ New notification:', payload);
           loadNotifications();
         }
       )
@@ -401,7 +398,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .update({ is_read: true })
         .eq('id', notificationId);
 
       if (error) throw error;
