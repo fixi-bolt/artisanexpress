@@ -56,9 +56,6 @@ export function BoltBottomSheet({
   const scrollViewRef = useRef<ScrollView>(null);
   
   // Séparer complètement la gestion des gestes
-  const isScrollViewScrolling = useRef(false);
-  const lastScrollTimestamp = useRef(0);
-  const scrollStartOffset = useRef(0);
   
   // Use ref for snapPoints to avoid stale closures
   const snapPointsRef = useRef(snapPoints);
@@ -99,18 +96,14 @@ export function BoltBottomSheet({
     }
   }, [initialSnapPoint, snapToPoint]);
 
-  // Calcul de la hauteur dynamique pour le ScrollView
-  const scrollViewHeight = translateY.interpolate({
+  // CORRECTION : Animated overlay opacity - Overlay seulement quand le bottom sheet est très bas
+  const overlayOpacity = translateY.interpolate({
     inputRange: [
       SCREEN_HEIGHT - snapPointsRef.current.full,
-      SCREEN_HEIGHT - snapPointsRef.current.half, 
+      SCREEN_HEIGHT - snapPointsRef.current.half,
       SCREEN_HEIGHT - snapPointsRef.current.closed,
     ],
-    outputRange: [
-      snapPointsRef.current.full - 100, // Hauteur en position full (moins l'espace pour le header/poignée)
-      snapPointsRef.current.half - 100,  // Hauteur en position half
-      snapPointsRef.current.closed - 80, // Hauteur en position closed
-    ],
+    outputRange: [0, 0, 0], // Pas d'overlay
     extrapolate: 'clamp',
   });
 
@@ -195,21 +188,7 @@ export function BoltBottomSheet({
     })
   ).current;
 
-  // Gestion séparée du scroll
-  const handleScrollBeginDrag = useCallback(() => {
-    isScrollViewScrolling.current = true;
-    scrollStartOffset.current = Date.now();
-  }, []);
 
-  const handleScrollEndDrag = useCallback(() => {
-    isScrollViewScrolling.current = false;
-    lastScrollTimestamp.current = Date.now();
-  }, []);
-
-  const handleMomentumScrollEnd = useCallback(() => {
-    isScrollViewScrolling.current = false;
-    lastScrollTimestamp.current = Date.now();
-  }, []);
 
   // PanResponder pour le header (zone non-scrollable)
   const headerPanResponder = useRef(
@@ -276,17 +255,6 @@ export function BoltBottomSheet({
     })
   ).current;
 
-  // CORRECTION : Animated overlay opacity ajustée pour éviter l'assombrissement à 50%
-  const overlayOpacity = translateY.interpolate({
-    inputRange: [
-      SCREEN_HEIGHT - snapPointsRef.current.full,
-      SCREEN_HEIGHT - snapPointsRef.current.half * 0.8, // Commencer plus bas
-      SCREEN_HEIGHT - snapPointsRef.current.closed,
-    ],
-    outputRange: [0, 0, 0.5], // Overlay seulement en position fermée/très basse
-    extrapolate: 'clamp',
-  });
-
   return (
     <>
       {/* Backdrop overlay */}
@@ -325,41 +293,28 @@ export function BoltBottomSheet({
         {/* Zone header - draggable aussi */}
         {headerComponent && (
           <View style={styles.header} {...headerPanResponder.panHandlers}>
-            {headerComponent as any}
+            {headerComponent}
           </View>
         )}
 
-        {/* ScrollView avec hauteur dynamique - SOLUTION AMÉLIORÉE */}
-        <Animated.View
-          style={[
-            styles.scrollViewWrapper,
-            {
-              height: scrollViewHeight,
+        {/* ScrollView avec hauteur dynamique */}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { 
+              paddingBottom: Math.max(insets.bottom + 40, 80),
             }
           ]}
+          showsVerticalScrollIndicator={true}
+          scrollEventThrottle={16}
+          bounces={true}
+          scrollEnabled={true}
+          alwaysBounceVertical={true}
         >
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.scrollView}
-            contentContainerStyle={[
-              styles.scrollContent,
-              { 
-                paddingBottom: Math.max(insets.bottom + 40, 80),
-              }
-            ]}
-            showsVerticalScrollIndicator={true}
-            scrollEventThrottle={16}
-            bounces={true}
-            scrollEnabled={true}
-            alwaysBounceVertical={true}
-            onScrollBeginDrag={handleScrollBeginDrag}
-            onScrollEndDrag={handleScrollEndDrag}
-            onMomentumScrollBegin={handleScrollBeginDrag}
-            onMomentumScrollEnd={handleMomentumScrollEnd}
-          >
-            {children}
-          </ScrollView>
-        </Animated.View>
+          {children}
+        </ScrollView>
       </Animated.View>
     </>
   );
@@ -402,9 +357,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: DesignTokens.spacing[6],
     paddingBottom: DesignTokens.spacing[3],
     backgroundColor: Colors.surface,
-  },
-  scrollViewWrapper: {
-    overflow: 'hidden',
   },
   scrollView: { 
     flex: 1,
