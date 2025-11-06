@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { safeNavigateBackOrFallback } from '@/utils/safeNavigateBack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   Clock, CheckCircle, XCircle, Navigation, Euro, Star, 
@@ -44,7 +45,7 @@ export default function MissionDetailsScreen() {
               Alert.alert('Mission annulée', 'La mission a été annulée avec succès', [
                 {
                   text: 'OK',
-                  onPress: () => router.back(),
+                  onPress: () => safeNavigateBackOrFallback('/(client)/missions'),
                 },
               ]);
             } catch (error) {
@@ -57,7 +58,7 @@ export default function MissionDetailsScreen() {
         },
       ]
     );
-  }, [mission, cancelMission, router]);
+  }, [mission, cancelMission]);
 
   const handleEdit = useCallback(() => {
     if (!mission) return;
@@ -72,7 +73,7 @@ export default function MissionDetailsScreen() {
         headerTitle: 'Mission introuvable',
         headerLeft: () => (
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => safeNavigateBackOrFallback('/(client)/missions')}
             style={styles.headerBackButton}
             activeOpacity={0.7}
           >
@@ -83,7 +84,7 @@ export default function MissionDetailsScreen() {
         <View style={styles.errorContainer}>
           <Package size={48} color={Colors.textLight} strokeWidth={2} />
           <Text style={styles.errorText}>Mission introuvable</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => safeNavigateBackOrFallback('/(client)/missions')}>
             <Text style={styles.backButtonText}>Retour</Text>
           </TouchableOpacity>
         </View>
@@ -120,7 +121,7 @@ export default function MissionDetailsScreen() {
           headerBackTitle: 'Retour',
           headerLeft: () => (
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeNavigateBackOrFallback('/(client)/missions')}
               style={styles.headerBackButton}
               activeOpacity={0.7}
             >
