@@ -2,12 +2,13 @@
 -- 🧪 TEST DES NOTIFICATIONS - SCRIPT SIMPLE
 -- ========================================
 
-DO $$
+DO $
 DECLARE
   v_client_id UUID;
   v_artisan_id UUID;
   v_mission_id UUID;
   v_notification_count INTEGER;
+  v_row RECORD;
 BEGIN
   RAISE NOTICE '=== 🧪 DÉBUT DU TEST DE NOTIFICATIONS ===';
   

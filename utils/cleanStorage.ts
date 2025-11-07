@@ -2,6 +2,42 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 /**
+ * Safely gets a JSON value from AsyncStorage
+ * Returns null if parsing fails
+ */
+export async function safeGetItem<T = any>(key: string): Promise<T | null> {
+  try {
+    const value = await AsyncStorage.getItem(key);
+    if (!value) return null;
+    
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      console.warn(`⚠️ Failed to parse value for key "${key}", removing corrupted data`);
+      await AsyncStorage.removeItem(key);
+      return null;
+    }
+  } catch (error) {
+    console.error(`❌ Error reading key "${key}":`, error);
+    return null;
+  }
+}
+
+/**
+ * Safely sets a JSON value to AsyncStorage
+ */
+export async function safeSetItem<T = any>(key: string, value: T): Promise<boolean> {
+  try {
+    const jsonValue = JSON.stringify(value);
+    await AsyncStorage.setItem(key, jsonValue);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error setting key "${key}":`, error);
+    return false;
+  }
+}
+
+/**
  * Nettoie le storage en retirant toutes les valeurs corrompues
  * qui causent des erreurs JSON Parse
  */
