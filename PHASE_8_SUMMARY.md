@@ -111,7 +111,7 @@ Updated client home screen with prominent AI assistant access.
 ### **AI Integration**
 ```typescript
 // Using Rork Toolkit SDK
-import { useRorkAgent, createRorkTool, generateText } from '@rork/toolkit-sdk';
+import { useRorkAgent, createRorkTool, generateText } from '@rork-ai/toolkit-sdk';
 
 // Full chat assistant with tool execution
 const { sendMessage } = useRorkAgent({
