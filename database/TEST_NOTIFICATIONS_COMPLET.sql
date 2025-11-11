@@ -1,7 +1,7 @@
 -- 🧪 SCRIPT DE TEST COMPLET POUR LES NOTIFICATIONS
 -- Ce script crée un client et un artisan de test, puis simule l'acceptation d'une mission
 
-DO $$
+DO $
 DECLARE
     v_test_user_id uuid;
     v_test_client_id uuid;
@@ -9,6 +9,7 @@ DECLARE
     v_test_artisan_id uuid;
     v_test_mission_id uuid;
     v_notification_count integer;
+    v_row RECORD;
 BEGIN
     RAISE NOTICE '🧪 DÉBUT DES TESTS DE NOTIFICATIONS';
     RAISE NOTICE '═══════════════════════════════════';
