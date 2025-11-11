@@ -1,12 +1,13 @@
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { AuthContext } from '@/contexts/AuthContext';
 import { MissionContext } from '@/contexts/MissionContext';
 import { PaymentContext } from '@/contexts/PaymentContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
-import { BusinessAnalyticsContext } from '@/contexts/BusinessAnalyticsContext';
 import { AnalyticsProvider } from '@/contexts/AnalyticsContext';
+import { BusinessAnalyticsContext } from '@/contexts/BusinessAnalyticsContext';
 import { MarketingContext } from '@/contexts/MarketingContext';
 import { CRMContext } from '@/contexts/CRMContext';
 import { MonetizationProvider } from '@/contexts/MonetizationContext';
@@ -16,7 +17,6 @@ import { BrandingProvider } from '@/contexts/BrandingContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { StripeProvider } from '@/components/StripeProvider';
 import { trpc, trpcClient } from '@/lib/trpc';
-import { useEffect } from 'react';
 import { cleanStorage } from '@/utils/cleanStorage';
 
 const queryClient = new QueryClient({
