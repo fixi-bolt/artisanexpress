@@ -5,8 +5,8 @@ import { MissionContext } from '@/contexts/MissionContext';
 import { PaymentContext } from '@/contexts/PaymentContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
-import { BusinessAnalyticsContext } from '@/contexts/BusinessAnalyticsContext';
 import { AnalyticsProvider } from '@/contexts/AnalyticsContext';
+import { BusinessAnalyticsContext } from '@/contexts/BusinessAnalyticsContext';
 import { MarketingContext } from '@/contexts/MarketingContext';
 import { CRMContext } from '@/contexts/CRMContext';
 import { MonetizationProvider } from '@/contexts/MonetizationContext';
@@ -93,33 +93,33 @@ export default function RootLayout() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <StripeProvider publishableKey={publishableKey}>
-            <AnalyticsProvider>
-              <AuthContext>
-                <NotificationProvider>
+            <AuthContext>
+              <NotificationProvider>
+                <AnalyticsProvider>
                   <MissionContext>
-                      <PaymentContext>
-                        <ChatProvider>
-                          <BusinessAnalyticsContext>
-                            <MarketingContext>
-                              <CRMContext>
-                                <MonetizationProvider>
-                                  <LocalizationProvider>
-                                    <AutomationProvider>
-                                      <BrandingProvider>
-                                        <RootLayoutNav />
-                                      </BrandingProvider>
-                                    </AutomationProvider>
-                                  </LocalizationProvider>
-                                </MonetizationProvider>
-                              </CRMContext>
-                            </MarketingContext>
-                          </BusinessAnalyticsContext>
-                        </ChatProvider>
-                      </PaymentContext>
-                    </MissionContext>
-                </NotificationProvider>
-              </AuthContext>
-            </AnalyticsProvider>
+                    <PaymentContext>
+                      <ChatProvider>
+                        <BusinessAnalyticsContext>
+                          <MarketingContext>
+                            <CRMContext>
+                              <MonetizationProvider>
+                                <LocalizationProvider>
+                                  <AutomationProvider>
+                                    <BrandingProvider>
+                                      <RootLayoutNav />
+                                    </BrandingProvider>
+                                  </AutomationProvider>
+                                </LocalizationProvider>
+                              </MonetizationProvider>
+                            </CRMContext>
+                          </MarketingContext>
+                        </BusinessAnalyticsContext>
+                      </ChatProvider>
+                    </PaymentContext>
+                  </MissionContext>
+                </AnalyticsProvider>
+              </NotificationProvider>
+            </AuthContext>
           </StripeProvider>
         </QueryClientProvider>
       </trpc.Provider>
