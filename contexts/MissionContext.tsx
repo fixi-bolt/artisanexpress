@@ -123,13 +123,19 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          console.log('🔔 Realtime: New notification');
+        (payload) => {
+          console.log('🔔 Realtime: New notification received!', payload);
+          console.log('🔔 Notification data:', payload.new);
           loadNotifications();
         }
       )
       .subscribe((status) => {
         console.log('🔔 Realtime subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime is active for user:', user.id);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Realtime channel error!');
+        }
       });
 
     return newChannel;
@@ -269,20 +275,33 @@ export const [MissionContext, useMissions] = createContextHook(() => {
       const mission = missions.find(m => m.id === missionId);
       if (mission) {
         console.log('📬 Creating notification for client:', mission.clientId);
+        console.log('📬 Mission title:', mission.title);
         
-        const { error: notifError } = await supabase.from('notifications').insert({
+        const notificationData = {
           user_id: mission.clientId,
           type: 'mission_accepted',
           title: 'Mission acceptée',
           message: `Votre mission "${mission.title}" a été acceptée par un artisan`,
           mission_id: missionId,
           is_read: false,
-        });
+        };
+        
+        console.log('📬 Inserting notification:', notificationData);
+        
+        const { data: notifData, error: notifError } = await supabase
+          .from('notifications')
+          .insert(notificationData)
+          .select()
+          .single();
 
         if (notifError) {
           console.error('❌ Error creating notification:', notifError);
+          console.error('❌ Error details:', JSON.stringify(notifError));
         } else {
-          console.log('✅ Notification created for client');
+          console.log('✅ Notification created successfully!');
+          console.log('✅ Notification ID:', notifData?.id);
+          console.log('✅ User ID:', notifData?.user_id);
+          console.log('✅ The realtime listener should now trigger for user:', mission.clientId);
         }
 
         sendNotification({
