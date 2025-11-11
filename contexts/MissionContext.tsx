@@ -265,11 +265,39 @@ export const [MissionContext, useMissions] = createContextHook(() => {
       if (updateError) throw updateError;
 
       console.log('✅ Mission accepted:', missionId);
+
+      const mission = missions.find(m => m.id === missionId);
+      if (mission) {
+        console.log('📬 Creating notification for client:', mission.clientId);
+        
+        const { error: notifError } = await supabase.from('notifications').insert({
+          user_id: mission.clientId,
+          type: 'mission_accepted',
+          title: 'Mission acceptée',
+          message: `Votre mission "${mission.title}" a été acceptée par un artisan`,
+          mission_id: missionId,
+          is_read: false,
+        });
+
+        if (notifError) {
+          console.error('❌ Error creating notification:', notifError);
+        } else {
+          console.log('✅ Notification created for client');
+        }
+
+        sendNotification({
+          userId: mission.clientId,
+          title: 'Mission acceptée',
+          message: `Votre mission "${mission.title}" a été acceptée par un artisan`,
+          type: 'mission_accepted',
+          missionId,
+        });
+      }
     } catch (error) {
       console.error('❌ Error accepting mission:', error);
       throw error;
     }
-  }, []);
+  }, [missions, sendNotification]);
 
   const startMission = useCallback(async (missionId: string) => {
     try {
