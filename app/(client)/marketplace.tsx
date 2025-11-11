@@ -11,6 +11,10 @@ export default function MarketplaceScreen() {
   const productsQuery = trpc.monetization.marketplace.getProducts.useQuery({ 
     category: selectedCategory,
     limit: 20 
+  }, {
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 5 * 60 * 1000,
   });
   const purchaseMutation = trpc.monetization.marketplace.purchase.useMutation();
   const { user } = useAuth();
@@ -82,6 +86,20 @@ export default function MarketplaceScreen() {
         <View style={styles.loadingContainer}>
           <Package size={48} color={Colors.textLight} strokeWidth={2} />
           <Text style={styles.loading}>Chargement des produits...</Text>
+        </View>
+      ) : productsQuery.isError ? (
+        <View style={styles.emptyContainer}>
+          <Package size={48} color={Colors.textLight} strokeWidth={2} />
+          <Text style={styles.emptyText}>Erreur de connexion</Text>
+          <Text style={styles.errorSubtext}>
+            Impossible de charger les produits. Vérifiez votre connexion.
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => productsQuery.refetch()}
+          >
+            <Text style={styles.retryText}>Réessayer</Text>
+          </TouchableOpacity>
         </View>
       ) : data.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -210,6 +228,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: Colors.textLight,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+  },
+  retryText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.surface,
   },
   list: { 
     padding: 12,

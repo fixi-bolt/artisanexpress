@@ -32,8 +32,10 @@ export const trpcClient = trpc.createClient({
         }
 
         const controller = new AbortController();
-        const isNotificationRoute = url.toString().includes('/notifications.');
-        const timeoutMs = isNotificationRoute ? 15000 : 10000;
+        const urlStr = url.toString();
+        const isNotificationRoute = urlStr.includes('/notifications.');
+        const isMarketplaceRoute = urlStr.includes('/monetization.marketplace');
+        const timeoutMs = isNotificationRoute ? 15000 : (isMarketplaceRoute ? 20000 : 10000);
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         console.debug('[trpc] Fetching', url);
