@@ -1,38 +1,8 @@
 import { Stack } from 'expo-router';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { MissionProvider } from '@/contexts/MissionContext';
-import { PaymentProvider } from '@/contexts/PaymentContext';
-import { ChatProvider } from '@/contexts/ChatContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
-import { AnalyticsProvider } from '@/contexts/AnalyticsContext';
-import { BusinessAnalyticsContext as BusinessAnalyticsProvider } from '@/contexts/BusinessAnalyticsContext';
-import { MarketingContext as MarketingProvider } from '@/contexts/MarketingContext';
-import { CRMContext as CRMProvider } from '@/contexts/CRMContext';
-import { MonetizationProvider } from '@/contexts/MonetizationContext';
-import { LocalizationProvider } from '@/contexts/LocalizationContext';
-import { AutomationProvider } from '@/contexts/AutomationContext';
-import { BrandingProvider } from '@/contexts/BrandingContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { StripeProvider } from '@/components/StripeProvider';
-import { trpc, trpcClient } from '@/lib/trpc';
+import { AppProviders } from '@/components/AppProviders';
 import { cleanStorage } from '@/utils/cleanStorage';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      retryDelay: 1000,
-      staleTime: 5 * 60 * 1000,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
-    mutations: {
-      retry: 0,
-    },
-  },
-});
 
 function RootLayoutNav() {
   return (
@@ -77,52 +47,17 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLIC_KEY || '';
-
   useEffect(() => {
-    console.log('[STRIPE] Publishable key loaded:', publishableKey ? 'Yes' : 'No');
-    
-    // Nettoie le storage au démarrage pour éviter les erreurs JSON Parse
     cleanStorage().catch(err => {
       console.error('[STORAGE] Failed to clean storage on startup:', err);
     });
-  }, [publishableKey]);
+  }, []);
 
   return (
     <ErrorBoundary>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <StripeProvider publishableKey={publishableKey}>
-            <AnalyticsProvider>
-              <AuthProvider>
-                <NotificationProvider>
-                  <LocalizationProvider>
-                    <MissionProvider>
-                      <PaymentProvider>
-                        <ChatProvider>
-                          <BusinessAnalyticsProvider>
-                            <MarketingProvider>
-                              <CRMProvider>
-                                <MonetizationProvider>
-                                  <AutomationProvider>
-                                    <BrandingProvider>
-                                      <RootLayoutNav />
-                                    </BrandingProvider>
-                                  </AutomationProvider>
-                                </MonetizationProvider>
-                              </CRMProvider>
-                            </MarketingProvider>
-                          </BusinessAnalyticsProvider>
-                        </ChatProvider>
-                      </PaymentProvider>
-                    </MissionProvider>
-                  </LocalizationProvider>
-                </NotificationProvider>
-              </AuthProvider>
-            </AnalyticsProvider>
-          </StripeProvider>
-        </QueryClientProvider>
-      </trpc.Provider>
+      <AppProviders>
+        <RootLayoutNav />
+      </AppProviders>
     </ErrorBoundary>
   );
 }
