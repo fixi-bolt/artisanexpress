@@ -8,14 +8,39 @@ const getNearbyMissionsInput = z.object({
   longitude: z.number().min(-180).max(180),
 });
 
+const missionResponseSchema = z.object({
+  mission_id: z.string().uuid(),
+  title: z.string(),
+  category: z.string(),
+  description: z.string().nullable(),
+  status: z.string(),
+  estimated_price: z.number().nullable(),
+  address: z.string(),
+  client_id: z.string().uuid(),
+  client_name: z.string(),
+  latitude: z.number(),
+  longitude: z.number(),
+  photos: z.array(z.string()).default([]),
+  distance_km: z.string().or(z.number()),
+  created_at: z.string().datetime(),
+});
+
 export const getNearbyMissionsProcedure = protectedProcedure
   .input(getNearbyMissionsInput)
-  .query(async ({ input }) => {
+  .query(async ({ input, ctx }) => {
     console.log("[get-nearby-missions] Fetching nearby missions:", {
       artisanId: input.artisanId,
       latitude: input.latitude,
       longitude: input.longitude,
     });
+
+    if (ctx.session.user.id !== input.artisanId) {
+      console.warn("[get-nearby-missions] Unauthorized access attempt:", {
+        userId: ctx.session.user.id,
+        requestedArtisanId: input.artisanId,
+      });
+      throw new Error("Unauthorized access to artisan missions");
+    }
 
     try {
       const { data, error } = await supabase.rpc("find_nearby_missions", {
@@ -33,25 +58,36 @@ export const getNearbyMissionsProcedure = protectedProcedure
         `[get-nearby-missions] Found ${data?.length || 0} nearby missions`
       );
 
-      const missions = (data || []).map((mission: any) => ({
-        id: mission.mission_id,
-        title: mission.title,
-        category: mission.category,
-        description: mission.description,
-        status: mission.status,
-        estimatedPrice: mission.estimated_price,
-        address: mission.address,
-        clientId: mission.client_id,
-        clientName: mission.client_name,
-        location: {
-          latitude: mission.latitude,
-          longitude: mission.longitude,
-          address: mission.address,
-        },
-        photos: mission.photos || [],
-        distanceKm: parseFloat(mission.distance_km || "0"),
-        createdAt: new Date(mission.created_at),
-      }));
+      const missions = (data || []).map((mission: unknown) => {
+        try {
+          const validatedMission = missionResponseSchema.parse(mission);
+          
+          return {
+            id: validatedMission.mission_id,
+            title: validatedMission.title,
+            category: validatedMission.category,
+            description: validatedMission.description,
+            status: validatedMission.status,
+            estimatedPrice: validatedMission.estimated_price,
+            address: validatedMission.address,
+            clientId: validatedMission.client_id,
+            clientName: validatedMission.client_name,
+            location: {
+              latitude: validatedMission.latitude,
+              longitude: validatedMission.longitude,
+              address: validatedMission.address,
+            },
+            photos: validatedMission.photos,
+            distanceKm: typeof validatedMission.distance_km === 'string' 
+              ? parseFloat(validatedMission.distance_km) 
+              : validatedMission.distance_km,
+            createdAt: new Date(validatedMission.created_at),
+          };
+        } catch (validationError) {
+          console.error("[get-nearby-missions] Invalid mission data:", validationError);
+          return null;
+        }
+      }).filter((mission): mission is NonNullable<typeof mission> => mission !== null);
 
       return {
         success: true,
