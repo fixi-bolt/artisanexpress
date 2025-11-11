@@ -1,9 +1,9 @@
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { AuthContext } from '@/contexts/AuthContext';
-import { MissionContext } from '@/contexts/MissionContext';
-import { PaymentContext } from '@/contexts/PaymentContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { MissionProvider } from '@/contexts/MissionContext';
+import { PaymentProvider } from '@/contexts/PaymentContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AnalyticsProvider } from '@/contexts/AnalyticsContext';
@@ -94,31 +94,31 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <StripeProvider publishableKey={publishableKey}>
             <AnalyticsProvider>
-              <AuthContext>
+              <AuthProvider>
                 <NotificationProvider>
-                  <MissionContext>
-                      <PaymentContext>
+                  <LocalizationProvider>
+                    <MissionProvider>
+                      <PaymentProvider>
                         <ChatProvider>
                           <BusinessAnalyticsProvider>
                             <MarketingProvider>
                               <CRMProvider>
                                 <MonetizationProvider>
-                                  <LocalizationProvider>
-                                    <AutomationProvider>
-                                      <BrandingProvider>
-                                        <RootLayoutNav />
-                                      </BrandingProvider>
-                                    </AutomationProvider>
-                                  </LocalizationProvider>
+                                  <AutomationProvider>
+                                    <BrandingProvider>
+                                      <RootLayoutNav />
+                                    </BrandingProvider>
+                                  </AutomationProvider>
                                 </MonetizationProvider>
                               </CRMProvider>
                             </MarketingProvider>
                           </BusinessAnalyticsProvider>
                         </ChatProvider>
-                      </PaymentContext>
-                    </MissionContext>
+                      </PaymentProvider>
+                    </MissionProvider>
+                  </LocalizationProvider>
                 </NotificationProvider>
-              </AuthContext>
+              </AuthProvider>
             </AnalyticsProvider>
           </StripeProvider>
         </QueryClientProvider>
