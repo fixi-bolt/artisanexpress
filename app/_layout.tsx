@@ -7,9 +7,9 @@ import { PaymentContext } from '@/contexts/PaymentContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AnalyticsProvider } from '@/contexts/AnalyticsContext';
-import { BusinessAnalyticsContext } from '@/contexts/BusinessAnalyticsContext';
-import { MarketingContext } from '@/contexts/MarketingContext';
-import { CRMContext } from '@/contexts/CRMContext';
+import { BusinessAnalyticsContext as BusinessAnalyticsProvider } from '@/contexts/BusinessAnalyticsContext';
+import { MarketingContext as MarketingProvider } from '@/contexts/MarketingContext';
+import { CRMContext as CRMProvider } from '@/contexts/CRMContext';
 import { MonetizationProvider } from '@/contexts/MonetizationContext';
 import { LocalizationProvider } from '@/contexts/LocalizationContext';
 import { AutomationProvider } from '@/contexts/AutomationContext';
@@ -99,9 +99,9 @@ export default function RootLayout() {
                   <MissionContext>
                       <PaymentContext>
                         <ChatProvider>
-                          <BusinessAnalyticsContext>
-                            <MarketingContext>
-                              <CRMContext>
+                          <BusinessAnalyticsProvider>
+                            <MarketingProvider>
+                              <CRMProvider>
                                 <MonetizationProvider>
                                   <LocalizationProvider>
                                     <AutomationProvider>
@@ -111,9 +111,9 @@ export default function RootLayout() {
                                     </AutomationProvider>
                                   </LocalizationProvider>
                                 </MonetizationProvider>
-                              </CRMContext>
-                            </MarketingContext>
-                          </BusinessAnalyticsContext>
+                              </CRMProvider>
+                            </MarketingProvider>
+                          </BusinessAnalyticsProvider>
                         </ChatProvider>
                       </PaymentContext>
                     </MissionContext>
