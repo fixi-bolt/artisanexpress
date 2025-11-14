@@ -5,6 +5,7 @@ import { ArrowLeft, Star } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useMissions } from '@/contexts/MissionContext';
 import { mockArtisans } from '@/mocks/artisans';
+import { safeNavigateBackOrFallback } from '@/utils/safeNavigateBack';
 
 export default function RateScreen() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function RateScreen() {
     Alert.alert(
       'Merci !',
       'Votre avis a été enregistré',
-      [{ text: 'OK', onPress: () => router.back() }]
+      [{ text: 'OK', onPress: () => safeNavigateBackOrFallback('/(client)/missions') }]
     );
   };
 
@@ -46,7 +47,7 @@ export default function RateScreen() {
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => safeNavigateBackOrFallback('/(client)/missions')}
             activeOpacity={0.7}
           >
             <ArrowLeft size={24} color={Colors.text} strokeWidth={2} />
