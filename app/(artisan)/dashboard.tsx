@@ -80,10 +80,16 @@ export default function ArtisanDashboardScreen() {
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Accepter',
-          onPress: () => {
-            acceptMission(missionId, user?.id || '');
-            Alert.alert('Mission acceptée !', 'Le client a été notifié. Rendez-vous chez lui.');
-            console.log('Mission accepted:', missionId);
+          onPress: async () => {
+            try {
+              console.log('🎯 Starting mission acceptance:', missionId);
+              await acceptMission(missionId, user?.id || '');
+              console.log('✅ Mission accepted successfully:', missionId);
+              Alert.alert('Mission acceptée !', 'Le client a été notifié. Rendez-vous chez lui.');
+            } catch (error) {
+              console.error('❌ Error accepting mission:', error);
+              Alert.alert('Erreur', 'Impossible d\'accepter la mission. Réessayez.');
+            }
           },
         },
       ]

@@ -272,55 +272,21 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         })
         .eq('id', missionId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ Error updating mission:', updateError);
+        throw updateError;
+      }
 
       console.log('✅ Mission accepted:', missionId);
-
-      const mission = missions.find(m => m.id === missionId);
-      if (mission) {
-        console.log('📬 Creating notification for client:', mission.clientId);
-        console.log('📬 Mission title:', mission.title);
-        
-        const notificationData = {
-          user_id: mission.clientId,
-          type: 'mission_accepted',
-          title: 'Mission acceptée',
-          message: `Votre mission "${mission.title}" a été acceptée par un artisan`,
-          mission_id: missionId,
-          is_read: false,
-        };
-        
-        console.log('📬 Inserting notification:', notificationData);
-        
-        const { data: notifData, error: notifError } = await supabase
-          .from('notifications')
-          .insert(notificationData)
-          .select()
-          .single();
-
-        if (notifError) {
-          console.error('❌ Error creating notification:', notifError);
-          console.error('❌ Error details:', JSON.stringify(notifError));
-        } else {
-          console.log('✅ Notification created successfully!');
-          console.log('✅ Notification ID:', notifData?.id);
-          console.log('✅ User ID:', notifData?.user_id);
-          console.log('✅ The realtime listener should now trigger for user:', mission.clientId);
-        }
-
-        sendNotification({
-          userId: mission.clientId,
-          title: 'Mission acceptée',
-          message: `Votre mission "${mission.title}" a été acceptée par un artisan`,
-          type: 'mission_accepted',
-          missionId,
-        });
-      }
+      console.log('✅ Trigger SQL will automatically create notification for client');
+      console.log('✅ Push notification will be sent by backend');
+      
+      await loadMissions();
     } catch (error) {
       console.error('❌ Error accepting mission:', error);
       throw error;
     }
-  }, [missions, sendNotification]);
+  }, [loadMissions]);
 
   const startMission = useCallback(async (missionId: string) => {
     try {
