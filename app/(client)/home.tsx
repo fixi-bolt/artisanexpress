@@ -1,13 +1,12 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DesignTokens } from '@/constants/design-tokens';
 import { useMissions } from '@/contexts/MissionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenTracking } from '@/hooks/useScreenTracking';
 import Colors from '@/constants/colors';
-import { Search, ChevronDown, ChevronUp, Star, MapPin, Bell } from 'lucide-react-native';
+import { Search, ChevronDown, ChevronUp, Star, MapPin } from 'lucide-react-native';
 import { useSupabaseArtisans } from '@/hooks/useSupabaseArtisans';
 import { InteractiveBackgroundMap } from '@/components/InteractiveBackgroundMap';
 import { BoltBottomSheet } from '@/components/BoltBottomSheet';
@@ -43,9 +42,8 @@ const SPECIALTIES = [
 
 export default function ClientHomeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { activeMission, unreadNotificationsCount } = useMissions();
+  const { activeMission } = useMissions();
   const hasNavigated = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
@@ -79,27 +77,6 @@ export default function ClientHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.clientHeader, { paddingTop: insets.top + 16 }]}>
-        <View>
-          <Text style={styles.clientGreeting}>Bonjour</Text>
-          <Text style={styles.clientUserName}>{user?.name || 'Utilisateur'}</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.clientNotificationButton} 
-          activeOpacity={0.7}
-          onPress={() => router.push('/notifications' as any)}
-        >
-          <Bell size={24} color={Colors.text} strokeWidth={2} />
-          {unreadNotificationsCount > 0 && (
-            <View style={styles.clientNotificationBadge}>
-              <Text style={styles.clientNotificationBadgeText}>
-                {unreadNotificationsCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
       <InteractiveBackgroundMap
         isVisible={true}
         artisans={availableArtisans}
@@ -113,6 +90,7 @@ export default function ClientHomeScreen() {
         initialSnapPoint="half"
         headerComponent={
           <View style={styles.sheetHeader}>
+            <Text style={styles.greetingTitle}>Bonjour, {user?.name || 'Utilisateur'}</Text>
             <Text style={styles.greetingSubtitle}>
               {isLoadingArtisans ? 'Chargement...' : `${availableArtisans.length} artisans disponibles près de vous`}
             </Text>
@@ -214,68 +192,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  clientHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    backgroundColor: 'transparent',
-    zIndex: 1000,
-  },
-  clientGreeting: {
-    fontSize: 14,
-    color: Colors.text,
-    marginBottom: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  clientUserName: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-    color: Colors.text,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  clientNotificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  clientNotificationBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: Colors.error,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clientNotificationBadgeText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: Colors.surface,
-  },
 
   sheetHeader: {
     paddingTop: DesignTokens.spacing[2],
+  },
+  greetingTitle: {
+    fontSize: DesignTokens.typography.fontSize['2xl'],
+    fontWeight: DesignTokens.typography.fontWeight.bold,
+    color: Colors.text,
+    marginBottom: DesignTokens.spacing[1],
   },
   greetingSubtitle: {
     fontSize: DesignTokens.typography.fontSize.base,
