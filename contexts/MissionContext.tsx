@@ -13,7 +13,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
   const loadMissions = useCallback(async () => {
@@ -162,10 +162,14 @@ export const [MissionContext, useMissions] = createContextHook(() => {
       currentChannel = newChannel;
       setChannel(newChannel);
       
-      await Promise.all([loadMissions(), loadNotifications()]);
+      Promise.all([loadMissions(), loadNotifications()]).catch(err => {
+        console.error('❌ Error initializing mission data:', err);
+      });
     };
 
-    initializeData();
+    setTimeout(() => {
+      initializeData();
+    }, 100);
 
     return () => {
       console.log('🧹 Cleaning up realtime channel');

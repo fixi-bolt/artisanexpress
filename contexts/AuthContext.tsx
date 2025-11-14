@@ -296,7 +296,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         setIsLoading(false);
         setIsInitialized(true);
       }
-    }, 10000);
+    }, 5000);
     
     supabase.auth.getSession()
       .then(({ data: { session: currentSession } }) => {
