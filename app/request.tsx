@@ -10,6 +10,7 @@ import SmartCategorySuggestion from '@/components/SmartCategorySuggestion';
 import VoiceAssistant from '@/components/VoiceAssistant';
 import * as ImagePicker from 'expo-image-picker';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { safeNavigateBackOrFallback } from '@/utils/safeNavigateBack';
 
 export default function RequestScreen() {
   const router = useRouter();
@@ -126,7 +127,7 @@ export default function RequestScreen() {
 
       console.log('✅ Mission created:', mission.id);
       
-      router.back();
+      safeNavigateBackOrFallback('/(client)/missions');
       
       setTimeout(() => {
         Alert.alert(
@@ -284,7 +285,7 @@ Description: ${description || 'Pas de description'}`,
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => safeNavigateBackOrFallback('/(client)/missions')}
             activeOpacity={0.7}
           >
             <ArrowLeft size={24} color={Colors.text} strokeWidth={2} />

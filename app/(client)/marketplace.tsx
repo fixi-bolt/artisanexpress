@@ -90,9 +90,12 @@ export default function MarketplaceScreen() {
       ) : productsQuery.isError ? (
         <View style={styles.emptyContainer}>
           <Package size={48} color={Colors.textLight} strokeWidth={2} />
-          <Text style={styles.emptyText}>Erreur de connexion</Text>
+          <Text style={styles.emptyText}>Service temporairement indisponible</Text>
           <Text style={styles.errorSubtext}>
-            Impossible de charger les produits. Vérifiez votre connexion.
+            Le marketplace est en cours de démarrage. Veuillez réessayer dans quelques instants.
+          </Text>
+          <Text style={styles.errorDetails}>
+            {productsQuery.error?.message || 'Erreur inconnue'}
           </Text>
           <TouchableOpacity 
             style={styles.retryButton}
@@ -234,6 +237,14 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     textAlign: 'center',
     marginTop: 4,
+  },
+  errorDetails: {
+    fontSize: 12,
+    color: Colors.textLight,
+    textAlign: 'center',
+    marginTop: 8,
+    fontFamily: 'monospace' as const,
+    paddingHorizontal: 16,
   },
   retryButton: {
     marginTop: 16,
