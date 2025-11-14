@@ -1,53 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { ArrowLeft, Bell, CheckCheck, CreditCard, AlertCircle } from 'lucide-react-native';
 import { Notification } from '@/types';
-
-const mockNotifications: Notification[] = [
-  {
-    id: 'notif-1',
-    userId: 'client-1',
-    type: 'mission_accepted',
-    title: 'Mission acceptée',
-    message: 'Jean Dupont a accepté votre demande de plomberie',
-    missionId: 'mission-1',
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 5),
-  },
-  {
-    id: 'notif-2',
-    userId: 'client-1',
-    type: 'mission_completed',
-    title: 'Mission terminée',
-    message: 'Marie Laurent a terminé votre intervention électrique',
-    missionId: 'mission-2',
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-  },
-  {
-    id: 'notif-3',
-    userId: 'client-1',
-    type: 'payment',
-    title: 'Paiement confirmé',
-    message: 'Votre paiement de 150€ a été traité avec succès',
-    missionId: 'mission-2',
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
-  },
-  {
-    id: 'notif-4',
-    userId: 'client-1',
-    type: 'mission_request',
-    title: 'Nouvelle demande',
-    message: 'Votre demande de service a été envoyée aux artisans disponibles',
-    missionId: 'mission-3',
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-  },
-];
+import { safeNavigateBackOrFallback } from '@/utils/safeNavigateBack';
+import { useMissions } from '@/contexts/MissionContext';
 
 const getNotificationIcon = (type: Notification['type']) => {
   switch (type) {
@@ -99,30 +58,21 @@ const formatTimestamp = (date: Date) => {
 export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const { notifications, markNotificationAsRead, unreadNotificationsCount } = useMissions();
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const handleMarkAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
-  };
-
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, read: true }))
-    );
+  const handleMarkAllAsRead = async () => {
+    const unreadNotifs = notifications.filter(n => !n.read);
+    for (const notif of unreadNotifs) {
+      await markNotificationAsRead(notif.id);
+    }
   };
 
   const handleNotificationPress = (notification: Notification) => {
     if (!notification.read) {
-      handleMarkAsRead(notification.id);
+      markNotificationAsRead(notification.id);
     }
     if (notification.missionId) {
-      router.push(`/mission-details?id=${notification.missionId}` as any);
+      router.push(`/mission-details?missionId=${notification.missionId}` as any);
     }
   };
 
@@ -134,7 +84,7 @@ export default function NotificationsScreen() {
           title: 'Notifications',
           headerLeft: () => (
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeNavigateBackOrFallback('/(client)/home')}
               style={styles.backButton}
               activeOpacity={0.7}
             >
@@ -147,14 +97,14 @@ export default function NotificationsScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>Notifications</Text>
-          {unreadCount > 0 && (
+          {unreadNotificationsCount > 0 && (
             <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>{unreadCount}</Text>
+              <Text style={styles.unreadText}>{unreadNotificationsCount}</Text>
             </View>
           )}
         </View>
         
-        {unreadCount > 0 && (
+        {unreadNotificationsCount > 0 && (
           <TouchableOpacity
             style={styles.markAllButton}
             onPress={handleMarkAllAsRead}

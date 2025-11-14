@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreditCard, Plus, Trash2, Check, ArrowLeft, AlertCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { StripeCardField } from '@/components/StripeCardField';
+import { safeNavigateBackOrFallback } from '@/utils/safeNavigateBack';
 
 
 interface SavedCard {
@@ -120,7 +121,7 @@ export default function PaymentMethodsScreen() {
           headerShown: true,
           headerLeft: () => (
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeNavigateBackOrFallback('/(client)/profile')}
               style={styles.backButton}
               activeOpacity={0.7}
             >
