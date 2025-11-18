@@ -5,6 +5,7 @@ import Colors from '@/constants/colors';
 import { useLocalization, SupportedLocale, CurrencyCode, DistanceUnit } from '@/contexts/LocalizationContext';
 import { Check, Globe, Map, BadgeDollarSign, ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { safeNavigateBackOrFallback } from '@/utils/safeNavigateBack';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function SettingsScreen() {
           headerShown: true,
           headerLeft: () => (
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeNavigateBackOrFallback('/(client)/profile')}
               style={styles.backButton}
               activeOpacity={0.7}
               testID="back-button"
