@@ -42,7 +42,6 @@ function RootLayoutNav() {
       <Stack.Screen name="investor" />
       <Stack.Screen name="press-kit" />
       <Stack.Screen name="mission-details" />
-      <Stack.Screen name="notifications" />
     </Stack>
   );
 }
