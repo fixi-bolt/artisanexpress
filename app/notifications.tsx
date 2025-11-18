@@ -7,6 +7,7 @@ import { ArrowLeft, Bell, CheckCheck, CreditCard, AlertCircle } from 'lucide-rea
 import { Notification } from '@/types';
 import { safeNavigateBackOrFallback } from '@/utils/safeNavigateBack';
 import { useMissions } from '@/contexts/MissionContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const getNotificationIcon = (type: Notification['type']) => {
   switch (type) {
@@ -58,7 +59,11 @@ const formatTimestamp = (date: Date) => {
 export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { notifications, markNotificationAsRead, unreadNotificationsCount } = useMissions();
+
+  const isArtisan = user?.type === 'artisan';
+  const fallbackRoute = isArtisan ? '/(artisan)/dashboard' : '/(client)/home';
 
   const handleMarkAllAsRead = async () => {
     const unreadNotifs = notifications.filter(n => !n.read);
@@ -84,7 +89,7 @@ export default function NotificationsScreen() {
           title: 'Notifications',
           headerLeft: () => (
             <TouchableOpacity
-              onPress={() => safeNavigateBackOrFallback('/(client)/home')}
+              onPress={() => safeNavigateBackOrFallback(fallbackRoute)}
               style={styles.backButton}
               activeOpacity={0.7}
             >

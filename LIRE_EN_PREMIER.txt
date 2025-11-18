@@ -1,0 +1,160 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║       🚨 PROBLÈME: CLIENT NE REÇOIT PAS LA NOTIFICATION       ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+┌────────────────────────────────────────────────────────────────┐
+│ SYMPTÔME                                                       │
+├────────────────────────────────────────────────────────────────┤
+│ ❌ Artisan accepte une mission                                 │
+│ ❌ Client ne reçoit pas de notification                        │
+│ ❌ Mission reste en statut "attente"                           │
+└────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────┐
+│ CAUSE                                                          │
+├────────────────────────────────────────────────────────────────┤
+│ 🔍 Le trigger SQL n'est pas configuré correctement            │
+│ 🔍 Ou le Realtime n'est pas activé                            │
+└────────────────────────────────────────────────────────────────┘
+
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║                    ✅ SOLUTION RAPIDE                          ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ÉTAPE 1: Ouvrir Supabase                                     ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+   1. Allez sur: https://app.supabase.com
+   2. Sélectionnez votre projet
+   3. Cliquez sur "SQL Editor" dans le menu de gauche
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ÉTAPE 2: Copier le script                                    ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+   📄 Ouvrez le fichier: COPIER_COLLER_MAINTENANT.md
+   📋 Copiez tout le code SQL (section "CODE À COPIER-COLLER")
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ÉTAPE 3: Exécuter                                            ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+   1. Collez le code dans l'éditeur SQL de Supabase
+   2. Cliquez sur "Run" (ou Ctrl+Enter)
+   3. Attendez quelques secondes
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ÉTAPE 4: Vérifier                                            ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+   Vous devriez voir ce message:
+   
+   ✅ INSTALLATION TERMINÉE !
+   
+   Test: Acceptez une mission depuis le dashboard artisan
+   Le client devrait recevoir la notification
+
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║                       🧪 TEST                                  ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+┌─ ARTISAN ─────────────────────────────────────────────────────┐
+│ 1. Connectez-vous en tant qu'artisan                          │
+│ 2. Allez sur le Dashboard                                     │
+│ 3. Cliquez sur "Accepter" sur une mission                     │
+│ 4. Attendez la confirmation                                   │
+└────────────────────────────────────────────────────────────────┘
+
+┌─ CLIENT ──────────────────────────────────────────────────────┐
+│ 1. Connectez-vous avec le compte CLIENT                       │
+│    (celui qui a créé la mission)                              │
+│ 2. Regardez l'icône cloche 🔔 en haut à droite                │
+│ 3. Vous devriez voir: "Mission acceptée !"                    │
+└────────────────────────────────────────────────────────────────┘
+
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║                  📊 CE QUE LE SCRIPT FAIT                      ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+┌────────────────────────────────────────────────────────────────┐
+│ 1. 🧹 NETTOYAGE                                                │
+│    → Supprime les anciens triggers qui causaient des doublons │
+│                                                                │
+│ 2. 🔧 CORRECTION                                               │
+│    → Corrige la colonne "read" → "is_read"                    │
+│                                                                │
+│ 3. ⚙️  CRÉATION                                                │
+│    → Crée le trigger SQL pour les notifications               │
+│                                                                │
+│ 4. 📡 REALTIME                                                 │
+│    → Active Realtime pour notifications et missions           │
+│                                                                │
+│ 5. ✅ VÉRIFICATION                                             │
+│    → Confirme que tout est correctement installé              │
+└────────────────────────────────────────────────────────────────┘
+
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║                 🔍 DIAGNOSTIC (si ça échoue)                   ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+Exécutez cette requête dans l'éditeur SQL:
+
+┌────────────────────────────────────────────────────────────────┐
+│ SELECT                                                         │
+│   'Trigger' as type,                                           │
+│   COUNT(*) as count                                            │
+│ FROM pg_trigger                                                │
+│ WHERE tgname = 'trg_notify_mission_accepted'                  │
+│                                                                │
+│ UNION ALL                                                      │
+│                                                                │
+│ SELECT                                                         │
+│   'Realtime' as type,                                          │
+│   COUNT(*) as count                                            │
+│ FROM pg_publication_tables                                     │
+│ WHERE pubname = 'supabase_realtime'                            │
+│   AND tablename IN ('notifications', 'missions');             │
+└────────────────────────────────────────────────────────────────┘
+
+Résultats attendus:
+┌──────────┬───────┐
+│ type     │ count │
+├──────────┼───────┤
+│ Trigger  │   1   │ ← Doit être 1
+│ Realtime │   2   │ ← Doit être 2
+└──────────┴───────┘
+
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║                  📁 FICHIERS IMPORTANTS                        ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+📄 COPIER_COLLER_MAINTENANT.md
+   → Instructions + Code SQL à copier-coller (LE PLUS IMPORTANT)
+
+📄 database/FIX_MISSION_ACCEPTANCE_COMPLETE.sql
+   → Script SQL complet avec diagnostic détaillé
+
+📄 FIX_ACCEPTATION_MISSION_MAINTENANT.md
+   → Guide complet avec explications
+
+📄 LIRE_EN_PREMIER.txt
+   → Ce fichier (résumé visuel)
+
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║              ⏱️  TEMPS ESTIMÉ: 2 MINUTES                       ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
