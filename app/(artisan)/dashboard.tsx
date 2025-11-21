@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Switch, Image, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Bell, MapPin, Clock, Euro, Navigation, Image as ImageIcon, Satellite, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +30,7 @@ interface NearbyMission {
 }
 
 export default function ArtisanDashboardScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, updateUser } = useAuth();
   const { getPendingMissionsForArtisan, acceptMission, unreadNotificationsCount } = useMissions();
@@ -123,21 +124,20 @@ export default function ArtisanDashboardScreen() {
           <Text style={styles.greeting}>Bonjour</Text>
           <Text style={styles.userName}>{user?.name || 'Artisan'}</Text>
         </View>
-        <Link href="/notifications" asChild>
-          <TouchableOpacity 
-            style={styles.notificationButton} 
-            activeOpacity={0.7}
-          >
-            <Bell size={24} color={Colors.text} strokeWidth={2} />
-            {unreadNotificationsCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
-                  {unreadNotificationsCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity 
+          style={styles.notificationButton} 
+          activeOpacity={0.7}
+          onPress={() => router.push('/notifications' as any)}
+        >
+          <Bell size={24} color={Colors.text} strokeWidth={2} />
+          {unreadNotificationsCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>
+                {unreadNotificationsCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView 

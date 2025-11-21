@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 16,
     backgroundColor: 'transparent',
-    zIndex: 1,
+    zIndex: 100,
     pointerEvents: 'box-none',
   },
   clientGreeting: {
@@ -257,6 +257,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+    pointerEvents: 'auto',
   },
   clientNotificationBadge: {
     position: 'absolute',
