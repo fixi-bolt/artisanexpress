@@ -429,7 +429,7 @@ Description: ${description || 'Pas de description'}`,
             </View>
             {locationError && (
               <Text style={{ fontSize: 12, color: Colors.error, marginTop: 8 }}>
-                ⚠️ Impossible d'obtenir votre position. Vous pouvez saisir votre adresse manuellement.
+                ⚠️ Impossible d&apos;obtenir votre position. Vous pouvez saisir votre adresse manuellement.
               </Text>
             )}
             {position && (

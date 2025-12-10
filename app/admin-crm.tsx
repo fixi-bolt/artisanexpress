@@ -13,7 +13,7 @@ import {
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { CRMContext, useCRM, CustomerSegment } from '@/contexts/CRMContext';
+import { CRMContext, useCRM, CustomerSegment, CustomerProfile } from '@/contexts/CRMContext';
 import {
   Search,
   Filter,
@@ -73,7 +73,7 @@ function CRMContent() {
     }
   };
 
-  const selectedProfile = profiles.find(p => p.id === selectedCustomerId);
+  const selectedProfile = profiles.find((p: CustomerProfile) => p.id === selectedCustomerId);
 
   if (selectedCustomerId && selectedProfile) {
     return (

@@ -29,7 +29,7 @@ export default function ApiDocsScreen() {
 
       <View style={styles.hero}>
         <Shield color="#111" size={22} />
-        <Text style={styles.h1}>Accédez à l\'API ArtisanNow</Text>
+        <Text style={styles.h1}>Accédez à l&apos;API ArtisanNow</Text>
         <Text style={styles.p}>Créez une clé API et intégrez ArtisanNow à vos outils.</Text>
         <Text style={styles.baseUrl}>Base URL: {baseUrl}/api</Text>
       </View>

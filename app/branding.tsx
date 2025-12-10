@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { BrandingProvider, useBranding } from '@/contexts/BrandingContext';
 import colors from '@/constants/colors';
 import { Check, Palette, Save, Wand2 } from 'lucide-react-native';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function BrandingContent() {
   const { branding, update, saveBranding, applyPreset, DEFAULT_BRANDING } = useBranding();
@@ -137,13 +138,11 @@ function BrandingContent() {
       </View>
 
       {Platform.OS === 'web' && (
-        <Text style={styles.helper}>Astuces: utilisez des URLs d'images publiques (Unsplash, Cloudinary).</Text>
+        <Text style={styles.helper}>Astuces: utilisez des URLs d&apos;images publiques (Unsplash, Cloudinary).</Text>
       )}
     </ScrollView>
   );
 }
-
-import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function BrandingScreen() {
   return (

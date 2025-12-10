@@ -1,12 +1,11 @@
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Stack } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapPin, Check } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Artisan } from '@/types';
 
 const RADIUS_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
@@ -59,9 +58,9 @@ export default function InterventionRadiusScreen() {
       >
         <View style={styles.header}>
           <MapPin size={32} color={Colors.secondary} />
-          <Text style={styles.title}>Rayon d'intervention</Text>
+          <Text style={styles.title}>Rayon d&apos;intervention</Text>
           <Text style={styles.subtitle}>
-            Choisissez jusqu'où vous êtes prêt à vous déplacer pour vos missions
+            Choisissez jusqu&apos;où vous êtes prêt à vous déplacer pour vos missions
           </Text>
         </View>
 

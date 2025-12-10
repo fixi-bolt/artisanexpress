@@ -10,7 +10,7 @@ import {
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { BusinessAnalyticsContext, useBusinessAnalytics, AnalyticsPeriod } from '@/contexts/BusinessAnalyticsContext';
+import { BusinessAnalyticsContext, useBusinessAnalytics, AnalyticsPeriod, RevenueDataPoint, CategoryRevenue, UserDataPoint, UserSegment, FunnelStage, Dropoff } from '@/contexts/BusinessAnalyticsContext';
 import { StatCard } from '@/components/charts/StatCard';
 import { LineChart } from '@/components/charts/LineChart';
 import { BarChart } from '@/components/charts/BarChart';
@@ -95,7 +95,7 @@ function AnalyticsContent() {
         ) : (
           <>
             <View style={styles.statsGrid}>
-              {revenueData && (
+              {revenueData && revenueData.summary && (
                 <>
                   <StatCard
                     title="Total Revenue"
@@ -114,7 +114,7 @@ function AnalyticsContent() {
                   />
                 </>
               )}
-              {userMetrics && (
+              {userMetrics && userMetrics.summary && (
                 <>
                   <StatCard
                     title="Total Users"
@@ -126,10 +126,10 @@ function AnalyticsContent() {
                   />
                   <StatCard
                     title="Transactions"
-                    value={revenueData?.summary.totalTransactions.toLocaleString() || '0'}
+                    value={revenueData?.summary?.totalTransactions.toLocaleString() || '0'}
                     icon={ShoppingCart}
                     iconColor={colors.secondary}
-                    subtitle={`€${revenueData?.summary.averageTransactionValue.toLocaleString() || 0} avg`}
+                    subtitle={`€${revenueData?.summary?.averageTransactionValue.toLocaleString() || 0} avg`}
                   />
                 </>
               )}
@@ -177,11 +177,11 @@ function AnalyticsContent() {
               </TouchableOpacity>
             </View>
 
-            {selectedTab === 'revenue' && revenueData && (
+            {selectedTab === 'revenue' && revenueData && revenueData.revenueData && revenueData.topCategories && (
               <View style={styles.chartSection}>
                 <Text style={styles.sectionTitle}>Revenue Over Time</Text>
                 <LineChart
-                  data={revenueData.revenueData.map((d) => ({
+                  data={revenueData.revenueData.map((d: RevenueDataPoint) => ({
                     date: d.date,
                     value: d.revenue,
                   }))}
@@ -191,7 +191,7 @@ function AnalyticsContent() {
 
                 <Text style={styles.sectionTitle}>Revenue by Category</Text>
                 <BarChart
-                  data={revenueData.topCategories.map((cat) => ({
+                  data={revenueData.topCategories.map((cat: CategoryRevenue) => ({
                     label: cat.category,
                     value: Math.round(cat.revenue),
                     color: colors.categories[cat.category as keyof typeof colors.categories],
@@ -201,11 +201,11 @@ function AnalyticsContent() {
               </View>
             )}
 
-            {selectedTab === 'users' && userMetrics && (
+            {selectedTab === 'users' && userMetrics && userMetrics.summary && userMetrics.userData && userMetrics.userSegments && (
               <View style={styles.chartSection}>
                 <Text style={styles.sectionTitle}>User Growth</Text>
                 <LineChart
-                  data={userMetrics.userData.map((d) => ({
+                  data={userMetrics.userData.map((d: UserDataPoint) => ({
                     date: d.date,
                     value: d.newUsers,
                   }))}
@@ -236,7 +236,7 @@ function AnalyticsContent() {
 
                 <Text style={styles.sectionTitle}>User Segments</Text>
                 <BarChart
-                  data={userMetrics.userSegments.map((seg) => ({
+                  data={userMetrics.userSegments.map((seg: UserSegment) => ({
                     label: seg.segment,
                     value: seg.count,
                     color: colors.primary,
@@ -247,7 +247,7 @@ function AnalyticsContent() {
               </View>
             )}
 
-            {selectedTab === 'conversion' && conversionFunnel && (
+            {selectedTab === 'conversion' && conversionFunnel && conversionFunnel.funnel && conversionFunnel.dropoffAnalysis && (
               <View style={styles.chartSection}>
                 <Text style={styles.sectionTitle}>Conversion Funnel</Text>
                 <View style={styles.conversionRate}>
@@ -258,7 +258,7 @@ function AnalyticsContent() {
                 </View>
 
                 <BarChart
-                  data={conversionFunnel.funnel.map((stage) => ({
+                  data={conversionFunnel.funnel.map((stage: FunnelStage) => ({
                     label: stage.stage.split(' ')[0],
                     value: stage.count,
                     color: colors.primaryLight,
@@ -267,7 +267,7 @@ function AnalyticsContent() {
                 />
 
                 <Text style={styles.sectionTitle}>Drop-off Analysis</Text>
-                {conversionFunnel.dropoffAnalysis.map((drop, index) => (
+                {conversionFunnel.dropoffAnalysis.map((drop: Dropoff, index: number) => (
                   <View key={index} style={styles.dropoffCard}>
                     <View style={styles.dropoffHeader}>
                       <Text style={styles.dropoffStage}>
