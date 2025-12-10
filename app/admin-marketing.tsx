@@ -147,7 +147,7 @@ function MarketingContent() {
     }
 
     try {
-      const result = await sendPromotionalNotification({
+      await sendPromotionalNotification({
         campaignId: selectedCampaignForNotif,
         targetAudience: 'all_users',
         title: notifForm.title,
@@ -156,7 +156,7 @@ function MarketingContent() {
 
       Alert.alert(
         'Success',
-        `Notification scheduled for ${result.recipients} recipients`
+        'Notification scheduled successfully'
       );
       setShowNotificationModal(false);
       setNotifForm({ title: '', message: '' });

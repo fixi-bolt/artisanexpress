@@ -3,19 +3,53 @@ import { useState, useCallback, useMemo } from 'react';
 
 export type CustomerSegment = 'all' | 'high_value' | 'at_risk' | 'new' | 'churned';
 
+export interface CustomerNote {
+  id: string;
+  content: string;
+  author: string;
+  createdAt: string;
+}
+
+export interface CustomerProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  segment: CustomerSegment;
+  lifetimeValue: number;
+  totalMissions: number;
+  averageRating: number;
+  registeredAt: string;
+  lastActiveAt: string;
+  notes: CustomerNote[];
+}
+
+export interface MissionHistory {
+  id: string;
+  title: string;
+  category: string;
+  amount: number;
+  date: string;
+  rating?: number;
+}
+
+export interface CustomerHistory {
+  missions: MissionHistory[];
+}
+
 export const [CRMContext, useCRM] = createContextHook(() => {
   const [search, setSearch] = useState<string>('');
   const [segment, setSegment] = useState<CustomerSegment>('all');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   const profilesQuery = useMemo(() => ({ 
-    data: { profiles: [], totalCount: 0 }, 
+    data: { profiles: [] as CustomerProfile[], totalCount: 0 }, 
     isLoading: false, 
     refetch: () => Promise.resolve() 
   }), []);
 
   const customerHistoryQuery = useMemo(() => ({ 
-    data: null, 
+    data: null as CustomerHistory | null, 
     isLoading: false, 
     refetch: () => Promise.resolve() 
   }), []);

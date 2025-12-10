@@ -3,11 +3,25 @@ import { useState, useCallback, useMemo } from 'react';
 
 export type CampaignStatus = 'active' | 'scheduled' | 'completed' | 'all';
 
+export interface Campaign {
+  id: string;
+  name: string;
+  type: 'email' | 'push' | 'sms' | 'referral';
+  status: CampaignStatus;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  budget: number;
+  spent: number;
+  roi: number;
+  recipients?: number;
+}
+
 export const [MarketingContext, useMarketing] = createContextHook(() => {
   const [campaignStatus, setCampaignStatus] = useState<CampaignStatus>('all');
 
   const campaignsQuery = useMemo(() => ({ 
-    data: { campaigns: [], totalCount: 0 }, 
+    data: { campaigns: [] as Campaign[], totalCount: 0 }, 
     isLoading: false, 
     refetch: () => Promise.resolve() 
   }), []);

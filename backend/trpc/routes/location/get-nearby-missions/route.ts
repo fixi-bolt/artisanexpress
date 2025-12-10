@@ -27,20 +27,12 @@ const missionResponseSchema = z.object({
 
 export const getNearbyMissionsProcedure = protectedProcedure
   .input(getNearbyMissionsInput)
-  .query(async ({ input, ctx }) => {
+  .query(async ({ input }) => {
     console.log("[get-nearby-missions] Fetching nearby missions:", {
       artisanId: input.artisanId,
       latitude: input.latitude,
       longitude: input.longitude,
     });
-
-    if (ctx.session.user.id !== input.artisanId) {
-      console.warn("[get-nearby-missions] Unauthorized access attempt:", {
-        userId: ctx.session.user.id,
-        requestedArtisanId: input.artisanId,
-      });
-      throw new Error("Unauthorized access to artisan missions");
-    }
 
     try {
       const { data, error } = await supabase.rpc("find_nearby_missions", {
@@ -58,7 +50,7 @@ export const getNearbyMissionsProcedure = protectedProcedure
         `[get-nearby-missions] Found ${data?.length || 0} nearby missions`
       );
 
-      const missions = (data || []).map((mission: unknown) => {
+      const missions = (data || []).map((mission: any) => {
         try {
           const validatedMission = missionResponseSchema.parse(mission);
           
@@ -87,7 +79,7 @@ export const getNearbyMissionsProcedure = protectedProcedure
           console.error("[get-nearby-missions] Invalid mission data:", validationError);
           return null;
         }
-      }).filter((mission): mission is NonNullable<typeof mission> => mission !== null);
+      }).filter((mission: any): mission is NonNullable<typeof mission> => mission !== null);
 
       return {
         success: true,

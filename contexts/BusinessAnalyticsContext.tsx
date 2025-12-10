@@ -3,12 +3,89 @@ import { useState, useCallback, useMemo } from 'react';
 
 export type AnalyticsPeriod = 'week' | 'month' | 'quarter' | 'year';
 
+export interface RevenueDataPoint {
+  date: string;
+  revenue: number;
+}
+
+export interface CategoryRevenue {
+  category: string;
+  revenue: number;
+}
+
+export interface RevenueData {
+  summary: {
+    totalRevenue: number;
+    totalCommissions: number;
+    revenueGrowth: number;
+    totalTransactions: number;
+    averageTransactionValue: number;
+  };
+  revenueData: RevenueDataPoint[];
+  topCategories: CategoryRevenue[];
+}
+
+export interface UserDataPoint {
+  date: string;
+  newUsers: number;
+}
+
+export interface UserSegment {
+  segment: string;
+  count: number;
+}
+
+export interface UserMetrics {
+  summary: {
+    totalUsers: number;
+    userGrowth: number;
+    retentionRate: number;
+    averageSessionDuration: number;
+    churnRate: number;
+  };
+  userData: UserDataPoint[];
+  userSegments: UserSegment[];
+}
+
+export interface FunnelStage {
+  stage: string;
+  count: number;
+}
+
+export interface Dropoff {
+  from: string;
+  to: string;
+  dropoffRate: number;
+  dropoff: number;
+}
+
+export interface ConversionFunnel {
+  overallConversionRate: number;
+  funnel: FunnelStage[];
+  dropoffAnalysis: Dropoff[];
+}
+
 export const [BusinessAnalyticsContext, useBusinessAnalytics] = createContextHook(() => {
   const [period, setPeriod] = useState<AnalyticsPeriod>('month');
 
-  const revenueQuery = useMemo(() => ({ data: null, isLoading: false, error: null, refetch: () => Promise.resolve() }), []);
-  const userMetricsQuery = useMemo(() => ({ data: null, isLoading: false, error: null, refetch: () => Promise.resolve() }), []);
-  const conversionFunnelQuery = useMemo(() => ({ data: null, isLoading: false, error: null, refetch: () => Promise.resolve() }), []);
+  const revenueQuery = useMemo(() => ({ 
+    data: null as RevenueData | null, 
+    isLoading: false, 
+    error: null, 
+    refetch: () => Promise.resolve() 
+  }), []);
+  const userMetricsQuery = useMemo(() => ({ 
+    data: null as UserMetrics | null, 
+    isLoading: false, 
+    error: null, 
+    refetch: () => Promise.resolve() 
+  }), []);
+  const conversionFunnelQuery = useMemo(() => ({ 
+    data: null as ConversionFunnel | null, 
+    isLoading: false, 
+    error: null, 
+    refetch: () => Promise.resolve() 
+  }), []);
 
   const changePeriod = useCallback((newPeriod: AnalyticsPeriod) => {
     console.log('[BusinessAnalytics] Changing period to:', newPeriod);

@@ -31,12 +31,14 @@ export function Skeleton({ width = '100%', height = 20, borderRadius = DesignTok
     return () => animation.stop();
   }, [opacity]);
 
+  const widthStyle = typeof width === 'number' ? { width } : { width: width as any };
+
   return (
     <Animated.View
       style={[
         styles.skeleton,
+        widthStyle,
         {
-          width,
           height,
           borderRadius,
           opacity,

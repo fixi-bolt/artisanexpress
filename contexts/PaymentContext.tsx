@@ -31,6 +31,8 @@ export const [PaymentContext, usePayments] = createContextHook(() => {
       const result = await createPaymentIntentMutation.mutateAsync({
         missionId,
         amount,
+        clientId: user?.id || '',
+        artisanId: '',
       });
 
       return result;
@@ -38,7 +40,7 @@ export const [PaymentContext, usePayments] = createContextHook(() => {
       console.error('Failed to create payment intent:', error);
       throw error;
     }
-  }, [createPaymentIntentMutation]);
+  }, [createPaymentIntentMutation, user?.id]);
 
   const processPayment = useCallback(async (
     missionId: string,
@@ -54,7 +56,9 @@ export const [PaymentContext, usePayments] = createContextHook(() => {
       const result = await processPaymentMutation.mutateAsync({
         missionId,
         paymentIntentId,
-        paymentMethodId: paymentMethod.id,
+        clientId,
+        artisanId,
+        amount,
       });
 
       if (result.success && result.transactionId) {
