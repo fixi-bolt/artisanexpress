@@ -323,6 +323,7 @@ export function BoltBottomSheet({
 const styles = StyleSheet.create({
   backdrop: {
     zIndex: 1,
+    pointerEvents: 'box-none',
   },
   container: {
     position: 'absolute',
