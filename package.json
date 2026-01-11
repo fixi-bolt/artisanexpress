@@ -51,7 +51,6 @@
     "hono": "^4.9.12",
     "jest": "~29.7.0",
     "lucide-react-native": "^0.475.0",
-    "nativewind": "^4.1.23",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
@@ -66,7 +65,8 @@
     "superjson": "^2.2.2",
     "ts-jest": "^29.4.5",
     "zod": "^4.1.12",
-    "zustand": "^5.0.2"
+    "zustand": "^5.0.2",
+    "@rork-ai/toolkit-sdk": "0.2.51"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
