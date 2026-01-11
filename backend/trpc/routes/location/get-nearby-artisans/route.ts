@@ -24,36 +24,36 @@ export const getNearbyArtisansProcedure = protectedProcedure
 
     try {
       let query = supabase
-        .from('users')
+        .from('artisans')
         .select(
           `
           id,
-          name,
-          email,
-          phone,
-          photo,
-          user_type,
-          artisan_profiles (
-            category,
-            hourly_rate,
-            travel_fee,
-            intervention_radius,
-            is_available,
+          category,
+          hourly_rate,
+          travel_fee,
+          intervention_radius,
+          is_available,
+          completed_missions,
+          specialties,
+          latitude,
+          longitude,
+          users!inner (
+            id,
+            name,
+            email,
+            phone,
+            photo,
+            user_type,
             rating,
-            review_count,
-            completed_missions,
-            specialties,
-            latitude,
-            longitude
+            review_count
           )
         `
         )
-        .eq('user_type', 'artisan')
-        .eq('artisan_profiles.is_available', true)
-        .not('artisan_profiles', 'is', null);
+        .eq('is_available', true)
+        .eq('is_suspended', false);
 
       if (category) {
-        query = query.eq('artisan_profiles.category', category);
+        query = query.eq('category', category);
       }
 
       const { data: artisans, error } = await query.limit(limit);
@@ -70,17 +70,17 @@ export const getNearbyArtisansProcedure = protectedProcedure
 
       const artisansWithDistance = artisans
         .map((artisan: any) => {
-          const profile = artisan.artisan_profiles?.[0];
+          const user = artisan.users;
           
-          if (!profile || !profile.latitude || !profile.longitude) {
+          if (!artisan.latitude || !artisan.longitude || !user) {
             return null;
           }
 
           const distance = calculateDistance(
             latitude,
             longitude,
-            profile.latitude,
-            profile.longitude
+            artisan.latitude,
+            artisan.longitude
           );
 
           if (distance > radius) {
@@ -89,23 +89,23 @@ export const getNearbyArtisansProcedure = protectedProcedure
 
           return {
             id: artisan.id,
-            name: artisan.name,
-            email: artisan.email,
-            phone: artisan.phone,
-            photo: artisan.photo,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            photo: user.photo,
             type: 'artisan' as const,
-            category: profile.category,
-            hourlyRate: profile.hourly_rate,
-            travelFee: profile.travel_fee,
-            interventionRadius: profile.intervention_radius,
-            isAvailable: profile.is_available,
-            rating: profile.rating,
-            reviewCount: profile.review_count,
-            completedMissions: profile.completed_missions,
-            specialties: profile.specialties || [],
+            category: artisan.category,
+            hourlyRate: artisan.hourly_rate,
+            travelFee: artisan.travel_fee,
+            interventionRadius: artisan.intervention_radius,
+            isAvailable: artisan.is_available,
+            rating: user.rating,
+            reviewCount: user.review_count,
+            completedMissions: artisan.completed_missions,
+            specialties: artisan.specialties || [],
             location: {
-              latitude: profile.latitude,
-              longitude: profile.longitude,
+              latitude: artisan.latitude,
+              longitude: artisan.longitude,
             },
             distance,
           };
