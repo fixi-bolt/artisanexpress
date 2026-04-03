@@ -43,6 +43,8 @@ function RootLayoutNav() {
       <Stack.Screen name="press-kit" />
       <Stack.Screen name="mission-details" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="supabase-check" />
+      <Stack.Screen name="connection-test" />
     </Stack>
   );
 }
