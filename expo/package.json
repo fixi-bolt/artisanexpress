@@ -14,11 +14,12 @@
     "@hono/trpc-server": "^0.4.0",
     "@nkzw/create-context-hook": "^1.1.0",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@rork-ai/toolkit-sdk": "latest",
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@stripe/react-stripe-js": "^5.2.0",
     "@stripe/stripe-js": "^8.1.0",
     "@stripe/stripe-react-native": "0.50.3",
-    "@supabase/supabase-js": "^2.75.1",
+    "@supabase/supabase-js": "2.49.1",
     "@tanstack/eslint-plugin-query": "^5.91.2",
     "@tanstack/react-query": "^5.90.6",
     "@testing-library/jest-native": "^5.4.3",
@@ -65,8 +66,7 @@
     "superjson": "^2.2.2",
     "ts-jest": "^29.4.5",
     "zod": "^4.1.12",
-    "zustand": "^5.0.2",
-    "@rork-ai/toolkit-sdk": "latest"
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
