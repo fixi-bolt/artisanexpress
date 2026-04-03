@@ -66,7 +66,7 @@
     "ts-jest": "^29.4.5",
     "zod": "^4.1.12",
     "zustand": "^5.0.2",
-    "@rork-ai/toolkit-sdk": "0.2.51"
+    "@rork-ai/toolkit-sdk": "latest"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

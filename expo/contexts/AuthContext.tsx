@@ -278,7 +278,10 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         await loadUserProfile(userId, retryCount + 1);
         return;
       }
-      
+
+      logger.warn('⚠️ Falling back to signed-out state after repeated profile load failures');
+      await clearAuthState();
+      setSession(null);
       setUser(null);
     } finally {
       loadingProfiles.current.delete(userId);
@@ -303,7 +306,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         if (mounted) {
           setSession(currentSession);
           if (currentSession?.user) {
-            loadUserProfile(currentSession.user.id);
+            void loadUserProfile(currentSession.user.id);
           } else {
             setIsLoading(false);
             setIsInitialized(true);
@@ -349,7 +352,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       
       setSession(newSession);
       if (newSession?.user) {
-        loadUserProfile(newSession.user.id);
+        void loadUserProfile(newSession.user.id);
       } else {
         setUser(null);
         setIsLoading(false);

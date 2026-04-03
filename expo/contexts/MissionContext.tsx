@@ -112,7 +112,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         },
         (payload) => {
           console.log('🔔 Realtime: Mission changed', payload);
-          loadMissions();
+          void loadMissions();
         }
       )
       .on(
@@ -126,7 +126,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         (payload) => {
           console.log('🔔 Realtime: New notification received!', payload);
           console.log('🔔 Notification data:', payload.new);
-          loadNotifications();
+          void loadNotifications();
         }
       )
       .subscribe((status) => {
@@ -147,7 +147,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
       setNotifications([]);
       setIsLoading(false);
       if (channel) {
-        supabase.removeChannel(channel);
+        void supabase.removeChannel(channel);
         setChannel(null);
       }
       return;
@@ -162,22 +162,23 @@ export const [MissionContext, useMissions] = createContextHook(() => {
       currentChannel = newChannel;
       setChannel(newChannel);
       
-      Promise.all([loadMissions(), loadNotifications()]).catch(err => {
+      void Promise.all([loadMissions(), loadNotifications()]).catch(err => {
         console.error('❌ Error initializing mission data:', err);
       });
     };
 
-    setTimeout(() => {
-      initializeData();
+    const timeoutId = setTimeout(() => {
+      void initializeData();
     }, 100);
 
     return () => {
       console.log('🧹 Cleaning up realtime channel');
+      clearTimeout(timeoutId);
       if (currentChannel) {
-        supabase.removeChannel(currentChannel);
+        void supabase.removeChannel(currentChannel);
       }
     };
-  }, [user?.id, setupRealtimeSubscription, loadMissions, loadNotifications]);
+  }, [channel, user, setupRealtimeSubscription, loadMissions, loadNotifications]);
 
   useEffect(() => {
     const active = missions.find(
@@ -328,7 +329,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           is_read: false,
         });
 
-        sendNotification({
+        void sendNotification({
           userId: mission.clientId,
           title: 'Mission terminée',
           message: `Montant: ${finalPrice}€. Notez votre artisan !`,
