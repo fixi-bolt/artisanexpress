@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
@@ -74,8 +75,6 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
             setSettings(DEFAULT_SETTINGS);
           }
         } else {
-          const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
-          
           let raw: string | null = null;
           
           try {
@@ -132,7 +131,7 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
     
     // Defer loading to not block initial render
     const timeoutId = setTimeout(() => {
-      load();
+      void load();
     }, 100);
     
     return () => clearTimeout(timeoutId);
@@ -146,7 +145,6 @@ export const [AutomationProvider, useAutomation] = createContextHook(() => {
       if (Platform.OS === 'web') {
         window.localStorage.setItem(key, JSON.stringify(next));
       } else {
-        const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
         await AsyncStorage.setItem(key, JSON.stringify(next));
       }
       setSettings(next);
