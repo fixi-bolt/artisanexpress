@@ -1,5 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Mission, Location, ArtisanCategory, Notification } from '@/types';
 import { useAuth } from './AuthContext';
 import { useNotifications } from './NotificationContext';
@@ -14,7 +14,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   const loadMissions = useCallback(async () => {
     if (!user) return;
@@ -146,9 +146,9 @@ export const [MissionContext, useMissions] = createContextHook(() => {
       setMissions([]);
       setNotifications([]);
       setIsLoading(false);
-      if (channel) {
-        void supabase.removeChannel(channel);
-        setChannel(null);
+      if (channelRef.current) {
+        void supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
       return;
     }
@@ -158,9 +158,14 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     const initializeData = async () => {
       console.log('🚀 Initializing MissionContext for user:', user.id, 'type:', user.type);
       
+      if (channelRef.current) {
+        void supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      
       const newChannel = setupRealtimeSubscription();
       currentChannel = newChannel;
-      setChannel(newChannel);
+      channelRef.current = newChannel;
       
       void Promise.all([loadMissions(), loadNotifications()]).catch(err => {
         console.error('❌ Error initializing mission data:', err);
@@ -176,9 +181,10 @@ export const [MissionContext, useMissions] = createContextHook(() => {
       clearTimeout(timeoutId);
       if (currentChannel) {
         void supabase.removeChannel(currentChannel);
+        channelRef.current = null;
       }
     };
-  }, [channel, user, setupRealtimeSubscription, loadMissions, loadNotifications]);
+  }, [user, setupRealtimeSubscription, loadMissions, loadNotifications]);
 
   useEffect(() => {
     const active = missions.find(

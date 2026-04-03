@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://mxlxwqhkodgixztnydzd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14bHh3cWhrb2RnaXh6dG55ZHpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgyNDQyNDEsImV4cCI6MjA1MzgyMDI0MX0.IKvmfNLVXR5BtoCPkWNOyZXFczuUTPqLbNKiKQU4KPc';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://nkxucjhavjfsogzpitry.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5reHVjamhhdmpmc29nenBpdHJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNzMxMzAsImV4cCI6MjA3NjY0OTEzMH0.-JKjKW2_2ZQag1E7GzGEMvkuWxcWDzVSMB8mCoiNzig';
 
 export const testBasicConnectivity = async (): Promise<{
   success: boolean;
