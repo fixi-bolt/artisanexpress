@@ -1,30 +1,32 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const { withRorkMetro } = require("@rork-ai/toolkit-sdk/metro");
-const path = require("path");
 
 const config = getDefaultConfig(__dirname);
 
-const emptyModule = path.resolve(__dirname, "empty-module.js");
+const emptyModule = require.resolve("./shims/empty.js");
 
-config.resolver.extraNodeModules = {
-  ...config.resolver.extraNodeModules,
-  stream: emptyModule,
-  events: emptyModule,
-  http: emptyModule,
-  https: emptyModule,
-  net: emptyModule,
-  tls: emptyModule,
-  crypto: emptyModule,
-  zlib: emptyModule,
-  fs: emptyModule,
-  path: emptyModule,
-  os: emptyModule,
-  url: emptyModule,
-  util: emptyModule,
-  buffer: emptyModule,
-  querystring: emptyModule,
-  child_process: emptyModule,
-  '@supabase/node-fetch': emptyModule,
+const originalResolveRequest = config.resolver.resolveRequest;
+
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === "@supabase/node-fetch") {
+    return { type: "sourceFile", filePath: emptyModule };
+  }
+
+  const nodeBuiltins = [
+    "stream", "events", "http", "https", "net",
+    "tls", "zlib", "url", "crypto", "buffer",
+    "util", "os", "path", "fs", "child_process",
+  ];
+
+  if (nodeBuiltins.includes(moduleName)) {
+    return { type: "sourceFile", filePath: emptyModule };
+  }
+
+  if (originalResolveRequest) {
+    return originalResolveRequest(context, moduleName, platform);
+  }
+
+  return context.resolveRequest(context, moduleName, platform);
 };
 
 module.exports = withRorkMetro(config);
