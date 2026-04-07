@@ -9,7 +9,10 @@ const NODE_BUILTINS = new Set([
   'stream', 'events', 'http', 'https', 'net', 'tls',
   'zlib', 'url', 'util', 'os', 'fs', 'path', 'assert',
   'child_process', 'querystring', 'string_decoder', 'dns',
+  'crypto', 'buffer',
 ]);
+
+const originalResolveRequest = config.resolver?.resolveRequest;
 
 config.resolver = {
   ...config.resolver,
@@ -19,6 +22,9 @@ config.resolver = {
     }
     if (moduleName === '@supabase/node-fetch') {
       return { type: 'sourceFile', filePath: emptyModule };
+    }
+    if (originalResolveRequest) {
+      return originalResolveRequest(context, moduleName, platform);
     }
     return context.resolveRequest(context, moduleName, platform);
   },
