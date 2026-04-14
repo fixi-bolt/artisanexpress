@@ -132,15 +132,83 @@ export const [AuthContext, useAuth] = createContextHook(() => {
   // Track loading profiles to prevent race conditions
   const loadingProfiles = useRef<Set<string>>(new Set());
 
+  const createProfileFromAuth = useCallback(async (userId: string): Promise<boolean> => {
+    try {
+      logger.info('Attempting to create profile from auth metadata for:', userId);
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        logger.error('No auth user found');
+        return false;
+      }
+
+      const meta = authUser.user_metadata || {};
+      const userType = meta.user_type || 'client';
+      const userName = meta.name || authUser.email?.split('@')[0] || 'Utilisateur';
+      const userPhone = meta.phone || null;
+
+      logger.info('Creating user profile from auth metadata:', { userType, userName, email: authUser.email });
+
+      const { error: insertError } = await supabase.from('users').upsert({
+        id: userId,
+        email: authUser.email || '',
+        name: userName,
+        user_type: userType,
+        phone: userPhone,
+        rating: 0,
+        review_count: 0,
+      }, { onConflict: 'id' });
+
+      if (insertError) {
+        logger.error('Failed to create user profile:', insertError.message);
+        return false;
+      }
+
+      if (userType === 'client') {
+        await supabase.from('clients').upsert({ id: userId }, { onConflict: 'id' });
+      } else if (userType === 'artisan') {
+        await supabase.from('artisans').upsert({
+          id: userId,
+          category: meta.category || 'Non spécifié',
+          hourly_rate: meta.hourlyRate || 50,
+          travel_fee: meta.travelFee || 25,
+          intervention_radius: meta.interventionRadius || 20,
+          is_available: true,
+          completed_missions: 0,
+          specialties: meta.specialties || [],
+          is_suspended: false,
+        }, { onConflict: 'id' });
+        await supabase.from('wallets').upsert({
+          artisan_id: userId,
+          balance: 0,
+          pending_balance: 0,
+          total_earnings: 0,
+          total_withdrawals: 0,
+          currency: 'EUR',
+        }, { onConflict: 'artisan_id' });
+      } else if (userType === 'admin') {
+        await supabase.from('admins').upsert({
+          id: userId,
+          role: 'moderator',
+          permissions: [],
+        }, { onConflict: 'id' });
+      }
+
+      logger.success('Profile created from auth metadata');
+      return true;
+    } catch (err: any) {
+      logger.error('createProfileFromAuth failed:', err?.message);
+      return false;
+    }
+  }, []);
+
   const loadUserProfile = useCallback(async (userId: string, retryCount = 0): Promise<void> => {
-    // Prevent race conditions
     if (loadingProfiles.current.has(userId)) {
       logger.info('Profile already loading for:', userId);
       return;
     }
 
-    if (retryCount > 2) {
-      logger.error('Failed to load user profile after 3 attempts');
+    if (retryCount > 3) {
+      logger.error('Failed to load user profile after 4 attempts');
       setIsLoading(false);
       setIsInitialized(true);
       return;
@@ -158,7 +226,7 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         .maybeSingle();
 
       if (userError) {
-        logger.error('Error fetching user from database:', userError.message);
+        logger.error('Error fetching user from database:', userError.message, userError.code, userError.details);
         throw userError;
       }
       
@@ -166,16 +234,26 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         logger.warn('User not found in database for ID:', userId);
         
         if (retryCount === 0) {
-          logger.info('Waiting for user profile to be created...');
-          const exists = await waitForProfile(userId);
+          logger.info('Waiting for trigger to create profile...');
+          const exists = await waitForProfile(userId, 5);
           if (exists) {
             loadingProfiles.current.delete(userId);
             await loadUserProfile(userId, retryCount + 1);
             return;
           }
         }
+
+        if (retryCount <= 1) {
+          logger.info('Trigger did not create profile, creating manually...');
+          const created = await createProfileFromAuth(userId);
+          if (created) {
+            loadingProfiles.current.delete(userId);
+            await loadUserProfile(userId, retryCount + 1);
+            return;
+          }
+        }
         
-        throw new Error('User profile not found');
+        throw new Error('User profile not found and could not be created');
       }
       
       logger.success('User data fetched:', userData.email, userData.user_type);
@@ -190,28 +268,39 @@ export const [AuthContext, useAuth] = createContextHook(() => {
             .eq('id', userId)
             .maybeSingle();
 
-          if (artisanError) throw artisanError;
+          if (artisanError) {
+            logger.error('Error fetching artisan:', artisanError.message);
+          }
 
           if (!artisanData) {
             logger.warn('Artisan profile not found, creating default...');
-            const { error: createError } = await supabase.from('artisans').insert({
+            const { error: createError } = await supabase.from('artisans').upsert({
               id: userId,
               category: 'Non spécifié',
               hourly_rate: 50,
               travel_fee: 25,
               intervention_radius: 20,
               is_available: true,
-            }).select().single();
+              completed_missions: 0,
+              specialties: [],
+              is_suspended: false,
+            }, { onConflict: 'id' });
 
-            if (createError) throw createError;
+            if (createError) {
+              logger.error('Failed to create artisan profile:', createError.message);
+            }
             
             const { data: newArtisanData } = await supabase
               .from('artisans')
               .select('*')
               .eq('id', userId)
-              .single();
+              .maybeSingle();
             
-            profile = createArtisanUser(userData as DbUser, newArtisanData as DbArtisan);
+            profile = createArtisanUser(userData as DbUser, (newArtisanData || {
+              id: userId, category: 'Non spécifié', hourly_rate: 50, travel_fee: 25,
+              intervention_radius: 20, is_available: true, completed_missions: 0,
+              specialties: [], is_suspended: false,
+            }) as DbArtisan);
           } else {
             profile = createArtisanUser(userData as DbUser, artisanData as DbArtisan);
           }
@@ -219,12 +308,20 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         }
 
         case 'client': {
-          const { data: paymentMethods } = await supabase
-            .from('payment_methods')
-            .select('*')
-            .eq('client_id', userId);
+          let paymentMethods: any[] = [];
+          try {
+            const { data, error } = await supabase
+              .from('payment_methods')
+              .select('*')
+              .eq('client_id', userId);
+            if (!error && data) {
+              paymentMethods = data;
+            }
+          } catch (e: any) {
+            logger.warn('payment_methods query failed (table may not exist):', e?.message);
+          }
 
-          profile = createClientUser(userData as DbUser, paymentMethods || []);
+          profile = createClientUser(userData as DbUser, paymentMethods);
           break;
         }
 
@@ -235,25 +332,27 @@ export const [AuthContext, useAuth] = createContextHook(() => {
             .eq('id', userId)
             .maybeSingle();
 
-          if (adminError) throw adminError;
+          if (adminError) {
+            logger.error('Error fetching admin:', adminError.message);
+          }
 
           if (!adminData) {
             logger.warn('Admin profile not found, creating default...');
-            const { error: createError } = await supabase.from('admins').insert({
+            await supabase.from('admins').upsert({
               id: userId,
               role: 'moderator',
               permissions: [],
-            }).select().single();
-
-            if (createError) throw createError;
+            }, { onConflict: 'id' });
             
             const { data: newAdminData } = await supabase
               .from('admins')
               .select('*')
               .eq('id', userId)
-              .single();
+              .maybeSingle();
             
-            profile = createAdminUser(userData as DbUser, newAdminData as DbAdmin);
+            profile = createAdminUser(userData as DbUser, (newAdminData || {
+              id: userId, role: 'moderator', permissions: [],
+            }) as DbAdmin);
           } else {
             profile = createAdminUser(userData as DbUser, adminData as DbAdmin);
           }
@@ -271,24 +370,22 @@ export const [AuthContext, useAuth] = createContextHook(() => {
     } catch (error: any) {
       logger.error('Error loading user profile:', error?.message);
       
-      if (retryCount < 2) {
-        logger.info('Retrying profile load...');
+      if (retryCount < 3) {
+        logger.info('Retrying profile load in', (retryCount + 1), 'seconds...');
         loadingProfiles.current.delete(userId);
         await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
         await loadUserProfile(userId, retryCount + 1);
         return;
       }
 
-      logger.warn('⚠️ Falling back to signed-out state after repeated profile load failures');
-      await clearAuthState();
-      setSession(null);
+      logger.warn('⚠️ All profile load attempts failed - keeping session but no profile');
       setUser(null);
     } finally {
       loadingProfiles.current.delete(userId);
       setIsLoading(false);
       setIsInitialized(true);
     }
-  }, []);
+  }, [createProfileFromAuth]);
 
   useEffect(() => {
     let mounted = true;
@@ -527,11 +624,12 @@ export const [AuthContext, useAuth] = createContextHook(() => {
       });
 
       if (error) {
+        logger.error('SignIn error:', error.message, error.status, JSON.stringify(error));
         let errorMessage = error.message;
         if (error.message?.includes('Invalid login credentials')) {
           errorMessage = 'Email ou mot de passe incorrect';
         } else if (error.message?.includes('Email not confirmed')) {
-          errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
+          errorMessage = 'Veuillez confirmer votre email avant de vous connecter. Vérifiez votre boîte mail ou désactivez la confirmation email dans Supabase.';
         } else if (error.message?.includes('Network') || error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
           errorMessage = 'Erreur de connexion. Vérifiez votre connexion Internet et réessayez.';
         }
@@ -542,7 +640,8 @@ export const [AuthContext, useAuth] = createContextHook(() => {
         throw new Error('Login failed');
       }
 
-      logger.success('User signed in:', email);
+      logger.success('User signed in:', email, 'ID:', data.user.id);
+      logger.info('User metadata:', JSON.stringify(data.user.user_metadata));
       return data.user;
     } catch (error: any) {
       logger.error('Error signing in:', error?.message);
