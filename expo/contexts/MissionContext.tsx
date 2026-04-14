@@ -1,5 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { Mission, Location, ArtisanCategory, Notification } from '@/types';
 import { useAuth } from './AuthContext';
 import { useNotifications } from './NotificationContext';
@@ -104,8 +106,10 @@ export const [MissionContext, useMissions] = createContextHook(() => {
   const setupRealtimeSubscription = useCallback(() => {
     if (!user) return null;
 
+    console.log('🔔 Setting up Realtime subscription for user:', user.id);
+
     const newChannel = supabase
-      .channel(`missions-changes-${user.id}`)
+      .channel(`missions-notifs-${user.id}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -114,7 +118,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           table: 'missions',
         },
         (payload) => {
-          console.log('🔔 Realtime: Mission changed', payload);
+          console.log('🔔 Realtime: Mission changed', payload.eventType, payload);
           void loadMissions();
         }
       )
@@ -127,22 +131,72 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('🔔 Realtime: New notification received!', payload);
-          console.log('🔔 Notification data:', payload.new);
-          void loadNotifications();
+          console.log('🔔 Realtime: New notification INSERT received!', payload);
+          const raw = payload.new as Record<string, any>;
+          if (raw && raw.id) {
+            const jsonData = typeof raw.data === 'string' ? JSON.parse(raw.data) : (raw.data || {});
+            const newNotif: Notification = {
+              id: raw.id,
+              userId: raw.user_id,
+              type: raw.type as Notification['type'],
+              title: raw.title,
+              message: raw.message,
+              missionId: jsonData?.mission_id || undefined,
+              read: !!raw.read,
+              createdAt: new Date(raw.created_at),
+            };
+            console.log('🔔 Adding notification to state instantly:', newNotif.title);
+            setNotifications((prev) => {
+              if (prev.some((n) => n.id === newNotif.id)) return prev;
+              return [newNotif, ...prev];
+            });
+
+            if (Platform.OS !== 'web') {
+              Notifications.scheduleNotificationAsync({
+                content: {
+                  title: newNotif.title,
+                  body: newNotif.message,
+                  data: { type: newNotif.type, missionId: newNotif.missionId },
+                },
+                trigger: null,
+              }).catch((err) => console.log('⚠️ Local push failed:', err));
+            }
+          }
         }
       )
-      .subscribe((status) => {
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('🔔 Realtime: Notification UPDATE received', payload);
+          const raw = payload.new as Record<string, any>;
+          if (raw && raw.id) {
+            setNotifications((prev) =>
+              prev.map((n) =>
+                n.id === raw.id ? { ...n, read: !!raw.read } : n
+              )
+            );
+          }
+        }
+      )
+      .subscribe((status, err) => {
         console.log('🔔 Realtime subscription status:', status);
         if (status === 'SUBSCRIBED') {
           console.log('✅ Realtime is active for user:', user.id);
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Realtime channel error!');
+          console.error('❌ Realtime channel error:', err);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('⚠️ Realtime subscription timed out, retrying...');
         }
       });
 
     return newChannel;
-  }, [user, loadMissions, loadNotifications]);
+  }, [user, loadMissions]);
 
   useEffect(() => {
     if (!user) {
