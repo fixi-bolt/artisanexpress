@@ -6,13 +6,15 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('❌ Supabase credentials missing!');
-  throw new Error('Supabase URL and key are required');
+  console.warn('⚠️ Supabase credentials missing - using placeholder values. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.');
+} else {
+  console.log('✅ Supabase configuré:', SUPABASE_URL);
 }
 
-console.log('✅ Supabase configuré:', SUPABASE_URL);
+const safeUrl = SUPABASE_URL || 'https://placeholder.supabase.co';
+const safeKey = SUPABASE_ANON_KEY || 'placeholder-key';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient(safeUrl, safeKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
