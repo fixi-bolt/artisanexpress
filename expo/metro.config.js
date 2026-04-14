@@ -3,24 +3,4 @@ const { withRorkMetro } = require("@rork-ai/toolkit-sdk/metro");
 
 const config = getDefaultConfig(__dirname);
 
-const emptyModule = require.resolve("./shims/empty.js");
-
-config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (moduleName === "@supabase/node-fetch") {
-    return { type: "sourceFile", filePath: emptyModule };
-  }
-
-  const nodeBuiltins = [
-    "stream", "events", "http", "https", "net",
-    "tls", "zlib", "url", "crypto", "buffer",
-    "util", "os", "path", "fs", "bufferutil", "utf-8-validate",
-  ];
-
-  if (nodeBuiltins.includes(moduleName)) {
-    return { type: "sourceFile", filePath: emptyModule };
-  }
-
-  return context.resolveRequest(context, moduleName, platform);
-};
-
 module.exports = withRorkMetro(config);
