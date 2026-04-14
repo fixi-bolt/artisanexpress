@@ -81,16 +81,19 @@ export const [MissionContext, useMissions] = createContextHook(() => {
 
       if (error) throw error;
 
-      const mapped: Notification[] = (data || []).map(n => ({
-        id: n.id,
-        userId: n.user_id,
-        type: n.type as Notification['type'],
-        title: n.title,
-        message: n.message,
-        missionId: n.mission_id || undefined,
-        read: n.is_read,
-        createdAt: new Date(n.created_at),
-      }));
+      const mapped: Notification[] = (data || []).map(n => {
+        const jsonData = typeof n.data === 'string' ? JSON.parse(n.data) : (n.data || {});
+        return {
+          id: n.id,
+          userId: n.user_id,
+          type: n.type as Notification['type'],
+          title: n.title,
+          message: n.message,
+          missionId: jsonData?.mission_id || undefined,
+          read: !!n.read,
+          createdAt: new Date(n.created_at),
+        };
+      });
 
       setNotifications(mapped);
     } catch (error) {
@@ -254,8 +257,8 @@ export const [MissionContext, useMissions] = createContextHook(() => {
         type: 'mission_request',
         title: 'Nouvelle demande créée',
         message: `Demande "${data.title}" en attente d'un artisan`,
-        mission_id: missionData.id,
-        is_read: false,
+        data: { mission_id: missionData.id },
+        read: false,
       });
       
       return missionData;
@@ -331,8 +334,8 @@ export const [MissionContext, useMissions] = createContextHook(() => {
           type: 'mission_completed',
           title: 'Mission terminée',
           message: `Montant: ${finalPrice}€. Notez votre artisan !`,
-          mission_id: missionId,
-          is_read: false,
+          data: { mission_id: missionId },
+          read: false,
         });
 
         void sendNotification({
@@ -406,7 +409,7 @@ export const [MissionContext, useMissions] = createContextHook(() => {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true })
+        .update({ read: true, read_at: new Date().toISOString() })
         .eq('id', notificationId);
 
       if (error) throw error;
