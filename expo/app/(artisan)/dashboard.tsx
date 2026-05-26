@@ -245,6 +245,7 @@ export default function ArtisanDashboardScreen() {
                 key={mission.id}
                 mission={mission}
                 onAccept={() => handleAcceptMission(mission.id)}
+                onPress={() => router.push(`/mission-details?missionId=${mission.id}` as any)}
               />
             ))
           )}
@@ -368,13 +369,13 @@ function NearbyMissionCard({ mission, onAccept }: { mission: NearbyMission; onAc
   );
 }
 
-function MissionRequestCard({ mission, onAccept }: { mission: Mission; onAccept: () => void }) {
+function MissionRequestCard({ mission, onAccept, onPress }: { mission: Mission; onAccept: () => void; onPress: () => void }) {
   const timeAgo = Math.floor((Date.now() - mission.createdAt.getTime()) / 60000);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   return (
     <>
-    <View style={styles.requestCard}>
+    <TouchableOpacity style={styles.requestCard} onPress={onPress} activeOpacity={0.85} testID={`mission-card-${mission.id}`}>
       <View style={styles.requestHeader}>
         <View style={styles.requestTimeContainer}>
           <Clock size={14} color={Colors.secondary} strokeWidth={2} />
@@ -386,7 +387,7 @@ function MissionRequestCard({ mission, onAccept }: { mission: Mission; onAccept:
       </View>
 
       <Text style={styles.requestTitle}>{mission.title}</Text>
-      <Text style={styles.requestDescription} numberOfLines={2}>
+      <Text style={styles.requestDescription}>
         {mission.description}
       </Text>
 
@@ -443,7 +444,7 @@ function MissionRequestCard({ mission, onAccept }: { mission: Mission; onAccept:
           ))}
         </ScrollView>
       )}
-    </View>
+    </TouchableOpacity>
 
     <Modal
       visible={selectedPhoto !== null}
